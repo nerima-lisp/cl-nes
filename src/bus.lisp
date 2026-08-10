@@ -16,11 +16,8 @@
        ;; A DMC fetch is an internal device read.  It must use the CPU address
        ;; decoder, but it must not re-enter NES's per-CPU-access clock hook
        ;; while APU-TICK is already running.
-       (let ((previous-hook (bus-cpu-access-hook bus)))
-         (setf (bus-cpu-access-hook bus) nil)
-         (unwind-protect
-              (bus-read bus address)
-           (setf (bus-cpu-access-hook bus) previous-hook)))))
+       (with-bus-cpu-access-hook (bus nil)
+         (bus-read bus address))))
     bus))
 
 (defun %bus-read-device (bus address)
@@ -28,7 +25,7 @@
     ((< address #x2000)
      (aref (bus-ram bus) (mod address #x800)))
     ((< address #x4000)
-     (ppu-read-register (bus-ppu bus) (logand address 7)))
+     (ppu-read-register (bus-ppu bus) (logand address 7) t))
     ((and (<= #x4000 address #x4015)
           (not (= address #x4014)))
      (apu-read-register (bus-apu bus) address))
@@ -59,21 +56,20 @@
     value))
 
 (defun %perform-oam-dma! (bus page)
-  (let ((base (ash (logand page #xFF) 8))
-        (previous-hook (bus-cpu-access-hook bus)))
+  (let ((base (ash (logand page #xFF) 8)))
     ;; The transfer is a device operation. Its 256 source reads must not be
     ;; counted as 256 additional CPU bus cycles by the instruction hook.
-    (setf (bus-cpu-access-hook bus) nil)
-    (unwind-protect
-         (loop for offset below 256 do
-           (ppu-write-register! (bus-ppu bus) 4
-                                 (bus-read bus (+ base offset))))
-      (setf (bus-cpu-access-hook bus) previous-hook))
-    ;; DMA occupies 513 or 514 CPU cycles depending on the CPU phase. The
-    ;; bus does not see individual CPU phases, so NES consumes the safe 513
-    ;; cycle minimum here; the transfer itself is already complete.
+    (with-bus-cpu-access-hook (bus nil)
+      (loop for offset below 256 do
+        (ppu-write-register! (bus-ppu bus) 4
+                              (bus-read bus (+ base offset)))))
+    ;; DMA occupies 513 or 514 CPU cycles depending on the phase of the CPU
+    ;; cycle on which $4014 was written.  The transfer itself is already
+    ;; complete; NES consumes this stall after the instruction returns.
     (setf (bus-dma-stall-cycles bus)
-          (+ (bus-dma-stall-cycles bus) 513))))
+          (+ (bus-dma-stall-cycles bus)
+             513
+             (bus-cpu-cycle-phase bus)))))
 
 (defun bus-take-dma-stall-cycles! (bus)
   (prog1 (bus-dma-stall-cycles bus)

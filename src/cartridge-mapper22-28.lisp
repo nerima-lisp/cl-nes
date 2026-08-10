@@ -88,5 +88,3 @@
         (#x81
          (setf (cartridge-mapper-outer-bank cartridge) (logand value #x3F)))))
   value)
-
-

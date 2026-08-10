@@ -168,5 +168,3 @@
                    "NES 2.0 creates the mapper CHR-RAM window")
       (check-equal (length (cartridge-prg-ram cartridge)) #x2000
                    "NES 2.0 decodes PRG-RAM shift sizes"))))
-
-

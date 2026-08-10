@@ -11,11 +11,25 @@
   (setf (ppu-status ppu) (logand (ppu-status ppu) #x1F)
         (ppu-frame-ready-p ppu) nil))
 
+(defun %ppu-effective-mask (ppu)
+  (if (ppu-rendering-mask-valid-p ppu)
+      (ppu-rendering-mask ppu)
+      (ppu-mask ppu)))
+
+(defun %ppu-advance-rendering-mask! (ppu)
+  (when (ppu-rendering-mask-valid-p ppu)
+    (when (plusp (ppu-rendering-mask-delay ppu))
+      (decf (ppu-rendering-mask-delay ppu)))
+    (when (zerop (ppu-rendering-mask-delay ppu))
+      (setf (ppu-rendering-mask ppu)
+            (ppu-rendering-mask-pending ppu)))))
+
 (defun %ppu-rendering-scanline-p (ppu)
   (and (or (< (ppu-scanline ppu) 240)
            (= (ppu-scanline ppu) 261))
-       (or (logbitp 3 (ppu-mask ppu))
-           (logbitp 4 (ppu-mask ppu)))))
+       (let ((mask (%ppu-effective-mask ppu)))
+         (or (logbitp 3 mask)
+             (logbitp 4 mask)))))
 
 (defun %ppu-clock-render-a12! (ppu high-p &optional (low-cycles 1))
   (when (and (ppu-cartridge ppu)
@@ -29,7 +43,7 @@
   pattern-fetch phases that matter to MMC3's low-time filter.  A pattern-table
   access occupies four PPU dots in each eight-dot fetch group.  Background
   fetches also occur at dots 321-336 for the next scanline, while sprite
-  fetches occupy dots 257-320." 
+  fetches occupy dots 257-320."
   (let ((dot (ppu-dot ppu)))
     (or (and (logbitp 4 (ppu-control ppu))
              (or (and (<= 10 dot 256)
@@ -42,6 +56,8 @@
 
 (defun ppu-tick! (ppu &optional (ticks 1))
   (loop repeat ticks do
+    (%ppu-clock-decay! ppu 1)
+    (%ppu-advance-rendering-mask! ppu)
     (incf (ppu-dot ppu))
     (when (%ppu-rendering-scanline-p ppu)
       (%ppu-clock-render-a12! ppu (%ppu-a12-high-p ppu)))
@@ -73,4 +89,3 @@
         (progn
           (setf (ppu-nmi-pending-p ppu) nil)
           t))))
-

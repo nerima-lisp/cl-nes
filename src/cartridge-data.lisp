@@ -13,9 +13,9 @@
                             (mapper4-variant :mmc3))
   (unless (member mapper '(0 1 2 3 4 5 7 11 22 28 34))
     (error 'unsupported-mapper :number mapper))
-  (unless (member mapper4-variant '(:mmc3 :mmc6))
+  (unless (member mapper4-variant '(:mmc3 :mmc6 :mmc3-alt))
     (error 'invalid-rom
-           :reason "MMC3 variant must be :MMC3 or :MMC6"))
+           :reason "MMC3 variant must be :MMC3, :MMC6, or :MMC3-ALT"))
   (unless (and (integerp prg-ram-size) (>= prg-ram-size 0))
     (error 'invalid-rom :reason "PRG-RAM size must be a non-negative integer"))
   (let ((prg (%octet-vector prg-rom))

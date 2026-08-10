@@ -26,5 +26,3 @@
       (fill rom (+ value-offset bank)
             :start (* bank bank-size)
             :end (* (1+ bank) bank-size)))))
-
-

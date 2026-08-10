@@ -10,10 +10,19 @@
                       palette vram-address temporary-address fine-x write-toggle
                       scroll-x scroll-y read-buffer scanline dot frame-ready-p
                       odd-frame-p nmi-pending-p nmi-delay-p decay-value decay-clock
-                      decay-deadlines decay-next-expiry framebuffer)))
+                      decay-deadlines decay-next-expiry rendering-mask
+                      rendering-mask-pending rendering-mask-delay
+                      rendering-mask-valid-p framebuffer)))
   (cartridge nil)
   (control 0 :type (unsigned-byte 8))
   (mask 0 :type (unsigned-byte 8))
+  ;; PPUMASK writes reach the rendering pipeline after a short propagation
+  ;; delay.  MASK remains the CPU-visible register; these fields hold the
+  ;; effective value used by timing-sensitive behavior.
+  (rendering-mask 0 :type (unsigned-byte 8))
+  (rendering-mask-pending 0 :type (unsigned-byte 8))
+  (rendering-mask-delay 0 :type fixnum)
+  (rendering-mask-valid-p nil)
   (status 0 :type (unsigned-byte 8))
   (oam-address 0 :type (unsigned-byte 8))
   (oam (make-array 256 :element-type '(unsigned-byte 8) :initial-element 0)

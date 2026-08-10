@@ -1,5 +1,58 @@
 (in-package #:cl-nes)
 
+(defconstant +ppu-decay-period+ 1000000)
+
+(defun %ppu-recompute-decay-expiry! (ppu)
+  (let ((next-expiry most-positive-fixnum))
+    (dotimes (bit 8)
+      (let ((deadline (aref (ppu-decay-deadlines ppu) bit)))
+        (when (< deadline next-expiry)
+          (setf next-expiry deadline))))
+    (setf (ppu-decay-next-expiry ppu) next-expiry)))
+
+(defun %ppu-expire-decay! (ppu)
+  (let ((now (ppu-decay-clock ppu)))
+    (when (<= (ppu-decay-next-expiry ppu) now)
+      (dotimes (bit 8)
+        (let ((deadline (aref (ppu-decay-deadlines ppu) bit)))
+          (when (<= deadline now)
+            (setf (ppu-decay-value ppu)
+                  (logand (ppu-decay-value ppu)
+                          (lognot (ash 1 bit))
+                          #xFF)
+                  (aref (ppu-decay-deadlines ppu) bit)
+                  most-positive-fixnum))))
+      (%ppu-recompute-decay-expiry! ppu)))
+  ppu)
+
+(defun %ppu-current-decay (ppu)
+  (%ppu-expire-decay! ppu)
+  (ppu-decay-value ppu))
+
+(defun %ppu-drive-decay! (ppu value &optional (mask #xFF))
+  (%ppu-expire-decay! ppu)
+  (let ((value (logand value #xFF))
+        (mask (logand mask #xFF))
+        (deadline (+ (ppu-decay-clock ppu) +ppu-decay-period+)))
+    (dotimes (bit 8)
+      (let ((bit-mask (ash 1 bit)))
+        (when (logbitp bit mask)
+          (if (logbitp bit value)
+              (setf (ppu-decay-value ppu)
+                    (logior (ppu-decay-value ppu) bit-mask))
+              (setf (ppu-decay-value ppu)
+                    (logand (ppu-decay-value ppu)
+                            (lognot bit-mask)
+                            #xFF)))
+          (setf (aref (ppu-decay-deadlines ppu) bit) deadline))))
+    (%ppu-recompute-decay-expiry! ppu))
+  value)
+
+(defun %ppu-clock-decay! (ppu ticks)
+  (incf (ppu-decay-clock ppu) ticks)
+  (%ppu-expire-decay! ppu)
+  ppu)
+
 (defun ppu-reset! (ppu)
   "Reset the PPU's register, timing, and presentation state.
 
@@ -7,6 +60,10 @@ VRAM, palette RAM, and OAM are retained, matching the useful part of a
 console reset for callers that want to preserve cartridge-backed state."
   (setf (ppu-control ppu) 0
         (ppu-mask ppu) 0
+        (ppu-rendering-mask ppu) 0
+        (ppu-rendering-mask-pending ppu) 0
+        (ppu-rendering-mask-delay ppu) 0
+        (ppu-rendering-mask-valid-p ppu) nil
         (ppu-status ppu) 0
         (ppu-oam-address ppu) 0
         (ppu-vram-address ppu) 0
@@ -25,7 +82,7 @@ console reset for callers that want to preserve cartridge-backed state."
         (ppu-decay-value ppu) 0
         (ppu-decay-clock ppu) 0
         (ppu-decay-next-expiry ppu) most-positive-fixnum)
-  (fill (ppu-decay-deadlines ppu) 0)
+  (fill (ppu-decay-deadlines ppu) most-positive-fixnum)
   (fill (ppu-framebuffer ppu) 0)
   ppu)
 
@@ -172,27 +229,47 @@ MMC3 test ROMs to exercise the edge detector while rendering is disabled."
                                 (ppu-vram-address ppu))
                                24)))
 
-(defun ppu-read-register (ppu register)
+(defun ppu-read-register (ppu register &optional bus-access-p)
   (case (logand register 7)
     (2
-     (prog1 (ppu-status ppu)
+     (let* ((decay (%ppu-current-decay ppu))
+            (value (if bus-access-p
+                       (logior (logand (ppu-status ppu) #xE0)
+                               (logand decay #x1F))
+                       (ppu-status ppu))))
+       (%ppu-drive-decay! ppu value #xE0)
+       (prog1 value
        (setf (ppu-status ppu) (logand (ppu-status ppu) #x7F)
              (ppu-write-toggle ppu) nil)
-       (%cancel-nmi-delay! ppu)))
-    (4 (aref (ppu-oam ppu) (ppu-oam-address ppu)))
+         (%cancel-nmi-delay! ppu))))
+    (4
+     (let* ((raw (aref (ppu-oam ppu) (ppu-oam-address ppu)))
+            (value (if (and bus-access-p
+                             (= (logand (ppu-oam-address ppu) 3) 2))
+                       (logand raw #xE3)
+                       raw)))
+       (%ppu-drive-decay! ppu value)
+       value))
     (7
      (let* ((address (ppu-vram-address ppu))
-            (value (ppu-read-vram ppu address)))
-       (prog1 (if (< (logand address #x3FFF) #x3F00)
-                  (ppu-read-buffer ppu)
-                  value)
+            (palette-p (>= (logand address #x3FFF) #x3F00))
+            (value (ppu-read-vram ppu address))
+            (decay (%ppu-current-decay ppu))
+            (result (if palette-p
+                        (logior (logand value #x3F)
+                                (logand decay #xC0))
+                        (ppu-read-buffer ppu))))
+       (%ppu-drive-decay! ppu result (if palette-p #x3F #xFF))
+       (prog1 result
          (setf (ppu-read-buffer ppu)
-               (if (>= (logand address #x3FFF) #x3F00)
+               (if palette-p
                    (ppu-read-vram ppu (- address #x1000))
                    value))
          (%ppu-vram-increment ppu)
          (%ppu-clock-address-a12! ppu))))
-    (otherwise 0)))
+    (otherwise (if bus-access-p
+                   (%ppu-current-decay ppu)
+                   0))))
 
 (defun %write-scroll! (ppu value)
   (if (not (ppu-write-toggle ppu))
@@ -241,6 +318,7 @@ propagation interval represented by NMI-DELAY-P can still be suppressed."
 
 (defun ppu-write-register! (ppu register value)
   (setf value (logand value #xFF))
+  (%ppu-drive-decay! ppu value)
   (case (logand register 7)
     (0
      (let ((was-enabled (logbitp 7 (ppu-control ppu))))
@@ -251,8 +329,15 @@ propagation interval represented by NMI-DELAY-P can still be suppressed."
        (when (and (not was-enabled)
                   (logbitp 7 value)
                   (logbitp 7 (ppu-status ppu)))
-         (%request-nmi! ppu))))
-    (1 (setf (ppu-mask ppu) value))
+         (%request-nmi! ppu))
+       (when (and was-enabled
+                  (not (logbitp 7 value)))
+         (%cancel-nmi-delay! ppu))))
+    (1
+     (setf (ppu-mask ppu) value
+           (ppu-rendering-mask-pending ppu) value
+           (ppu-rendering-mask-delay ppu) 2
+           (ppu-rendering-mask-valid-p ppu) t))
     (3 (setf (ppu-oam-address ppu) value))
     (4
      (setf (aref (ppu-oam ppu) (ppu-oam-address ppu)) value

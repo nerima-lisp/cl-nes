@@ -86,5 +86,3 @@
        :chr-writable-p (zerop chr-banks)
        :prg-ram-size prg-ram-size
        :mapper4-variant mapper4-variant))))
-
-

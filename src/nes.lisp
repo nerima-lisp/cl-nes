@@ -5,6 +5,8 @@
   ;; vector.  The APU's power/reset phase must include those clocks; the
   ;; existing PPU reset contract starts its visible dot at zero.
   (cpu-reset! (nes-cpu nes) (nes-bus nes))
+  (setf (bus-cpu-cycle-phase (nes-bus nes))
+        (mod (cpu-cycles (nes-cpu nes)) 2))
   (apu-tick! (nes-apu nes) 7)
   nes)
 

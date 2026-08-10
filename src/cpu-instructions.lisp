@@ -1,27 +1,45 @@
 (in-package #:cl-nes)
 
-(defun cpu-step! (cpu bus)
+(defun cpu-step! (cpu bus &optional nmi-poll)
   (if (cpu-stopped-p cpu)
       0
       (let* ((address (cpu-pc cpu))
              (opcode (%fetch-byte cpu bus))
+             (_ (setf (cpu-irq-poll-delay cpu) nil))
              (cycles
                (case opcode
                  (#x00
+                  ;; BRK reads and discards its padding byte before pushing
+                  ;; the return address.
+                  (bus-read bus (cpu-pc cpu))
                   (setf (cpu-pc cpu) (logand (1+ (cpu-pc cpu)) #xFFFF))
                   (%push-word! cpu bus (cpu-pc cpu))
                   (%push-byte! cpu bus (%status-for-stack cpu t))
                   (%set-flag! cpu +flag-interrupt-disable+ t)
-                   (setf (cpu-pc cpu)
-                         (logior (bus-read bus #xFFFE)
-                                 (ash (bus-read bus #xFFFF) 8)))
+                   ;; A pending NMI can hijack BRK after its stack writes but
+                   ;; before the interrupt vector is fetched.  The pushed
+                   ;; status still has BRK set, as on the 6502.
+                   (let ((vector-type
+                           (if (and nmi-poll (funcall nmi-poll))
+                               :nmi
+                               :irq)))
+                     (setf (cpu-pc cpu)
+                           (if (eq vector-type :nmi)
+                               (logior (bus-read bus #xFFFA)
+                                       (ash (bus-read bus #xFFFB) 8))
+                               (logior (bus-read bus #xFFFE)
+                                       (ash (bus-read bus #xFFFF) 8)))))
                    7)
                  (#x01 (%read-op! cpu bus :indx #'%ora! nil))
                  (#x03 (%rmw-op! cpu bus :indx #'%slo-value! 8))
                  (#x05 (%read-op! cpu bus :zp #'%ora! nil))
                  (#x06 (%rmw-op! cpu bus :zp #'%asl-value! 5))
                  (#x07 (%rmw-op! cpu bus :zp #'%slo-value! 5))
-                 (#x08 (%push-byte! cpu bus (%status-for-stack cpu t)) 3)
+                 (#x08
+                  ;; PHP has an internal/dummy read before the stack write.
+                  (bus-read bus (cpu-pc cpu))
+                  (%push-byte! cpu bus (%status-for-stack cpu t))
+                  3)
                  (#x09 (%read-op! cpu bus :immediate #'%ora! nil))
                  (#x0B (%read-op! cpu bus :immediate #'%aac! nil))
                  ((#x04 #x44 #x64) (%nop-op! cpu bus :zp 3))
@@ -53,9 +71,16 @@
                  (#x1F (%rmw-op! cpu bus :absx #'%slo-value! 7))
 
                  (#x20
-                  (let ((target (%fetch-word cpu bus)))
-                    (%push-word! cpu bus (logand (1- (cpu-pc cpu)) #xFFFF))
-                    (setf (cpu-pc cpu) target)
+                  ;; JSR fetches the low target byte, performs a dummy stack
+                  ;; read, pushes the return address, and fetches the high
+                  ;; target byte last.
+                  (let* ((low (%fetch-byte cpu bus))
+                         (return-address (cpu-pc cpu)))
+                    (bus-read bus (+ #x100 (cpu-sp cpu)))
+                    (%push-byte! cpu bus (ldb (byte 8 8) return-address))
+                    (%push-byte! cpu bus (ldb (byte 8 0) return-address))
+                    (setf (cpu-pc cpu)
+                          (logior low (ash (%fetch-byte cpu bus) 8)))
                     6))
                  (#x21 (%read-op! cpu bus :indx #'%and! nil))
                  (#x23 (%rmw-op! cpu bus :indx #'%rla-value! 8))
@@ -69,6 +94,10 @@
                  (#x26 (%rmw-op! cpu bus :zp #'%rol-value! 5))
                  (#x27 (%rmw-op! cpu bus :zp #'%rla-value! 5))
                  (#x28
+                  ;; PLP has a dummy read from the next instruction byte and
+                  ;; a second dummy read from the current stack location.
+                  (bus-read bus (cpu-pc cpu))
+                  (bus-read bus (+ #x100 (cpu-sp cpu)))
                   (%restore-status! cpu (%pop-byte! cpu bus))
                   4)
                  (#x29 (%read-op! cpu bus :immediate #'%and! nil))
@@ -96,6 +125,11 @@
                  (#x3F (%rmw-op! cpu bus :absx #'%rla-value! 7))
 
                  (#x40
+                  ;; RTI's two cycles before pulling the status are dummy
+                  ;; reads, one from the next instruction and one from the
+                  ;; current stack location.
+                  (bus-read bus (cpu-pc cpu))
+                  (bus-read bus (+ #x100 (cpu-sp cpu)))
                   (%restore-status! cpu (%pop-byte! cpu bus) nil)
                   (setf (cpu-pc cpu) (%pop-word! cpu bus))
                   6)
@@ -104,7 +138,11 @@
                  (#x45 (%read-op! cpu bus :zp #'%eor! nil))
                  (#x46 (%rmw-op! cpu bus :zp #'%lsr-value! 5))
                  (#x47 (%rmw-op! cpu bus :zp #'%sre-value! 5))
-                 (#x48 (%push-byte! cpu bus (cpu-a cpu)) 3)
+                 (#x48
+                  ;; PHA has an internal/dummy read before the stack write.
+                  (bus-read bus (cpu-pc cpu))
+                  (%push-byte! cpu bus (cpu-a cpu))
+                  3)
                  (#x49 (%read-op! cpu bus :immediate #'%eor! nil))
                  (#x4B (%read-op! cpu bus :immediate #'%asr! nil))
                  (#x4A
@@ -136,7 +174,13 @@
                  (#x5F (%rmw-op! cpu bus :absx #'%sre-value! 7))
 
                  (#x60
-                  (setf (cpu-pc cpu) (logand (1+ (%pop-word! cpu bus)) #xFFFF))
+                  ;; RTS performs a next-PC dummy read, a stack dummy read,
+                  ;; pulls the return address, then reads from the resumed PC.
+                  (bus-read bus (cpu-pc cpu))
+                  (bus-read bus (+ #x100 (cpu-sp cpu)))
+                  (setf (cpu-pc cpu)
+                        (logand (1+ (%pop-word! cpu bus)) #xFFFF))
+                  (bus-read bus (cpu-pc cpu))
                   6)
                  (#x61 (%read-op! cpu bus :indx #'%adc! nil))
                  (#x63 (%rmw-op! cpu bus :indx #'%rra-value! 8))
@@ -144,6 +188,9 @@
                  (#x66 (%rmw-op! cpu bus :zp #'%ror-value! 5))
                  (#x67 (%rmw-op! cpu bus :zp #'%rra-value! 5))
                  (#x68
+                  ;; PLA has the same two dummy reads as PLP.
+                  (bus-read bus (cpu-pc cpu))
+                  (bus-read bus (+ #x100 (cpu-sp cpu)))
                   (setf (cpu-a cpu) (%pop-byte! cpu bus))
                   (%update-zn! cpu (cpu-a cpu))
                   4)

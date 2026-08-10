@@ -162,5 +162,3 @@
                  "OAM DMA copies the first byte")
     (check-equal (aref (ppu-oam ppu) #xFF) #xFF
                  "OAM DMA copies the last byte")))
-
-

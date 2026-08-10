@@ -155,5 +155,3 @@
                  "NMI timing keeps the PPU on the VBlank scanline")
     (check-equal (cl-nes::ppu-dot ppu) 28
                  "NMI timing advances the PPU after the following instruction"))))
-
-

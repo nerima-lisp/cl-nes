@@ -216,5 +216,3 @@
                 (cartridge-mapper4-irq-pending-p cartridge))
            (and (= (cartridge-mapper cartridge) 5)
                 (cartridge-mapper5-irq-pending-p cartridge)))))
-
-

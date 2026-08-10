@@ -82,8 +82,9 @@
                   pkgs.coreutils
                   docs
                 ]
-                ++ pkgs.lib.optional (builtins.hasAttr system paredit-cli.packages)
-                  paredit-cli.packages.${system}.default;
+                ++
+                  pkgs.lib.optional (builtins.hasAttr system paredit-cli.packages)
+                    paredit-cli.packages.${system}.default;
                 src = ./.;
               }
               ''
@@ -100,6 +101,7 @@
                     paredit inspect check --file "$file" --timeout-ms 30000
                   done
                 fi
+                timeout --signal=TERM --kill-after=10s ${checkTimeout} ${pkgs.sbcl}/bin/sbcl --noinform --non-interactive --eval '(require :asdf)' --load cl-nes.asd --eval '(asdf:compile-system "cl-nes" :force t)' --quit
                 timeout --signal=TERM --kill-after=10s ${checkTimeout} ${pkgs.sbcl}/bin/sbcl --noinform --non-interactive --load run-tests.lisp --quit
                 timeout --signal=TERM --kill-after=10s ${checkTimeout} ${pkgs.sbcl}/bin/sbcl --noinform --non-interactive --load run-weave-tests.lisp --quit
                 timeout --signal=TERM --kill-after=10s ${checkTimeout} ${pkgs.sbcl}/bin/sbcl --noinform --non-interactive --load run-coverage.lisp --quit

@@ -158,5 +158,3 @@
                    "sprite left-edge masking hides the first eight pixels")
       (check-equal (pixel ppu 8 1) #x34
                    "sprite left-edge masking preserves pixels after x=8"))))
-
-

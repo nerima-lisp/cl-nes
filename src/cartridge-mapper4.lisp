@@ -61,7 +61,8 @@
       ;; MMC6 suppresses a second IRQ when a counter that already reached zero
       ;; is reloaded from zero.  The iNES header has no revision/submapper bit
       ;; for this distinction, so MMC6 behavior is an explicit cartridge option.
-      (when (or (not (eq (cartridge-mapper4-variant cartridge) :mmc6))
+      (when (or (not (member (cartridge-mapper4-variant cartridge)
+                             '(:mmc6 :mmc3-alt)))
                 reload-p
                 (plusp counter))
         (setf (cartridge-mapper4-irq-pending-p cartridge) t)))))
@@ -103,5 +104,3 @@
            (cartridge-mapper4-irq-pending-p cartridge) nil))
     (#xE001 (setf (cartridge-mapper4-irq-enabled-p cartridge) t)))
   value)
-
-

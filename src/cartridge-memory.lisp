@@ -140,4 +140,3 @@
                   (mod (%cartridge-chr-offset cartridge address) (length rom)))
             (logand value #xFF))))
   value)
-

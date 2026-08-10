@@ -150,4 +150,3 @@
           (loop for y from start-y below end-y do
             (loop for x from start-x below end-x do
               (%draw-sprite-pixel! ppu sprite x y background-opaque occupied))))))))
-

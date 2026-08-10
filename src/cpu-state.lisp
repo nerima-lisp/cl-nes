@@ -12,7 +12,8 @@
 (defstruct (cpu
             (:constructor %make-cpu
                 (&key (a 0) (x 0) (y 0) (p #x24) (sp #xFD) (pc 0)
-                      (irq-delay 0)))
+                      (irq-delay 0)
+                      (irq-poll-delay nil)))
             (:predicate cpu-instance-p))
   (a a :type (unsigned-byte 8))
   (x x :type (unsigned-byte 8))
@@ -23,4 +24,7 @@
   (cycles 0 :type fixnum)
   ;; CLI/PLP/RTI expose a cleared I flag one instruction before IRQ sampling.
   (irq-delay irq-delay :type fixnum)
+  ;; A taken, non-page-crossing branch ignores an IRQ asserted on its last
+  ;; clock.  The instruction runner consumes this one-boundary marker.
+  (irq-poll-delay irq-poll-delay)
   (stopped-p nil))

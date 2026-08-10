@@ -76,5 +76,3 @@
                    (floor (length chr) +chr-bank-size+))
                 +chr-bank-size+)
            (mod address +chr-bank-size+)))))
-
-

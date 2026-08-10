@@ -18,7 +18,7 @@
 
 (defun usage-error (control &rest arguments)
   (apply #'format *error-output* control arguments)
-  (format *error-output* "~%Usage: sbcl --script run-rom-suite.lisp ROM.nes [max-steps] [mmc3|mmc6]~%")
+  (format *error-output* "~%Usage: sbcl --script run-rom-suite.lisp ROM.nes [max-steps] [mmc3|mmc6|mmc3-alt]~%")
   (sb-ext:exit :code 2))
 
 (defun positive-integer-or-nil (text)
@@ -32,6 +32,7 @@
     (cond
       ((string= normalized "mmc3") :mmc3)
       ((string= normalized "mmc6") :mmc6)
+      ((string= normalized "mmc3-alt") :mmc3-alt)
       (t nil))))
 
 (defun parse-command-line ()
@@ -52,7 +53,7 @@
                           (mapper4-variant-or-nil variant-text)
                           :mmc3)))
           (unless variant
-            (usage-error "MMC3 variant must be mmc3 or mmc6"))
+            (usage-error "MMC3 variant must be mmc3, mmc6, or mmc3-alt"))
           (values rom max-steps variant))))))
 
 (defun printable-field (value)

@@ -349,7 +349,7 @@
       (expect (cl-nes::cartridge-irq-pending-p cartridge) :to-be nil)
       (cl-nes::cartridge-clock-scanline! cartridge 240)
       (expect (cl-nes::cartridge-read-expansion cartridge #x5204)
-              :to-be 0))))
+              :to-be 0)))
 
   (it "ignores MMC5 expansion operations for other mappers"
     (let ((cartridge (make-patterned-cartridge
@@ -361,7 +361,7 @@
       (multiple-value-bind (source within)
           (cl-nes::cartridge-mmc5-nametable-location cartridge #x2000)
         (expect source :to-be nil)
-        (expect within :to-be nil))))
+        (expect within :to-be nil)))))
 
 (describe "APU defaults"
   (it "starts silent"

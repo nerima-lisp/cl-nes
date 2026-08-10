@@ -229,5 +229,3 @@
         (ppu-write-vram! ppu #x2000 #x72)
           (check-equal (ppu-read-vram ppu #x2400) #x72
                        "MMC1 upper single-screen mirroring aliases table 1")))))
-
-

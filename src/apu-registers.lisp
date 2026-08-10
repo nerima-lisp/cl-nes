@@ -145,7 +145,11 @@
                               0)
                           (if (apu-frame-irq-pending-p apu) #x40 0)
                           (if (apu-dmc-irq-pending-p (apu-dmc apu)) #x80 0))))
-       (setf (apu-frame-irq-pending-p apu) nil)
+       ;; $4015 reads acknowledge the frame IRQ latch.  The short
+       ;; end-of-sequence visibility window is only for clocks before the
+       ;; acknowledge; it must not recreate an IRQ after the read.
+       (setf (apu-frame-irq-pending-p apu) nil
+             (apu-frame-irq-repeat-count apu) 0)
        value))
     (otherwise nil)))
 
