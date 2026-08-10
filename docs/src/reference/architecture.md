@@ -15,12 +15,13 @@ state.
 6. NES construction and instruction/frame execution.
 
 The ASDF definition loads these layers in dependency order. The test runner
-uses the same source order when it runs without an installed system.
+loads the test components in the same dependency-aware order.
 
-The macro layer is intentionally small. `with-nes-cpu-operation` owns the
-lexical resource boundary for CPU-visible cycle accounting and restores the
-bus hook even when execution exits non-locally. Runtime state transitions stay
-in functions so instruction dispatch, emulator state, and debugger-visible
+The macro layer is intentionally small. `with-bus-cpu-access-hook` owns
+temporary bus-hook scopes and restores the previous hook even when execution
+exits non-locally. `with-nes-cpu-operation` composes that scope to account for
+CPU-visible accesses and internal cycles. Runtime state transitions stay in
+functions so instruction dispatch, emulator state, and debugger-visible
 behavior remain explicit.
 
 ## Runtime flow

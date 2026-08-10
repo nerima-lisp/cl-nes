@@ -5,9 +5,15 @@ documentation in separate areas.
 
 ## Source and tests
 
-- src/ contains the package, cartridge, device, bus, CPU, and NES layers.
+- src/ contains the package, cartridge, device, bus, CPU, APU, PPU, and NES
+  layers. CPU state, shared addressing helpers, ALU operations, control flow,
+  opcode dispatch, APU channel units, frame sequencing, and cycle orchestration
+  are kept in separate source components.
 - t/ contains the complete regression test system, including the legacy
-  assertion corpus and its `cl-nes/test-runner` entry point.
+  assertion corpus, contract/property suites, and its `cl-nes/test-runner`
+  entry point. State-transition contracts are grouped by subsystem in
+  `cpu-transitions.lisp`, `nes-transitions.lisp`, `ppu-transitions.lisp`, and
+  `bus-transitions.lisp`.
 - run-tests.lisp is a thin standalone launcher for that ASDF-loaded legacy
   runner; it does not load test files independently.
 - run-weave-tests.lisp runs the cl-weave suite, including generated property
@@ -20,10 +26,12 @@ The ASDF test system is cl-nes/test. The main ASDF system is cl-nes.
 ## Dependency policy
 
 The emulator runtime remains dependency-free: its deterministic device model
-does not need transport, retry, logging, or boundary adapters. cl-weave is
-test-only and provides the regression, property, and state-machine contracts;
-paredit-cli is a development tool for structure-aware Lisp editing. Keeping
-those concerns outside the runtime preserves direct data and logic paths.
+does not need transport, retry, logging, or boundary adapters. [cl-weave](https://github.com/nerima-lisp/cl-weave)
+is test-only and provides the regression, property, and state-machine
+contracts; [paredit-cli](https://github.com/nerima-lisp/paredit-cli) is a
+development tool for structure-aware Lisp editing. Keeping those concerns
+outside the runtime preserves direct data and logic paths, so unrelated
+organization packages are not pulled into the core merely for infrastructure.
 
 The flake publishes checks and development shells for aarch64-darwin,
 aarch64-linux, and x86_64-linux. x86_64-darwin is not declared because the
@@ -37,6 +45,7 @@ Enter the pinned environment and run the focused checks:
 
 ~~~sh
 nix develop
+sbcl --noinform --non-interactive --eval '(require :asdf)' --load cl-nes.asd --eval '(asdf:compile-system "cl-nes" :force t)' --quit
 sbcl --noinform --non-interactive --load run-tests.lisp --quit
 sbcl --noinform --non-interactive --load run-weave-tests.lisp --quit
 nix flake check
@@ -56,10 +65,11 @@ the source-level `in-package` declaration in each measured file and the
 constant init-forms in keyword lambda lists; SB-COVER does not expose
 form-level exclusions for these declarations. Condition type declarations are
 excluded because they declare the condition hierarchy but do not contain
-runtime paths. The flake check evaluates the declared formatter, bounds each
-emulator and documentation command with a finite timeout, runs the regression,
-weave, and coverage checks, and builds the documentation strictly into a
-temporary site directory.
+runtime paths; package declarations, compile-time macros, and pure state
+layouts are likewise kept outside the runtime measurement set. The flake check evaluates the declared formatter, bounds each
+emulator and documentation command with a finite timeout, compiles the ASDF
+system, runs the regression, weave, and coverage checks, and builds the
+documentation strictly into a temporary site directory.
 
 ## Documentation
 
@@ -86,5 +96,5 @@ run-rom-suite.lisp executes a ROM for a bounded number of steps and prints TSV
 diagnostics. Its optional third argument selects the mapper 4 variant:
 
 ~~~sh
-sbcl --script run-rom-suite.lisp ROM.nes [max-steps] [mmc3|mmc6]
+sbcl --script run-rom-suite.lisp ROM.nes [max-steps] [mmc3|mmc6|mmc3-alt]
 ~~~

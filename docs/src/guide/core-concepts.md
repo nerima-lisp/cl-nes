@@ -42,7 +42,7 @@ The APU maintains channel state and exposes a headless mixed sample.
 
 ## Mapper 4 variants
 
-The iNES header identifies mapper 4 but does not identify the MMC3 versus MMC6
-reload behavior used by some ROMs. cl-nes therefore defaults to the MMC3
-variant and permits an explicit mapper4-variant choice of :mmc3 or :mmc6 in
-make-cartridge and load-cartridge.
+The iNES header identifies mapper 4 but does not identify the MMC3 versus
+MMC6-compatible reload behavior used by some ROMs. cl-nes therefore defaults
+to the MMC3 variant and permits an explicit mapper4-variant choice of :mmc3,
+:mmc6, or :mmc3-alt in make-cartridge and load-cartridge.

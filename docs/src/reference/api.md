@@ -24,6 +24,7 @@ constructors, accessors, state operations, and constants.
 make-cartridge accepts prg-rom, chr-rom, mapper, mirroring, battery-backed-p,
 four-screen-p, chr-writable-p, prg-ram-size, and mapper4-variant. When chr-rom
 is absent, writable CHR-RAM is created.
+The mapper4-variant values are :mmc3 (default), :mmc6, and :mmc3-alt.
 
 ## NES machine
 

@@ -17,9 +17,10 @@ support them.
 
 ## Mapper 4
 
-Mapper 4 defaults to the MMC3 IRQ reload behavior. Some ROMs need the MMC6
-variant, which can be selected explicitly with mapper4-variant :mmc6. The
-header does not provide enough information to choose between these revisions.
+Mapper 4 defaults to the MMC3 IRQ reload behavior. Some ROMs need the
+zero-counter reload suppression behavior shared by MMC6-compatible revisions;
+select it explicitly with mapper4-variant :mmc6 or :mmc3-alt. The header does
+not provide enough information to choose between these revisions.
 
 ## CPU and PPU
 

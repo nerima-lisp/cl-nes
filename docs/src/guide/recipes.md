@@ -46,7 +46,8 @@ to a bus receives this connection during bus construction.
 
 ## Select a mapper 4 revision
 
-Choose the reload behavior when constructing or loading a mapper 4 cartridge:
+Choose the reload behavior when constructing or loading a mapper 4 cartridge;
+`:mmc6` and `:mmc3-alt` select the MMC6-compatible behavior:
 
 ~~~lisp
 (let ((cartridge
@@ -55,7 +56,8 @@ Choose the reload behavior when constructing or loading a mapper 4 cartridge:
   (cl-nes:nes-load-cartridge! nes cartridge))
 ~~~
 
-Use :mmc3 for the default behavior.
+Use :mmc3 for the default behavior. Both :mmc6 and :mmc3-alt enable the
+zero-counter reload suppression behavior.
 
 ## Produce PPM output
 

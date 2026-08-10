@@ -75,10 +75,10 @@ sbcl --script run-nes.lisp ROM.nes [frames] [output-prefix]
 ~~~
 
 run-rom-suite.lisp executes one ROM and emits TSV diagnostics. Mapper 4
-accepts an explicit mmc3 or mmc6 variant:
+accepts an explicit mmc3, mmc6, or mmc3-alt variant:
 
 ~~~sh
-sbcl --script run-rom-suite.lisp ROM.nes [max-steps] [mmc3|mmc6]
+sbcl --script run-rom-suite.lisp ROM.nes [max-steps] [mmc3|mmc6|mmc3-alt]
 ~~~
 
 ## Contributing
