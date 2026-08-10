@@ -8,7 +8,7 @@
                                      (get-internal-real-time))
                        :type "nes")
                       (uiop:temporary-directory)))
-           (image (make-ines-image)))
+           (image (make-ines-image :chr-banks 1)))
       (unwind-protect
            (progn
              (with-open-file
@@ -21,6 +21,10 @@
              (expect (cartridge-mapper (load-cartridge pathname)) :to-be 0)
              (expect (cartridge-mapper
                       (load-cartridge (namestring pathname)))
-                     :to-be 0))
+                     :to-be 0)
+             (expect (cartridge-read-chr
+                      (load-cartridge image)
+                      0)
+                     :to-be #x5A))
         (when (probe-file pathname)
           (delete-file pathname))))))

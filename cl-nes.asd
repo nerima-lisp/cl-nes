@@ -45,6 +45,7 @@
    (:file "src/cpu-instructions")
    (:file "src/nes-state")
    (:file "src/nes")
+   (:file "src/nes-timing")
    (:file "src/nes-execution"))
   :in-order-to ((test-op (test-op "cl-nes/test"))))
 
@@ -55,13 +56,6 @@
   :serial t
   :components
     ((:file "package")
-     (:file "legacy-runner")
-     (:file "legacy-support")
-     (:file "legacy-cartridge-core")
-     (:file "legacy-cartridge-advanced")
-     (:file "legacy-devices")
-     (:file "legacy-cpu")
-     (:file "legacy-apu")
      (:file "fixtures")
      (:file "properties")
      (:file "bus-contracts")
@@ -76,9 +70,11 @@
      (:file "public-api")
      (:file "coverage-cartridge-apu")
      (:file "coverage-mappers")
+     (:file "coverage-cartridge-memory")
      (:file "coverage-cpu-ppu")
      (:file "coverage-loaders")
-     (:file "legacy-regression"))
+     (:file "coverage-nes-timing")
+     (:file "coverage-runtime"))
   :perform
   (test-op (operation component)
     (declare (ignore operation))

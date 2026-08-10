@@ -9,15 +9,11 @@ documentation in separate areas.
   layers. CPU state, shared addressing helpers, ALU operations, control flow,
   opcode dispatch, APU channel units, frame sequencing, and cycle orchestration
   are kept in separate source components.
-- t/ contains the complete regression test system, including the legacy
-  assertion corpus, contract/property suites, and its `cl-nes/test-runner`
-  entry point. State-transition contracts are grouped by subsystem in
-  `cpu-transitions.lisp`, `nes-transitions.lisp`, `ppu-transitions.lisp`, and
-  `bus-transitions.lisp`.
-- run-tests.lisp is a thin standalone launcher for that ASDF-loaded legacy
-  runner; it does not load test files independently.
-- run-weave-tests.lisp runs the cl-weave suite, including generated property
-  contracts and the legacy corpus.
+- t/ contains the complete cl-weave test system. State-transition contracts
+  are grouped by subsystem in `cpu-transitions.lisp`, `nes-transitions.lisp`,
+  `ppu-transitions.lisp`, and `bus-transitions.lisp`.
+- run-tests.lisp is the thin launcher for the canonical ASDF test system; it
+  does not load test files independently.
 - run-coverage.lisp writes the SBCL expression and branch report under
   coverage/.
 
@@ -47,7 +43,6 @@ Enter the pinned environment and run the focused checks:
 nix develop
 sbcl --noinform --non-interactive --eval '(require :asdf)' --load cl-nes.asd --eval '(asdf:compile-system "cl-nes" :force t)' --quit
 sbcl --noinform --non-interactive --load run-tests.lisp --quit
-sbcl --noinform --non-interactive --load run-weave-tests.lisp --quit
 nix flake check
 ~~~
 
@@ -68,7 +63,7 @@ excluded because they declare the condition hierarchy but do not contain
 runtime paths; package declarations, compile-time macros, and pure state
 layouts are likewise kept outside the runtime measurement set. The flake check evaluates the declared formatter, bounds each
 emulator and documentation command with a finite timeout, compiles the ASDF
-system, runs the regression, weave, and coverage checks, and builds the
+system, runs the canonical test and coverage checks, and builds the
 documentation strictly into a temporary site directory.
 
 ## Documentation

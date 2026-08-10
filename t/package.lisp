@@ -16,5 +16,3 @@
                 #:it-property
                 #:with-soft-assertions))
 
-(defpackage #:cl-nes/test-runner
-  (:use #:cl #:cl-nes))

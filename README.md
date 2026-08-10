@@ -48,12 +48,11 @@ The pinned development environment is available with nix develop.
 
 ## Development
 
-From the pinned development environment, run the regression and weave suites:
+From the pinned development environment, run the canonical cl-weave suite:
 
 ~~~sh
 nix develop
 sbcl --noinform --non-interactive --load run-tests.lisp --quit
-sbcl --noinform --non-interactive --load run-weave-tests.lisp --quit
 sbcl --noinform --non-interactive --load run-coverage.lisp --quit
 nix flake check
 ~~~

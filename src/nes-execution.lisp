@@ -72,12 +72,9 @@ been applied.  The function returns the continuation's result."
                nes #'poll-nmi-event nil #'poll-irq-before-clock)))
         (let ((dma-cycles (bus-take-dma-stall-cycles! (nes-bus nes))))
           (when (plusp dma-cycles)
-            (incf cycles dma-cycles)
-            (loop repeat dma-cycles do
-              (poll-irq-before-clock)
-              (%nes-tick! nes 1)
-              (setf (bus-cpu-cycle-phase (nes-bus nes))
-                    (logxor (bus-cpu-cycle-phase (nes-bus nes)) 1))))
+            (incf cycles
+                  (%nes-run-dma-stalls! nes dma-cycles
+                                         #'poll-irq-before-clock)))
           ;; NMI is sampled before maskable IRQ, matching the 6502 priority.
           (let ((nmi-taken-p
                   (or nmi-hijacked-p

@@ -6,8 +6,7 @@
       (let* ((address (cpu-pc cpu))
              (opcode (%fetch-byte cpu bus))
              (_ (setf (cpu-irq-poll-delay cpu) nil))
-             (cycles
-               (case opcode
+             (cycles (progn _ (case opcode
                  (#x00
                   ;; BRK reads and discards its padding byte before pushing
                   ;; the return address.
@@ -368,6 +367,6 @@
                  (otherwise
                   (error 'illegal-opcode
                          :opcode opcode
-                         :address address)))))
+                         :address address))))))
         (incf (cpu-cycles cpu) cycles)
         cycles)))

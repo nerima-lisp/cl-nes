@@ -1,0 +1,132 @@
+(in-package #:cl-nes/test)
+
+(defun write-mmc1-test-register (cartridge address value)
+  (dotimes (bit 5)
+    (cartridge-write-prg! cartridge address
+                          (ldb (byte 1 bit) value))))
+
+(defun write-mapper28-test-register (cartridge register value)
+  (cartridge-write-prg! cartridge #x5000 register)
+  (cartridge-write-prg! cartridge #x8000 value))
+
+(describe "Coverage: cartridge memory and mapper contracts"
+  (it "covers MMC1 PRG modes and CHR banking"
+    (let ((cartridge (make-patterned-cartridge
+                      :mapper 1 :prg-banks 8 :chr-banks 32)))
+      (write-mmc1-test-register cartridge #x8000 0)
+      (write-mmc1-test-register cartridge #xE000 3)
+      (expect (cartridge-read-prg cartridge #x8000) :to-be 4)
+      (expect (cartridge-read-prg cartridge #xC000) :to-be 6)
+      (write-mmc1-test-register cartridge #x8000 8)
+      (expect (cartridge-read-prg cartridge #x8000) :to-be 0)
+      (expect (cartridge-read-prg cartridge #xC000) :to-be 6)
+      (write-mmc1-test-register cartridge #x8000 12)
+      (write-mmc1-test-register cartridge #xE000 1)
+      (expect (cartridge-read-prg cartridge #x8000) :to-be 2)
+      (expect (cartridge-read-prg cartridge #xC000) :to-be 6)
+      (write-mmc1-test-register cartridge #xA000 2)
+      (write-mmc1-test-register cartridge #xC000 3)
+      (expect (cartridge-read-chr cartridge 0) :to-be 16)
+      (expect (cartridge-read-chr cartridge #x1000) :to-be 20)
+      (write-mmc1-test-register cartridge #x8000 0)
+      (write-mmc1-test-register cartridge #xA000 2)
+      (expect (cartridge-read-chr cartridge 0) :to-be 16)
+      (cartridge-write-prg! cartridge #x8000 #x80)
+      (expect (cl-nes::cartridge-mapper-shift cartridge) :to-be #x10)
+      (write-mmc1-test-register cartridge #x8000 1)
+      (expect (cartridge-mirroring cartridge) :to-be :single-screen-upper)
+      (write-mmc1-test-register cartridge #x8000 #x10)
+      (write-mmc1-test-register cartridge #xA000 1)
+      (write-mmc1-test-register cartridge #xC000 2)
+      (expect (cartridge-read-chr cartridge 0) :to-be 4)
+      (expect (cartridge-read-chr cartridge #x1000) :to-be 8)))
+
+  (it "covers the discrete banked mapper windows"
+    (let ((mapper-2 (make-patterned-cartridge
+                     :mapper 2 :prg-banks 8 :chr-banks 8))
+          (mapper-3 (make-patterned-cartridge
+                     :mapper 3 :prg-banks 4 :chr-banks 16))
+          (mapper-7 (make-patterned-cartridge
+                     :mapper 7 :prg-banks 8 :chr-banks 8))
+          (mapper-11 (make-patterned-cartridge
+                      :mapper 11 :prg-banks 8 :chr-banks 16))
+          (mapper-34 (make-patterned-cartridge
+                      :mapper 34 :prg-banks 8 :chr-banks 8))
+          (nrom-368 (make-patterned-cartridge
+                     :mapper 0 :prg-banks 6 :chr-banks 8)))
+      (cartridge-write-prg! mapper-2 #x8000 2)
+      (expect (cartridge-read-prg mapper-2 #x8000) :to-be 4)
+      (expect (cartridge-read-prg mapper-2 #xC000) :to-be 6)
+      (cartridge-write-prg! mapper-3 #x8000 1)
+      (expect (cartridge-read-chr mapper-3 0) :to-be 8)
+      (cartridge-write-prg! mapper-7 #x8000 #x11)
+      (expect (cartridge-read-prg mapper-7 #x8000) :to-be 4)
+      (expect (cartridge-mirroring mapper-7) :to-be :single-screen-upper)
+      (cartridge-write-prg! mapper-11 #x8000 #x11)
+      (expect (cartridge-read-prg mapper-11 #x8000) :to-be 4)
+      (expect (cartridge-read-chr mapper-11 0) :to-be 8)
+      (cartridge-write-prg! mapper-34 #x8000 1)
+      (expect (cartridge-read-prg mapper-34 #x8000) :to-be 4)
+      (expect (cartridge-read-prg nrom-368 #x4800) :to-be 0)
+      (expect (cartridge-read-prg nrom-368 #x8000) :to-be 2)
+      (expect (cartridge-read-prg nrom-368 #xFFFF) :to-be 5)))
+
+  (it "covers VRC2 register wiring and Action 53 bank modes"
+    (let ((vrc2 (make-patterned-cartridge
+                 :mapper 22 :prg-banks 8 :chr-banks 32))
+          (action-53 (make-patterned-cartridge
+                      :mapper 28 :prg-banks 64 :chr-banks 32)))
+      (cartridge-write-prg! vrc2 #x8000 3)
+      (cartridge-write-prg! vrc2 #xA000 4)
+      (expect (cartridge-read-prg vrc2 #x8000) :to-be 3)
+      (expect (cartridge-read-prg vrc2 #xA000) :to-be 4)
+      (expect (cartridge-read-prg vrc2 #xC000) :to-be 6)
+      (expect (cartridge-read-prg vrc2 #xE000) :to-be 7)
+      (cartridge-write-prg! vrc2 #x9000 1)
+      (expect (cartridge-mirroring vrc2) :to-be :horizontal)
+      (cartridge-write-prg! vrc2 #x9001 0)
+      (dolist (page '(#xB000 #xC000 #xD000 #xE000))
+        (cartridge-write-prg! vrc2 page 1)
+        (cartridge-write-prg! vrc2 (1+ page) 2)
+        (cartridge-write-prg! vrc2 (+ page 2) 3)
+        (cartridge-write-prg! vrc2 (+ page 3) 4))
+      (expect (cartridge-read-chr vrc2 0) :to-be 24)
+      (expect (cartridge-read-chr vrc2 #x400) :to-be 1)
+      (write-mapper28-test-register action-53 #x81 1)
+      (dolist (mode '(0 4 8 12))
+        (write-mapper28-test-register action-53 #x80 mode)
+        (write-mapper28-test-register action-53 #x00 #x10)
+        (write-mapper28-test-register action-53 #x01 #x0E)
+        (expect (numberp (cartridge-read-prg action-53 #x8000))
+                :to-be t)
+        (expect (numberp (cartridge-read-prg action-53 #xC000))
+                :to-be t))
+      (write-mapper28-test-register action-53 #x80 8)
+      (write-mapper28-test-register action-53 #x00 0)
+      (expect (cartridge-mirroring action-53) :to-be :single-screen-lower)
+      (write-mapper28-test-register action-53 #x81 #x3F)
+      (expect (cl-nes::cartridge-mapper-outer-bank action-53) :to-be #x3F)))
+
+  (it "covers PRG-RAM protection and bus cartridge routing"
+    (let* ((mapper-4 (make-patterned-cartridge
+                      :mapper 4 :prg-banks 8 :chr-banks 8))
+           (mapper-2 (make-patterned-cartridge
+                      :mapper 2 :prg-banks 8 :chr-banks 8))
+           (bus (make-bus :cartridge mapper-2)))
+      (cartridge-write-prg-ram! mapper-4 #x6000 #xA5)
+      (expect (cartridge-read-prg-ram mapper-4 #x6000) :to-be #xA5)
+      (setf (cl-nes::cartridge-mapper4-prg-ram-enabled-p mapper-4) nil)
+      (expect (cartridge-read-prg-ram mapper-4 #x6000) :to-be nil)
+      (cartridge-write-prg-ram! mapper-4 #x6000 #x5A)
+      (setf (cl-nes::cartridge-mapper4-prg-ram-enabled-p mapper-4) t
+            (cl-nes::cartridge-mapper4-prg-ram-write-protected-p mapper-4) t)
+      (cartridge-write-prg-ram! mapper-4 #x6000 #x5A)
+      (expect (cartridge-read-prg-ram mapper-4 #x6000) :to-be #xA5)
+      (setf (cl-nes::cartridge-mapper4-prg-ram-write-protected-p mapper-4) nil)
+      (cartridge-write-prg-ram! mapper-4 #x6000 #x5A)
+      (expect (cartridge-read-prg-ram mapper-4 #x6000) :to-be #x5A)
+      (bus-write! bus #x8000 2)
+      (expect (cartridge-read-prg (cl-nes::bus-cartridge bus) #x8000) :to-be 4)
+      (expect (funcall (cl-nes::apu-memory-reader (bus-apu bus)) #x8000)
+              :to-be 4))))
+
