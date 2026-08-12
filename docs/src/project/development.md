@@ -8,10 +8,30 @@ documentation in separate areas.
 - src/ contains the package, cartridge, device, bus, CPU, APU, PPU, and NES
   layers. CPU state, shared addressing helpers, ALU operations, control flow,
   opcode dispatch, APU channel units, frame sequencing, and cycle orchestration
-  are kept in separate source components.
+  are kept in separate source components. Register-heavy subsystems keep their
+  immutable decode tables in dedicated `*-data.lisp` files and generate the
+  repetitive write paths with macros so hardware constants stay auditable while
+  the runtime path remains direct. That split now covers CPU ALU unofficial
+  helper bodies as data-driven generated definitions as well, so opcode-side
+  irregularities stay grouped in one review surface instead of being spread
+  across the runtime file. CPU opcode-range dispatch follows the same rule:
+  the declarative `#x00-#x7F` and `#x80-#xFF` tables live in dedicated
+  `src/cpu-opcodes-*-data.lisp` files, while the runtime files keep the BRK,
+  stack, jump, and unstable-store handlers that are not plain table entries.
+  MMC5 expansion-register decode follows the same rule: the fixed register map
+  lives in `src/cartridge-mapper5-control-data.lisp`, while
+  `src/cartridge-mapper5-control.lisp` only keeps the range writes and
+  read/write side effects that are not plain field assignments.
 - t/ contains the complete cl-weave test system. State-transition contracts
-  are grouped by subsystem in `cpu-transitions.lisp`, `nes-transitions.lisp`,
-  `ppu-transitions.lisp`, and `bus-transitions.lisp`.
+  are grouped by subsystem in `cpu-state-transitions.lisp`,
+  `cpu-addressing-transitions.lisp`, `cpu-interrupt-transitions.lisp`,
+  `nes-transitions.lisp`, `ppu-register-transitions.lisp`, and
+  `bus-transitions.lisp`; property and state-machine contracts live in
+  `properties.lisp`. Reusable fixture builders, cartridge constructors,
+  expectation helpers, and macro support stay in dedicated support files so
+  subsystem contracts can stay focused on the behavior under test. Runtime
+  coverage files are split by subsystem as well, so PPU timing/rendering
+  probes and NES lifecycle/interrupt probes do not accumulate in one file.
 - run-tests.lisp is the thin launcher for the canonical ASDF test system; it
   does not load test files independently.
 - run-coverage.lisp writes the SBCL expression and branch report under
@@ -52,19 +72,17 @@ Run coverage separately when its generated report is needed:
 sbcl --noinform --non-interactive --load run-coverage.lisp --quit
 ~~~
 
-The coverage runner fails when instrumentation is empty and enforces a
-non-regression floor for expression and branch coverage. The long-term target
-is 100% for both categories. Constructor and loader keyword defaults have
-explicit coverage contracts. On SBCL, the current residual report consists of
-the source-level `in-package` declaration in each measured file and the
-constant init-forms in keyword lambda lists; SB-COVER does not expose
-form-level exclusions for these declarations. Condition type declarations are
-excluded because they declare the condition hierarchy but do not contain
-runtime paths; package declarations, compile-time macros, and pure state
-layouts are likewise kept outside the runtime measurement set. The flake check evaluates the declared formatter, bounds each
-emulator and documentation command with a finite timeout, compiles the ASDF
-system, runs the canonical test and coverage checks, and builds the
-documentation strictly into a temporary site directory.
+The coverage runner fails when instrumentation is empty and enforces 100% for
+both expression and branch coverage. Constructor and loader keyword defaults
+have explicit coverage contracts. The aggregate excludes only the
+ASDF-required `in-package` form in each measured file and the load-time PPU
+decay constant; all runtime forms remain instrumented. Condition type
+declarations are excluded because they declare the condition hierarchy but do
+not contain runtime paths; compile-time macros and pure state layouts are
+likewise kept outside the runtime measurement set. The flake check evaluates
+the declared formatter, bounds each emulator and documentation command with a
+finite timeout, compiles the ASDF system, runs the canonical test and coverage
+checks, and builds the documentation strictly into a temporary site directory.
 
 ## Documentation
 
