@@ -33,17 +33,8 @@
      (controller-read (bus-controller-1 bus)))
     ((= address #x4017)
      (controller-read (bus-controller-2 bus)))
-    ((and (<= #x4800 address #x7FFF)
-          (bus-cartridge bus)
-          (= (cartridge-mapper (bus-cartridge bus)) 0)
-          (= (length (cartridge-prg-rom (bus-cartridge bus))) (* 48 1024)))
-     (cartridge-read-prg (bus-cartridge bus) address))
-    ((and (<= #x5000 address #x5FFF) (bus-cartridge bus))
-     (cartridge-read-expansion (bus-cartridge bus) address))
-    ((and (<= #x6000 address #x7FFF) (bus-cartridge bus))
-     (cartridge-read-prg-ram (bus-cartridge bus) address))
-    ((and (>= address #x8000) (bus-cartridge bus))
-     (cartridge-read-prg (bus-cartridge bus) address))
+    ((>= address #x4800)
+     (cartridge-cpu-read (bus-cartridge bus) address))
     (t nil)))
 
 (defun bus-read (bus address)
@@ -54,26 +45,6 @@
       (when hook
         (funcall hook)))
     value))
-
-(defun %perform-oam-dma! (bus page)
-  (let ((base (ash (logand page #xFF) 8)))
-    ;; The transfer is a device operation. Its 256 source reads must not be
-    ;; counted as 256 additional CPU bus cycles by the instruction hook.
-    (with-bus-cpu-access-hook (bus nil)
-      (loop for offset below 256 do
-        (ppu-write-register! (bus-ppu bus) 4
-                              (bus-read bus (+ base offset)))))
-    ;; DMA occupies 513 or 514 CPU cycles depending on the phase of the CPU
-    ;; cycle on which $4014 was written.  The transfer itself is already
-    ;; complete; NES consumes this stall after the instruction returns.
-    (setf (bus-dma-stall-cycles bus)
-          (+ (bus-dma-stall-cycles bus)
-             513
-             (bus-cpu-cycle-phase bus)))))
-
-(defun bus-take-dma-stall-cycles! (bus)
-  (prog1 (bus-dma-stall-cycles bus)
-    (setf (bus-dma-stall-cycles bus) 0)))
 
 (defun bus-write! (bus address value)
   (let ((address (logand address #xFFFF))
@@ -95,20 +66,8 @@
        (controller-write! (bus-controller-2 bus) value))
       ((= address #x4017)
        (apu-write-register! (bus-apu bus) address value))
-      ((and (<= #x5000 address #x5FFF)
-            (bus-cartridge bus)
-            (= (cartridge-mapper (bus-cartridge bus)) 5))
-       (cartridge-write-expansion! (bus-cartridge bus) address value))
-      ((and (<= #x5000 address #x5FFF) (bus-cartridge bus))
-       (cartridge-write-prg! (bus-cartridge bus) address value))
-      ((and (<= #x6000 address #x7FFF)
-            (bus-cartridge bus)
-            (not (and (= (cartridge-mapper (bus-cartridge bus)) 0)
-                      (= (length (cartridge-prg-rom (bus-cartridge bus)))
-                         (* 48 1024)))))
-       (cartridge-write-prg-ram! (bus-cartridge bus) address value))
-      ((and (>= address #x8000) (bus-cartridge bus))
-       (cartridge-write-prg! (bus-cartridge bus) address value))
+      ((>= address #x5000)
+       (cartridge-cpu-write! (bus-cartridge bus) address value))
       (t nil))
     (let ((hook (bus-cpu-access-hook bus)))
       (when hook
