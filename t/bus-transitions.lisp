@@ -32,13 +32,10 @@
       (expect (bus-read bus #x8000) :to-be #xEA)))
 
   (it "routes mapper expansion and NROM-368 windows"
-    (let* ((mapper5 (make-patterned-cartridge
-                     :mapper 5
-                     :prg-banks 16
-                     :chr-banks 16))
-           (expansion-bus (make-bus :cartridge mapper5)))
-      (bus-write! expansion-bus #x5C00 #xA7)
-      (expect (bus-read expansion-bus #x5C00) :to-be #xA7))
+    (with-mmc5-cartridge (mapper5)
+      (let ((expansion-bus (make-bus :cartridge mapper5)))
+        (bus-write! expansion-bus #x5C00 #xA7)
+        (expect (bus-read expansion-bus #x5C00) :to-be #xA7)))
     (let* ((prg (make-array (* 48 1024)
                             :element-type '(unsigned-byte 8)
                             :initial-element 0))
