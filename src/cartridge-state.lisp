@@ -6,28 +6,7 @@
                :initial-element 0))
 
 (defstruct (cartridge
-            (:constructor %make-cartridge
-                (&key prg-rom chr-rom mapper mirroring battery-backed-p
-                      four-screen-p chr-writable-p prg-ram prg-bank chr-bank
-                      initial-mirroring mapper-shift mapper-control mapper-chr-bank-0
-                      mapper-chr-bank-1 mapper-prg-bank-1 mapper-registers
-                      mapper-register-select mapper-mode mapper-outer-bank
-                      mapper4-bank-select mapper4-registers
-                      mapper4-variant
-                      mapper4-prg-ram-enabled-p mapper4-prg-ram-write-protected-p
-                      mapper4-irq-latch mapper4-irq-counter mapper4-irq-reload-p
-                      mapper4-irq-enabled-p mapper4-irq-pending-p
-                      mapper4-ppu-a12-high-p mapper4-ppu-a12-low-cycles
-                      mapper5-prg-mode mapper5-chr-mode
-                      mapper5-prg-banks mapper5-chr-banks
-                      mapper5-prg-ram-protect-1 mapper5-prg-ram-protect-2
-                      mapper5-exram-mode mapper5-nametable-mapping
-                      mapper5-fill-tile mapper5-fill-attribute
-                      mapper5-split-control mapper5-split-scroll
-                      mapper5-split-bank mapper5-irq-scanline
-                      mapper5-irq-enabled-p mapper5-irq-pending-p
-                      mapper5-in-frame-p mapper5-multiplier-a
-                      mapper5-multiplier-b mapper5-exram)))
+            (:constructor %allocate-cartridge))
   (prg-rom #() :type vector)
   (chr-rom #() :type vector)
   (prg-ram #() :type vector)
@@ -86,3 +65,68 @@
   (mapper5-multiplier-b 0 :type (unsigned-byte 8))
   (mapper5-exram (%zeroed-octet-vector #x400)
                  :type (simple-array (unsigned-byte 8) (1024))))
+
+(defparameter *cartridge-slot-setters*
+  '((:prg-rom . cartridge-prg-rom)
+    (:chr-rom . cartridge-chr-rom)
+    (:mapper . cartridge-mapper)
+    (:mirroring . cartridge-mirroring)
+    (:battery-backed-p . cartridge-battery-backed-p)
+    (:four-screen-p . cartridge-four-screen-p)
+    (:chr-writable-p . cartridge-chr-writable-p)
+    (:prg-ram . cartridge-prg-ram)
+    (:prg-bank . cartridge-prg-bank)
+    (:chr-bank . cartridge-chr-bank)
+    (:initial-mirroring . cartridge-initial-mirroring)
+    (:mapper-shift . cartridge-mapper-shift)
+    (:mapper-control . cartridge-mapper-control)
+    (:mapper-chr-bank-0 . cartridge-mapper-chr-bank-0)
+    (:mapper-chr-bank-1 . cartridge-mapper-chr-bank-1)
+    (:mapper-prg-bank-1 . cartridge-mapper-prg-bank-1)
+    (:mapper-registers . cartridge-mapper-registers)
+    (:mapper-register-select . cartridge-mapper-register-select)
+    (:mapper-mode . cartridge-mapper-mode)
+    (:mapper-outer-bank . cartridge-mapper-outer-bank)
+    (:mapper4-bank-select . cartridge-mapper4-bank-select)
+    (:mapper4-registers . cartridge-mapper4-registers)
+    (:mapper4-variant . cartridge-mapper4-variant)
+    (:mapper4-prg-ram-enabled-p . cartridge-mapper4-prg-ram-enabled-p)
+    (:mapper4-prg-ram-write-protected-p . cartridge-mapper4-prg-ram-write-protected-p)
+    (:mapper4-irq-latch . cartridge-mapper4-irq-latch)
+    (:mapper4-irq-counter . cartridge-mapper4-irq-counter)
+    (:mapper4-irq-reload-p . cartridge-mapper4-irq-reload-p)
+    (:mapper4-irq-enabled-p . cartridge-mapper4-irq-enabled-p)
+    (:mapper4-irq-pending-p . cartridge-mapper4-irq-pending-p)
+    (:mapper4-ppu-a12-high-p . cartridge-mapper4-ppu-a12-high-p)
+    (:mapper4-ppu-a12-low-cycles . cartridge-mapper4-ppu-a12-low-cycles)
+    (:mapper5-prg-mode . cartridge-mapper5-prg-mode)
+    (:mapper5-chr-mode . cartridge-mapper5-chr-mode)
+    (:mapper5-prg-banks . cartridge-mapper5-prg-banks)
+    (:mapper5-chr-banks . cartridge-mapper5-chr-banks)
+    (:mapper5-prg-ram-protect-1 . cartridge-mapper5-prg-ram-protect-1)
+    (:mapper5-prg-ram-protect-2 . cartridge-mapper5-prg-ram-protect-2)
+    (:mapper5-exram-mode . cartridge-mapper5-exram-mode)
+    (:mapper5-nametable-mapping . cartridge-mapper5-nametable-mapping)
+    (:mapper5-fill-tile . cartridge-mapper5-fill-tile)
+    (:mapper5-fill-attribute . cartridge-mapper5-fill-attribute)
+    (:mapper5-split-control . cartridge-mapper5-split-control)
+    (:mapper5-split-scroll . cartridge-mapper5-split-scroll)
+    (:mapper5-split-bank . cartridge-mapper5-split-bank)
+    (:mapper5-irq-scanline . cartridge-mapper5-irq-scanline)
+    (:mapper5-irq-enabled-p . cartridge-mapper5-irq-enabled-p)
+    (:mapper5-irq-pending-p . cartridge-mapper5-irq-pending-p)
+    (:mapper5-in-frame-p . cartridge-mapper5-in-frame-p)
+    (:mapper5-multiplier-a . cartridge-mapper5-multiplier-a)
+    (:mapper5-multiplier-b . cartridge-mapper5-multiplier-b)
+    (:mapper5-exram . cartridge-mapper5-exram)))
+
+(defun %make-cartridge (&rest initargs)
+  (when (oddp (length initargs))
+    (error "Cartridge initialization requires keyword/value pairs: ~S" initargs))
+  (let ((cartridge (%allocate-cartridge)))
+    (loop for (key value) on initargs by #'cddr
+          for accessor = (cdr (assoc key *cartridge-slot-setters*))
+          do (unless accessor
+               (error "Unknown cartridge initialization keyword: ~S" key))
+             (funcall (fdefinition (list 'setf accessor)) value cartridge))
+    cartridge))

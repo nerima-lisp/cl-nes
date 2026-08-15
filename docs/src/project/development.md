@@ -135,18 +135,25 @@ obtained corpus. A bounded batch run can preserve one TSV row per ROM while
 still failing overall when any ROM does not pass:
 
 ~~~sh
-status=0
+result=0
 found=0
 for rom in roms/*.nes; do
   [ -f "$rom" ] || continue
   found=1
-  sbcl --script run-rom-suite.lisp "$rom" 1000000 mmc3 || status=1
+  sbcl --script run-rom-suite.lisp "$rom" 1000000 mmc3 || result=1
 done
 [ "$found" -eq 1 ] || { printf '%s\n' 'no ROMs found' >&2; exit 2; }
-exit "$status"
+exit "$result"
 ~~~
 
 Select `mmc3`, `mmc6`, or `mmc3-alt` for mapper 4 ROMs as appropriate. The
 reported status is the result of the bounded invocation (`pass`, `fail`,
 `limit`, `no-result`, `unsupported`, `invalid`, or `error`); a corpus result
 does not imply compatibility with every NES ROM.
+
+Development-only synthetic ROMs can exercise supported mapper IDs and mapper 4
+variants without storing ROM files in the repository. Keep those generated
+artifacts outside the checkout and use the same bounded runner and TSV output
+as for a legally obtained corpus. Mapper 5 cases that access PRG-RAM must first
+unlock it with the mapper's protection registers; a locked read is a valid
+hardware state, not evidence that the ROM loader failed.
