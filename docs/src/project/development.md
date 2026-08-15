@@ -49,6 +49,23 @@ development tool for structure-aware Lisp editing. Keeping those concerns
 outside the runtime preserves direct data and logic paths, so unrelated
 organization packages are not pulled into the core merely for infrastructure.
 
+The 2026 refactoring policy is deliberately selective. `defmacro` is used for
+compile-time dispatch and repetitive register/opcode write paths where the
+input tables are the source of truth; stateful hardware behavior stays in
+ordinary functions so evaluation order, mutation, and stack use remain visible.
+The public CPS entry points (`nes-step/k` and `nes-run-frame/k`) expose
+continuation boundaries, while frame stepping keeps an iterative loop so long
+frames do not grow the call stack. Data tables and generated definitions are
+kept apart from runtime logic, and no compatibility aliases or adapter layer
+are retained for removed APIs.
+
+The organization repository was reviewed for additional dependencies. The
+current pins are the latest release tags: cl-weave v1.3.0 and paredit-cli
+v1.6.0. `cl-process-kit` was not added: it is an SBCL-only process toolkit for
+launchers and test infrastructure, not a dependency of the deterministic,
+dependency-free emulator core. This keeps package selection purposeful rather
+than coupling runtime behavior to unrelated infrastructure.
+
 The flake publishes checks and development shells for aarch64-darwin,
 aarch64-linux, and x86_64-linux. x86_64-darwin is not declared because the
 pinned nixpkgs release no longer supports that platform.

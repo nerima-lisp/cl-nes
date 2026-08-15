@@ -4,7 +4,7 @@
   :description "A headless Nintendo Entertainment System core."
   :author "nerima-lisp"
   :license "MIT"
-  :version "0.1.0"
+  :version "0.1.1"
   :homepage "https://github.com/nerima-lisp/cl-nes"
   :source-control (:git "https://github.com/nerima-lisp/cl-nes.git")
   :serial t
