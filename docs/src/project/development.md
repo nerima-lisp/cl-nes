@@ -111,3 +111,25 @@ diagnostics. Its optional third argument selects the mapper 4 variant:
 ~~~sh
 sbcl --script run-rom-suite.lisp ROM.nes [max-steps] [mmc3|mmc6|mmc3-alt]
 ~~~
+
+The wrapper accepts one ROM per invocation. It does not download or bundle ROM
+files; use a self-created, homebrew, public-domain, or otherwise legally
+obtained corpus. A bounded batch run can preserve one TSV row per ROM while
+still failing overall when any ROM does not pass:
+
+~~~sh
+status=0
+found=0
+for rom in roms/*.nes; do
+  [ -f "$rom" ] || continue
+  found=1
+  sbcl --script run-rom-suite.lisp "$rom" 1000000 mmc3 || status=1
+done
+[ "$found" -eq 1 ] || { printf '%s\n' 'no ROMs found' >&2; exit 2; }
+exit "$status"
+~~~
+
+Select `mmc3`, `mmc6`, or `mmc3-alt` for mapper 4 ROMs as appropriate. The
+reported status is the result of the bounded invocation (`pass`, `fail`,
+`limit`, `no-result`, `unsupported`, `invalid`, or `error`); a corpus result
+does not imply compatibility with every NES ROM.

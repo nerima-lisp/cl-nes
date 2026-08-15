@@ -80,6 +80,12 @@ accepts an explicit mmc3, mmc6, or mmc3-alt variant:
 sbcl --script run-rom-suite.lisp ROM.nes [max-steps] [mmc3|mmc6|mmc3-alt]
 ~~~
 
+The runner processes one ROM per invocation and does not download or distribute
+ROM files. Use a self-created, homebrew, public-domain, or otherwise legally
+obtained corpus, and inspect each TSV status; bounded results are not a claim
+of universal ROM compatibility. The batch pattern is documented in the
+[development guide](docs/src/project/development.md#rom-tools).
+
 ## Contributing
 
 Keep implementation, tests, and public documentation aligned. Changes to
