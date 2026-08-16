@@ -2,11 +2,13 @@
 
 (defun %nes-reset-cpu-and-clock! (nes)
   ;; The CPU reset sequence consumes seven clocks before fetching the reset
-  ;; vector.  The APU's power/reset phase must include those clocks; the
-  ;; existing PPU reset contract starts its visible dot at zero.
+  ;; vector.  The APU's power/reset phase must include those clocks, and the
+  ;; PPU must advance three dots for each of them.  Direct PPU reset still
+  ;; starts at dot zero; this phase belongs to the complete NES reset.
   (cpu-reset! (nes-cpu nes) (nes-bus nes))
   (setf (bus-cpu-cycle-phase (nes-bus nes))
         (mod (cpu-cycles (nes-cpu nes)) 2))
+  (ppu-tick! (nes-ppu nes) 21)
   (apu-tick! (nes-apu nes) 7)
   nes)
 

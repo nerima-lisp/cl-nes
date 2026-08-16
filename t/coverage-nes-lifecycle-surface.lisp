@@ -16,4 +16,6 @@
       (expect (cl-nes::bus-cartridge (nes-bus nes)) :to-be cartridge)
       (expect (cpu-pc (nes-cpu nes)) :to-be #x8000)
       (expect (cpu-cycles (nes-cpu nes)) :to-be 7)
-      (expect (cl-nes::bus-cpu-cycle-phase (nes-bus nes)) :to-be 1))))
+      (expect (cl-nes::bus-cpu-cycle-phase (nes-bus nes)) :to-be 1)
+      (expect (cl-nes::ppu-scanline (nes-ppu nes)) :to-be 0)
+      (expect (cl-nes::ppu-dot (nes-ppu nes)) :to-be 21))))

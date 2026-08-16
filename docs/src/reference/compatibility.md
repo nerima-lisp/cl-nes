@@ -33,6 +33,12 @@ continued frame progression. They do not verify reference framebuffer output,
 interactive controls, audio fidelity, exact cycle traces, or compatibility
 with every NES game.
 
+The reset and initial execution phase was also compared with the public
+`nestest` reference log. Starting the test at `$C000`, the first eight
+instructions matched for CPU registers, PPU scanline/dot position, and CPU
+cycle count. This check covers the reset phase and its immediate execution
+path; it is not a claim that every timing edge is cycle exact.
+
 ## Mapper 4
 
 Mapper 4 defaults to the MMC3 IRQ reload behavior. Some ROMs need the
