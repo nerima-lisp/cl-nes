@@ -102,7 +102,21 @@ sbcl --script run-rom-suite.lisp ROM.nes [max-steps] [mmc3|mmc6|mmc3-alt]
 The runner processes one ROM per invocation and does not download or distribute
 ROM files. Use a self-created, homebrew, public-domain, or otherwise legally
 obtained corpus, and inspect each TSV status; bounded results are not a claim
-of universal ROM compatibility. The batch pattern is documented in the
+of universal ROM compatibility. For a manifest-driven smoke run, use the batch
+runner:
+
+~~~sh
+sbcl --script run-rom-batch.lisp MANIFEST [max-steps] [frames] [mmc3|mmc6|mmc3-alt]
+~~~
+
+The manifest contains one ROM path per line; blank lines and lines beginning
+with `#` are ignored. The batch runner creates a fresh NES for each path,
+emits one TSV row per ROM, returns 0 only when every row reaches the requested
+frame count, returns 1 for a ROM status such as `limit`, `invalid`, or
+`unsupported`, and returns 2 for an invalid command or empty manifest. Reaching
+a frame is a bounded startup smoke check, not a claim of complete game
+compatibility or correctness. The full manifest and legal corpus workflow is
+documented in the
 [development guide](docs/src/project/development.md#rom-tools).
 
 ## Contributing

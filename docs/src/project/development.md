@@ -174,6 +174,31 @@ done
 exit "$result"
 ~~~
 
+For a manifest-driven run, `run-rom-batch.lisp` keeps the corpus in one
+machine-readable invocation and constructs a fresh NES for each manifest row:
+
+~~~sh
+sbcl --script run-rom-batch.lisp MANIFEST [max-steps] [frames] [mmc3|mmc6|mmc3-alt]
+~~~
+
+The manifest has one ROM path per line. Blank lines and lines beginning with
+`#` are ignored. The runner emits a TSV header followed by one row per ROM;
+`frame` means that the requested number of frames was reached, while
+`stopped`, `limit`, `unsupported`, `invalid`, and `error` identify other
+outcomes. It exits 0 only when every row is `frame`, 1 when any row is another
+outcome, and 2 for a malformed command or empty/unreadable manifest. Keep
+manifests and downloaded/generated ROMs outside the repository unless their
+redistribution rights are explicit.
+
+Record the source URL or repository, revision, per-file SHA-256, and applicable
+license or permission next to any corpus used for repeatable validation. A
+repository's presence in a test-ROM collection is not, by itself, permission
+to redistribute its files. Do not commit ROM binaries or a manifest containing
+machine-specific absolute paths. A one-frame result is a startup smoke check;
+it does not establish instruction, timing, audio, mapper, or game-level
+compatibility. Use the focused emulator tests and ROM-specific diagnostic
+protocols for those claims.
+
 Select `mmc3`, `mmc6`, or `mmc3-alt` for mapper 4 ROMs as appropriate. The
 reported status is the result of the bounded invocation (`pass`, `fail`,
 `limit`, `no-result`, `unsupported`, `invalid`, or `error`); a corpus result
