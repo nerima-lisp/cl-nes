@@ -28,6 +28,22 @@ documentation in separate areas.
 
 The ASDF test system is cl-nes/test. The main ASDF system is cl-nes.
 
+## Worktree lifecycle
+
+Treat each branch or worktree as one reviewable unit. Before integrating it,
+compare its tip with `main` using `git merge-base --is-ancestor` and inspect
+both tracked and untracked changes. A clean worktree whose tip is already
+reachable from `main` is redundant and can be removed after the reference
+check; a dirty worktree stays in place until its changes have been assigned to
+an owner and split into explicit commits.
+
+After a unit is integrated, verify that its commit is reachable from `main`
+before deleting the completed worktree or branch. Scratch probes and generated
+artifacts should be removed once their result has been recorded, while
+unfinished source changes must remain available for their next integration
+step. Keep the canonical test and documentation commands below tied to the
+integrated `main` tree so cleanup does not hide an unverified change.
+
 ## Dependency policy
 
 The emulator runtime remains dependency-free: its deterministic device model
