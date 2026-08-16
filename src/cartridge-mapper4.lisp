@@ -47,27 +47,3 @@
                                (- slot 6)))))))
     (+ (* bank +chr-bank-1k-size+)
        (mod address +chr-bank-1k-size+))))
-
-(defun %mapper4-write! (cartridge address value)
-  (case (logand address #xE001)
-    (#x8000 (setf (cartridge-mapper4-bank-select cartridge) value))
-    (#x8001
-     (setf (aref (cartridge-mapper4-registers cartridge)
-                 (logand (cartridge-mapper4-bank-select cartridge) 7))
-           value))
-    (#xA000
-     (unless (cartridge-four-screen-p cartridge)
-       (setf (cartridge-mirroring cartridge)
-             (if (zerop (logand value 1)) :vertical :horizontal))))
-    (#xA001
-     (setf (cartridge-mapper4-prg-ram-enabled-p cartridge)
-           (logbitp 7 value)
-           (cartridge-mapper4-prg-ram-write-protected-p cartridge)
-           (logbitp 6 value)))
-    (#xC000 (setf (cartridge-mapper4-irq-latch cartridge) value))
-    (#xC001 (setf (cartridge-mapper4-irq-reload-p cartridge) t))
-    (#xE000
-     (setf (cartridge-mapper4-irq-enabled-p cartridge) nil
-           (cartridge-mapper4-irq-pending-p cartridge) nil))
-    (#xE001 (setf (cartridge-mapper4-irq-enabled-p cartridge) t)))
-  value)

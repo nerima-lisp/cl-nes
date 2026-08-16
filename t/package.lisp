@@ -4,7 +4,6 @@
   (:use #:cl #:cl-nes)
   (:shadowing-import-from #:cl-weave #:describe)
   (:import-from #:cl-weave
-                #:before-each
                 #:expect
                 #:gen-integer
                 #:gen-member

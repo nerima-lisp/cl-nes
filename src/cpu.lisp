@@ -19,4 +19,11 @@
   (%set-flag! cpu +flag-negative+ (not (zerop (logand value #x80))))
   value)
 
-(define-cpu-register-loaders)
+(defun %load-a! (cpu value)
+  (%update-zn! cpu (setf (cpu-a cpu) value)))
+
+(defun %load-x! (cpu value)
+  (%update-zn! cpu (setf (cpu-x cpu) value)))
+
+(defun %load-y! (cpu value)
+  (%update-zn! cpu (setf (cpu-y cpu) value)))

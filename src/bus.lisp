@@ -33,7 +33,7 @@
      (controller-read (bus-controller-1 bus)))
     ((= address #x4017)
      (controller-read (bus-controller-2 bus)))
-    ((>= address #x4800)
+    ((bus-cartridge bus)
      (cartridge-cpu-read (bus-cartridge bus) address))
     (t nil)))
 
@@ -45,6 +45,26 @@
       (when hook
         (funcall hook)))
     value))
+
+(defun %perform-oam-dma! (bus page)
+  (let ((base (ash (logand page #xFF) 8)))
+    ;; The transfer is a device operation. Its 256 source reads must not be
+    ;; counted as 256 additional CPU bus cycles by the instruction hook.
+    (with-bus-cpu-access-hook (bus nil)
+      (loop for offset below 256 do
+        (ppu-write-register! (bus-ppu bus) 4
+                              (bus-read bus (+ base offset)))))
+    ;; DMA occupies 513 or 514 CPU cycles depending on the phase of the CPU
+    ;; cycle on which $4014 was written.  The transfer itself is already
+    ;; complete; NES consumes this stall after the instruction returns.
+    (setf (bus-dma-stall-cycles bus)
+          (+ (bus-dma-stall-cycles bus)
+             513
+             (bus-cpu-cycle-phase bus)))))
+
+(defun bus-take-dma-stall-cycles! (bus)
+  (prog1 (bus-dma-stall-cycles bus)
+    (setf (bus-dma-stall-cycles bus) 0)))
 
 (defun bus-write! (bus address value)
   (let ((address (logand address #xFFFF))
@@ -66,7 +86,7 @@
        (controller-write! (bus-controller-2 bus) value))
       ((= address #x4017)
        (apu-write-register! (bus-apu bus) address value))
-      ((>= address #x5000)
+      ((bus-cartridge bus)
        (cartridge-cpu-write! (bus-cartridge bus) address value))
       (t nil))
     (let ((hook (bus-cpu-access-hook bus)))

@@ -20,6 +20,8 @@
    #:load-cartridge
    #:cartridge-prg-rom
    #:cartridge-chr-rom
+   #:cartridge-prg-size
+   #:cartridge-chr-size
    #:cartridge-prg-ram
    #:cartridge-mapper
    #:cartridge-mapper4-variant

@@ -1,125 +1,128 @@
 (in-package #:cl-nes)
 
-(define-opcode-dispatch %opcode-00-7f-dispatch
-    ((%expand-opcode-read-clauses
-      +opcode-00-7f-read-specs+)
-     (%expand-opcode-rmw-clauses
-      +opcode-00-7f-rmw-specs+)
-     (%expand-opcode-branch-clauses
-      +opcode-00-7f-branch-specs+)
-     (%expand-opcode-flag-clauses
-      +opcode-00-7f-flag-specs+)
-     (%expand-opcode-accumulator-clauses
-      +opcode-00-7f-accumulator-specs+)
-     (%expand-opcode-literal-clauses
-      +opcode-00-7f-literal-specs+))
-  (#x00
-   ;; BRK reads and discards its padding byte before pushing
-   ;; the return address.
-   (bus-read bus (cpu-pc cpu))
-   (setf (cpu-pc cpu) (logand (1+ (cpu-pc cpu)) #xFFFF))
-   (%push-word! cpu bus (cpu-pc cpu))
-   (%push-byte! cpu bus (%status-for-stack cpu t))
-   (%set-flag! cpu +flag-interrupt-disable+ t)
-   ;; A pending NMI can hijack BRK after its stack writes but
-   ;; before the interrupt vector is fetched.  The pushed
-   ;; status still has BRK set, as on the 6502.
-   (let ((vector-type
-           (if (and nmi-poll (funcall nmi-poll))
-               :nmi
-               :irq)))
-     (setf (cpu-pc cpu)
-           (if (eq vector-type :nmi)
-               (logior (bus-read bus #xFFFA)
-                       (ash (bus-read bus #xFFFB) 8))
-               (logior (bus-read bus #xFFFE)
-                       (ash (bus-read bus #xFFFF) 8)))))
-   7)
-  (#x08
-   ;; PHP has an internal/dummy read before the stack write.
-   (bus-read bus (cpu-pc cpu))
-   (%push-byte! cpu bus (%status-for-stack cpu t))
-   3)
-  (#x20
-   ;; JSR fetches the low target byte, performs a dummy stack
-   ;; read, pushes the return address, and fetches the high
-   ;; target byte last.
-   (let* ((low (%fetch-byte cpu bus))
-          (return-address (cpu-pc cpu)))
-     (bus-read bus (+ #x100 (cpu-sp cpu)))
-     (%push-byte! cpu bus (ldb (byte 8 8) return-address))
-     (%push-byte! cpu bus (ldb (byte 8 0) return-address))
-     (setf (cpu-pc cpu)
-           (logior low (ash (%fetch-byte cpu bus) 8)))
-     6))
-  (#x24
-   (multiple-value-bind (operand ignored)
-       (%address-for-mode cpu bus :zp)
-     (declare (ignore ignored))
-     (%bit! cpu (bus-read bus operand))
-     3))
-  (#x28
-   ;; PLP has a dummy read from the next instruction byte and
-   ;; a second dummy read from the current stack location.
-   (bus-read bus (cpu-pc cpu))
-   (bus-read bus (+ #x100 (cpu-sp cpu)))
-   (%restore-status! cpu (%pop-byte! cpu bus))
-   4)
-  (#x2C
-   (%bit! cpu (bus-read bus (%fetch-word cpu bus)))
-   4)
-  (#x40
-   ;; RTI's two cycles before pulling the status are dummy
-   ;; reads, one from the next instruction and one from the
-   ;; current stack location.
-   (bus-read bus (cpu-pc cpu))
-   (bus-read bus (+ #x100 (cpu-sp cpu)))
-   (%restore-status! cpu (%pop-byte! cpu bus) nil)
-   (setf (cpu-pc cpu) (%pop-word! cpu bus))
-   6)
-  (#x48
-   ;; PHA has an internal/dummy read before the stack write.
-   (bus-read bus (cpu-pc cpu))
-   (%push-byte! cpu bus (cpu-a cpu))
-   3)
-  (#x4C
-   (setf (cpu-pc cpu) (%fetch-word cpu bus))
-   3)
-  (#x58
-   (let ((was-disabled
-           (%flag-set-p cpu +flag-interrupt-disable+)))
-     (%set-flag! cpu +flag-interrupt-disable+ nil)
-     (when was-disabled
-       (setf (cpu-irq-delay cpu) 1))
-     2))
-  (#x60
-   ;; RTS performs a next-PC dummy read, a stack dummy read,
-   ;; pulls the return address, then reads from the resumed PC.
-   (bus-read bus (cpu-pc cpu))
-   (bus-read bus (+ #x100 (cpu-sp cpu)))
-   (setf (cpu-pc cpu)
-         (logand (1+ (%pop-word! cpu bus)) #xFFFF))
-   (bus-read bus (cpu-pc cpu))
-   6)
-  (#x68
-   ;; PLA has the same two dummy reads as PLP.
-   (bus-read bus (cpu-pc cpu))
-   (bus-read bus (+ #x100 (cpu-sp cpu)))
-   (setf (cpu-a cpu) (%pop-byte! cpu bus))
-   (%update-zn! cpu (cpu-a cpu))
-   4)
-  (#x6C (%jump-indirect cpu bus))
-  (#x78
-   (let ((was-disabled
-           (%flag-set-p cpu +flag-interrupt-disable+)))
-     (%set-flag! cpu +flag-interrupt-disable+ t)
-     (unless was-disabled
-       (setf (cpu-irq-delay cpu) 1))
-     2))
-  (otherwise
-   (error 'illegal-opcode
-          :opcode opcode
-          :address address)))
+(defun %dispatch-cpu-opcode-00-7f (cpu bus opcode nmi-poll)
+  (case opcode
+    (#x00 (%brk-op! cpu bus nmi-poll))
+    (#x01 (%read-op! cpu bus :indx #'%ora! nil))
+    (#x03 (%rmw-op! cpu bus :indx #'%slo-value! 8))
+    (#x05 (%read-op! cpu bus :zp #'%ora! nil))
+    (#x06 (%rmw-op! cpu bus :zp #'%asl-value! 5))
+    (#x07 (%rmw-op! cpu bus :zp #'%slo-value! 5))
+    (#x08 (%php-op! cpu bus))
+    (#x09 (%read-op! cpu bus :immediate #'%ora! nil))
+    (#x0B (%read-op! cpu bus :immediate #'%aac! nil))
+    ((#x04 #x44 #x64) (%nop-op! cpu bus :zp 3))
+    ((#x14 #x34 #x54 #x74)
+     (%nop-op! cpu bus :zpx 4))
+    (#x0A (%accumulator-rmw-op! cpu #'%asl-value!))
+    (#x0D (%read-op! cpu bus :abs #'%ora! nil))
+    (#x0E (%rmw-op! cpu bus :abs #'%asl-value! 6))
+    (#x0C (%nop-op! cpu bus :abs 4))
+    (#x0F (%rmw-op! cpu bus :abs #'%slo-value! 6))
+    (#x10 (%branch! cpu bus (not (%flag-set-p cpu +flag-negative+))))
+    (#x11 (%read-op! cpu bus :indy #'%ora! t))
+    (#x13 (%rmw-op! cpu bus :indy #'%slo-value! 8))
+    (#x15 (%read-op! cpu bus :zpx #'%ora! nil))
+    (#x16 (%rmw-op! cpu bus :zpx #'%asl-value! 6))
+    (#x17 (%rmw-op! cpu bus :zpx #'%slo-value! 6))
+    (#x18 (%set-flag! cpu +flag-carry+ nil) 2)
+    (#x19 (%read-op! cpu bus :absy #'%ora! t))
+    (#x1B (%rmw-op! cpu bus :absy #'%slo-value! 7))
+    ((#x1A #x3A #x5A #x7A) 2)
+    ((#x1C #x3C #x5C #x7C)
+     (%nop-op! cpu bus :absx 4))
+    (#x1D (%read-op! cpu bus :absx #'%ora! t))
+    (#x1E (%rmw-op! cpu bus :absx #'%asl-value! 7))
+    (#x1F (%rmw-op! cpu bus :absx #'%slo-value! 7))
 
-(defun %execute-opcode-00-7f (cpu bus opcode address &optional nmi-poll)
-  (%opcode-00-7f-dispatch))
+    (#x20 (%jsr-op! cpu bus))
+    (#x21 (%read-op! cpu bus :indx #'%and! nil))
+    (#x23 (%rmw-op! cpu bus :indx #'%rla-value! 8))
+    (#x24
+     (multiple-value-bind (operand ignored)
+         (%address-for-mode cpu bus :zp)
+       (declare (ignore ignored))
+       (%bit! cpu (bus-read bus operand))
+       3))
+    (#x25 (%read-op! cpu bus :zp #'%and! nil))
+    (#x26 (%rmw-op! cpu bus :zp #'%rol-value! 5))
+    (#x27 (%rmw-op! cpu bus :zp #'%rla-value! 5))
+    (#x28 (%plp-op! cpu bus))
+    (#x29 (%read-op! cpu bus :immediate #'%and! nil))
+    (#x2B (%read-op! cpu bus :immediate #'%aac! nil))
+    (#x2A (%accumulator-rmw-op! cpu #'%rol-value!))
+    (#x2C
+     (%bit! cpu (bus-read bus (%fetch-word cpu bus)))
+     4)
+    (#x2D (%read-op! cpu bus :abs #'%and! nil))
+    (#x2E (%rmw-op! cpu bus :abs #'%rol-value! 6))
+    (#x2F (%rmw-op! cpu bus :abs #'%rla-value! 6))
+    (#x30 (%branch! cpu bus (%flag-set-p cpu +flag-negative+)))
+    (#x31 (%read-op! cpu bus :indy #'%and! t))
+    (#x33 (%rmw-op! cpu bus :indy #'%rla-value! 8))
+    (#x35 (%read-op! cpu bus :zpx #'%and! nil))
+    (#x36 (%rmw-op! cpu bus :zpx #'%rol-value! 6))
+    (#x37 (%rmw-op! cpu bus :zpx #'%rla-value! 6))
+    (#x38 (%set-flag! cpu +flag-carry+ t) 2)
+    (#x39 (%read-op! cpu bus :absy #'%and! t))
+    (#x3B (%rmw-op! cpu bus :absy #'%rla-value! 7))
+    (#x3D (%read-op! cpu bus :absx #'%and! t))
+    (#x3E (%rmw-op! cpu bus :absx #'%rol-value! 7))
+    (#x3F (%rmw-op! cpu bus :absx #'%rla-value! 7))
+
+    (#x40 (%rti-op! cpu bus))
+    (#x41 (%read-op! cpu bus :indx #'%eor! nil))
+    (#x43 (%rmw-op! cpu bus :indx #'%sre-value! 8))
+    (#x45 (%read-op! cpu bus :zp #'%eor! nil))
+    (#x46 (%rmw-op! cpu bus :zp #'%lsr-value! 5))
+    (#x47 (%rmw-op! cpu bus :zp #'%sre-value! 5))
+    (#x48 (%pha-op! cpu bus))
+    (#x49 (%read-op! cpu bus :immediate #'%eor! nil))
+    (#x4B (%read-op! cpu bus :immediate #'%asr! nil))
+    (#x4A (%accumulator-rmw-op! cpu #'%lsr-value!))
+    (#x4C
+     (setf (cpu-pc cpu) (%fetch-word cpu bus))
+     3)
+    (#x4D (%read-op! cpu bus :abs #'%eor! nil))
+    (#x4E (%rmw-op! cpu bus :abs #'%lsr-value! 6))
+    (#x4F (%rmw-op! cpu bus :abs #'%sre-value! 6))
+    (#x50 (%branch! cpu bus (not (%flag-set-p cpu +flag-overflow+))))
+    (#x51 (%read-op! cpu bus :indy #'%eor! t))
+    (#x53 (%rmw-op! cpu bus :indy #'%sre-value! 8))
+    (#x55 (%read-op! cpu bus :zpx #'%eor! nil))
+    (#x56 (%rmw-op! cpu bus :zpx #'%lsr-value! 6))
+    (#x57 (%rmw-op! cpu bus :zpx #'%sre-value! 6))
+    (#x58 (%interrupt-disable-op! cpu nil))
+    (#x59 (%read-op! cpu bus :absy #'%eor! t))
+    (#x5B (%rmw-op! cpu bus :absy #'%sre-value! 7))
+    (#x5D (%read-op! cpu bus :absx #'%eor! t))
+    (#x5E (%rmw-op! cpu bus :absx #'%lsr-value! 7))
+    (#x5F (%rmw-op! cpu bus :absx #'%sre-value! 7))
+
+    (#x60 (%rts-op! cpu bus))
+    (#x61 (%read-op! cpu bus :indx #'%adc! nil))
+    (#x63 (%rmw-op! cpu bus :indx #'%rra-value! 8))
+    (#x65 (%read-op! cpu bus :zp #'%adc! nil))
+    (#x66 (%rmw-op! cpu bus :zp #'%ror-value! 5))
+    (#x67 (%rmw-op! cpu bus :zp #'%rra-value! 5))
+    (#x68 (%pla-op! cpu bus))
+    (#x69 (%read-op! cpu bus :immediate #'%adc! nil))
+    (#x6B (%read-op! cpu bus :immediate #'%arr! nil))
+    (#x6A (%accumulator-rmw-op! cpu #'%ror-value!))
+    (#x6C (%jump-indirect cpu bus))
+    (#x6D (%read-op! cpu bus :abs #'%adc! nil))
+    (#x6E (%rmw-op! cpu bus :abs #'%ror-value! 6))
+    (#x6F (%rmw-op! cpu bus :abs #'%rra-value! 6))
+    (#x70 (%branch! cpu bus (%flag-set-p cpu +flag-overflow+)))
+    (#x71 (%read-op! cpu bus :indy #'%adc! t))
+    (#x73 (%rmw-op! cpu bus :indy #'%rra-value! 8))
+    (#x75 (%read-op! cpu bus :zpx #'%adc! nil))
+    (#x76 (%rmw-op! cpu bus :zpx #'%ror-value! 6))
+    (#x77 (%rmw-op! cpu bus :zpx #'%rra-value! 6))
+    (#x78 (%interrupt-disable-op! cpu t))
+    (#x79 (%read-op! cpu bus :absy #'%adc! t))
+    (#x7B (%rmw-op! cpu bus :absy #'%rra-value! 7))
+    (#x7D (%read-op! cpu bus :absx #'%adc! t))
+    (#x7E (%rmw-op! cpu bus :absx #'%ror-value! 7))
+    (#x7F (%rmw-op! cpu bus :absx #'%rra-value! 7))
+    (otherwise nil)))

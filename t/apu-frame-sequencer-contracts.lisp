@@ -1,0 +1,48 @@
+(in-package #:cl-nes/test)
+
+(describe "APU frame sequencer contracts"
+  (it "keeps four-step frame IRQ visible across its two tail clocks"
+    (with-fixture-apu (apu)
+      (seed-apu-frame-state! apu
+        :frame-step 3
+        :frame-irq-inhibit-p nil
+        :frame-irq-pending-p nil
+        :frame-irq-repeat-count 0
+        :frame-tail-step 0)
+      (cl-nes::%apu-frame-event! apu)
+      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be t)
+      (expect (cl-nes::apu-frame-irq-repeat-count apu) :to-be 2)
+      (expect (cl-nes::apu-frame-tail-step apu) :to-be 1)
+      (seed-apu-frame-state! apu :frame-irq-pending-p nil)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be t)
+      (expect (cl-nes::apu-frame-irq-repeat-count apu) :to-be 1)
+      (expect (cl-nes::apu-frame-tail-step apu) :to-be 2)
+      (seed-apu-frame-state! apu :frame-irq-pending-p nil)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be t)
+      (expect (cl-nes::apu-frame-irq-repeat-count apu) :to-be 0)
+      (expect (cl-nes::apu-frame-tail-step apu) :to-be 0)
+      (seed-apu-frame-state! apu
+        :frame-step 3
+        :frame-irq-inhibit-p t
+        :frame-irq-pending-p nil
+        :frame-tail-step 0)
+      (cl-nes::%apu-frame-event! apu)
+      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be nil)))
+
+  (it "runs the five-step terminal event and restarts at cycle zero"
+    (with-fixture-apu (apu)
+      (seed-apu-frame-state! apu
+        :five-step-p t
+        :frame-step 3
+        :frame-irq-pending-p nil
+        :frame-tail-step 0)
+      (cl-nes::%apu-frame-event! apu)
+      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be nil)
+      (seed-apu-frame-state! apu
+        :frame-step 4
+        :frame-cycle (1- (aref cl-nes::+apu-five-step-events+ 4)))
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-frame-step apu) :to-be 0)
+      (expect (cl-nes::apu-frame-cycle apu) :to-be 0))))

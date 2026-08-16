@@ -1,132 +1,127 @@
 (in-package #:cl-nes)
 
-(defmacro %zeroed-octet-vector (size)
-  `(make-array ,size
-               :element-type '(unsigned-byte 8)
-               :initial-element 0))
+(defconstant +ines-header-size+ 16)
+(defconstant +ines-trainer-size+ 512)
+(defconstant +prg-bank-size+ (* 16 1024))
+(defconstant +prg-bank-8k-size+ (* 8 1024))
+(defconstant +prg-ram-bank-size+ (* 8 1024))
+(defconstant +chr-bank-1k-size+ 1024)
+(defconstant +chr-bank-4k-size+ (* 4 1024))
+(defconstant +chr-bank-size+ (* 8 1024))
+;; The MMC3 A12 low-pass window is eight CPU cycles, or 24 PPU cycles.
+(defconstant +mapper4-a12-low-filter-cycles+ 24)
 
-(defstruct (cartridge
-            (:constructor %allocate-cartridge))
-  (prg-rom #() :type vector)
-  (chr-rom #() :type vector)
-  (prg-ram #() :type vector)
-  (mapper 0 :type fixnum)
-  (mirroring :horizontal)
-  (initial-mirroring :horizontal)
-  (battery-backed-p nil)
-  (four-screen-p nil)
-  (chr-writable-p nil)
-  (prg-bank 0 :type fixnum)
-  (chr-bank 0 :type fixnum)
-  (mapper-shift #x10 :type (unsigned-byte 8))
-  (mapper-control #x0C :type (unsigned-byte 8))
-  (mapper-chr-bank-0 0 :type (unsigned-byte 8))
-  (mapper-chr-bank-1 0 :type (unsigned-byte 8))
-  (mapper-prg-bank-1 0 :type (unsigned-byte 8))
-  (mapper-registers (%zeroed-octet-vector 8)
-                    :type (simple-array (unsigned-byte 8) (8)))
-  (mapper-register-select 0 :type (unsigned-byte 8))
-  (mapper-mode 0 :type (unsigned-byte 8))
-  (mapper-outer-bank #xFF :type (unsigned-byte 8))
-  (mapper4-bank-select 0 :type (unsigned-byte 8))
-  (mapper4-registers (%zeroed-octet-vector 8)
-                     :type (simple-array (unsigned-byte 8) (8)))
-  ;; iNES headers do not distinguish the MMC3 and MMC6 IRQ reload behavior.
-  (mapper4-variant :mmc3)
-  (mapper4-prg-ram-enabled-p t)
-  (mapper4-prg-ram-write-protected-p nil)
-  (mapper4-irq-latch 0 :type (unsigned-byte 8))
-  (mapper4-irq-counter 0 :type (unsigned-byte 8))
-  (mapper4-irq-reload-p nil)
-  (mapper4-irq-enabled-p nil)
-  (mapper4-irq-pending-p nil)
-  (mapper4-ppu-a12-high-p nil)
-  (mapper4-ppu-a12-low-cycles 0 :type fixnum)
-  (mapper5-prg-mode 3 :type (unsigned-byte 2))
-  (mapper5-chr-mode 3 :type (unsigned-byte 2))
-  (mapper5-prg-banks (%zeroed-octet-vector 8)
-                     :type (simple-array (unsigned-byte 8) (8)))
-  (mapper5-chr-banks (%zeroed-octet-vector 12)
-                     :type (simple-array (unsigned-byte 8) (12)))
-  (mapper5-prg-ram-protect-1 0 :type (unsigned-byte 8))
-  (mapper5-prg-ram-protect-2 0 :type (unsigned-byte 8))
-  (mapper5-exram-mode 0 :type (unsigned-byte 2))
-  (mapper5-nametable-mapping 0 :type (unsigned-byte 8))
-  (mapper5-fill-tile 0 :type (unsigned-byte 8))
-  (mapper5-fill-attribute 0 :type (unsigned-byte 2))
-  (mapper5-split-control 0 :type (unsigned-byte 8))
-  (mapper5-split-scroll 0 :type (unsigned-byte 8))
-  (mapper5-split-bank 0 :type (unsigned-byte 8))
-  (mapper5-irq-scanline 0 :type (unsigned-byte 8))
-  (mapper5-irq-enabled-p nil)
-  (mapper5-irq-pending-p nil)
-  (mapper5-in-frame-p nil)
-  (mapper5-multiplier-a 0 :type (unsigned-byte 8))
-  (mapper5-multiplier-b 0 :type (unsigned-byte 8))
-  (mapper5-exram (%zeroed-octet-vector #x400)
-                 :type (simple-array (unsigned-byte 8) (1024))))
+(defstruct (cartridge-mapper5-state
+            (:constructor %make-cartridge-mapper5-state-instance ()))
+  prg-mode
+  chr-mode
+  prg-banks
+  chr-banks
+  prg-ram-protect-1
+  prg-ram-protect-2
+  exram-mode
+  nametable-mapping
+  fill-tile
+  fill-attribute
+  split-control
+  split-scroll
+  split-bank
+  irq-scanline
+  irq-enabled-p
+  irq-pending-p
+  in-frame-p
+  multiplier-a
+  multiplier-b
+  exram)
 
-(defparameter *cartridge-slot-setters*
-  '((:prg-rom . cartridge-prg-rom)
-    (:chr-rom . cartridge-chr-rom)
-    (:mapper . cartridge-mapper)
-    (:mirroring . cartridge-mirroring)
-    (:battery-backed-p . cartridge-battery-backed-p)
-    (:four-screen-p . cartridge-four-screen-p)
-    (:chr-writable-p . cartridge-chr-writable-p)
-    (:prg-ram . cartridge-prg-ram)
-    (:prg-bank . cartridge-prg-bank)
-    (:chr-bank . cartridge-chr-bank)
-    (:initial-mirroring . cartridge-initial-mirroring)
-    (:mapper-shift . cartridge-mapper-shift)
-    (:mapper-control . cartridge-mapper-control)
-    (:mapper-chr-bank-0 . cartridge-mapper-chr-bank-0)
-    (:mapper-chr-bank-1 . cartridge-mapper-chr-bank-1)
-    (:mapper-prg-bank-1 . cartridge-mapper-prg-bank-1)
-    (:mapper-registers . cartridge-mapper-registers)
-    (:mapper-register-select . cartridge-mapper-register-select)
-    (:mapper-mode . cartridge-mapper-mode)
-    (:mapper-outer-bank . cartridge-mapper-outer-bank)
-    (:mapper4-bank-select . cartridge-mapper4-bank-select)
-    (:mapper4-registers . cartridge-mapper4-registers)
-    (:mapper4-variant . cartridge-mapper4-variant)
-    (:mapper4-prg-ram-enabled-p . cartridge-mapper4-prg-ram-enabled-p)
-    (:mapper4-prg-ram-write-protected-p . cartridge-mapper4-prg-ram-write-protected-p)
-    (:mapper4-irq-latch . cartridge-mapper4-irq-latch)
-    (:mapper4-irq-counter . cartridge-mapper4-irq-counter)
-    (:mapper4-irq-reload-p . cartridge-mapper4-irq-reload-p)
-    (:mapper4-irq-enabled-p . cartridge-mapper4-irq-enabled-p)
-    (:mapper4-irq-pending-p . cartridge-mapper4-irq-pending-p)
-    (:mapper4-ppu-a12-high-p . cartridge-mapper4-ppu-a12-high-p)
-    (:mapper4-ppu-a12-low-cycles . cartridge-mapper4-ppu-a12-low-cycles)
-    (:mapper5-prg-mode . cartridge-mapper5-prg-mode)
-    (:mapper5-chr-mode . cartridge-mapper5-chr-mode)
-    (:mapper5-prg-banks . cartridge-mapper5-prg-banks)
-    (:mapper5-chr-banks . cartridge-mapper5-chr-banks)
-    (:mapper5-prg-ram-protect-1 . cartridge-mapper5-prg-ram-protect-1)
-    (:mapper5-prg-ram-protect-2 . cartridge-mapper5-prg-ram-protect-2)
-    (:mapper5-exram-mode . cartridge-mapper5-exram-mode)
-    (:mapper5-nametable-mapping . cartridge-mapper5-nametable-mapping)
-    (:mapper5-fill-tile . cartridge-mapper5-fill-tile)
-    (:mapper5-fill-attribute . cartridge-mapper5-fill-attribute)
-    (:mapper5-split-control . cartridge-mapper5-split-control)
-    (:mapper5-split-scroll . cartridge-mapper5-split-scroll)
-    (:mapper5-split-bank . cartridge-mapper5-split-bank)
-    (:mapper5-irq-scanline . cartridge-mapper5-irq-scanline)
-    (:mapper5-irq-enabled-p . cartridge-mapper5-irq-enabled-p)
-    (:mapper5-irq-pending-p . cartridge-mapper5-irq-pending-p)
-    (:mapper5-in-frame-p . cartridge-mapper5-in-frame-p)
-    (:mapper5-multiplier-a . cartridge-mapper5-multiplier-a)
-    (:mapper5-multiplier-b . cartridge-mapper5-multiplier-b)
-    (:mapper5-exram . cartridge-mapper5-exram)))
+(defun %install-vector-accessor-pair (reader writer index)
+  (setf (fdefinition reader)
+        (lambda (state)
+          (aref state index))
+        (fdefinition writer)
+        (lambda (state value)
+          (setf (aref state index) value)))
+  nil)
 
-(defun %make-cartridge (&rest initargs)
-  (when (oddp (length initargs))
-    (error "Cartridge initialization requires keyword/value pairs: ~S" initargs))
-  (let ((cartridge (%allocate-cartridge)))
-    (loop for (key value) on initargs by #'cddr
-          for accessor = (cdr (assoc key *cartridge-slot-setters*))
-          do (unless accessor
-               (error "Unknown cartridge initialization keyword: ~S" key))
-             (funcall (fdefinition (list 'setf accessor)) value cartridge))
-    cartridge))
+(defun %install-vector-accessor-pairs (specs)
+  (dolist (spec specs)
+    (destructuring-bind (reader writer index) spec
+      (%install-vector-accessor-pair reader writer index)))
+  nil)
+
+(defun %make-mapper-state-core-instance ()
+  (make-array 9 :initial-element nil))
+
+(%install-vector-accessor-pairs
+ '((mapper-state-core-mapper-shift set-mapper-state-core-mapper-shift! 0)
+   (mapper-state-core-mapper-control set-mapper-state-core-mapper-control! 1)
+   (mapper-state-core-mapper-chr-bank-0 set-mapper-state-core-mapper-chr-bank-0! 2)
+   (mapper-state-core-mapper-chr-bank-1 set-mapper-state-core-mapper-chr-bank-1! 3)
+   (mapper-state-core-mapper-prg-bank-1 set-mapper-state-core-mapper-prg-bank-1! 4)
+   (mapper-state-core-mapper-registers set-mapper-state-core-mapper-registers! 5)
+   (mapper-state-core-mapper-register-select set-mapper-state-core-mapper-register-select! 6)
+   (mapper-state-core-mapper-mode set-mapper-state-core-mapper-mode! 7)
+   (mapper-state-core-mapper-outer-bank set-mapper-state-core-mapper-outer-bank! 8)))
+
+(defun %make-cartridge-mapper4-state-instance ()
+  (make-array 12 :initial-element nil))
+
+(%install-vector-accessor-pairs
+ '((cartridge-mapper4-state-mapper4-bank-select
+    set-cartridge-mapper4-state-mapper4-bank-select!
+    0)
+   (cartridge-mapper4-state-mapper4-registers
+    set-cartridge-mapper4-state-mapper4-registers!
+    1)
+   (cartridge-mapper4-state-mapper4-variant
+    set-cartridge-mapper4-state-mapper4-variant!
+    2)
+   (cartridge-mapper4-state-mapper4-prg-ram-enabled-p
+    set-cartridge-mapper4-state-mapper4-prg-ram-enabled-p!
+    3)
+   (cartridge-mapper4-state-mapper4-prg-ram-write-protected-p
+    set-cartridge-mapper4-state-mapper4-prg-ram-write-protected-p!
+    4)
+   (cartridge-mapper4-state-mapper4-irq-latch
+    set-cartridge-mapper4-state-mapper4-irq-latch!
+    5)
+   (cartridge-mapper4-state-mapper4-irq-counter
+    set-cartridge-mapper4-state-mapper4-irq-counter!
+    6)
+   (cartridge-mapper4-state-mapper4-irq-reload-p
+    set-cartridge-mapper4-state-mapper4-irq-reload-p!
+    7)
+   (cartridge-mapper4-state-mapper4-irq-enabled-p
+    set-cartridge-mapper4-state-mapper4-irq-enabled-p!
+    8)
+   (cartridge-mapper4-state-mapper4-irq-pending-p
+    set-cartridge-mapper4-state-mapper4-irq-pending-p!
+    9)
+   (cartridge-mapper4-state-mapper4-ppu-a12-high-p
+    set-cartridge-mapper4-state-mapper4-ppu-a12-high-p!
+    10)
+   (cartridge-mapper4-state-mapper4-ppu-a12-low-cycles
+    set-cartridge-mapper4-state-mapper4-ppu-a12-low-cycles!
+    11)))
+
+(deftype cartridge ()
+  'simple-vector)
+
+(defun %make-cartridge-instance ()
+  (make-array 14 :initial-element nil))
+
+(%install-vector-accessor-pairs
+ '((cartridge-prg-rom set-cartridge-prg-rom! 0)
+   (cartridge-chr-rom set-cartridge-chr-rom! 1)
+   (cartridge-prg-ram set-cartridge-prg-ram! 2)
+   (cartridge-mapper set-cartridge-mapper! 3)
+   (cartridge-mirroring set-cartridge-mirroring! 4)
+   (cartridge-initial-mirroring set-cartridge-initial-mirroring! 5)
+   (cartridge-battery-backed-p set-cartridge-battery-backed-p! 6)
+   (cartridge-four-screen-p set-cartridge-four-screen-p! 7)
+   (cartridge-chr-writable-p set-cartridge-chr-writable-p! 8)
+   (cartridge-prg-bank set-cartridge-prg-bank! 9)
+   (cartridge-chr-bank set-cartridge-chr-bank! 10)
+   (cartridge-mapper5-state set-cartridge-mapper5-state! 11)
+   (cartridge-mapper4-state set-cartridge-mapper4-state! 12)
+   (cartridge-mapper-state set-cartridge-mapper-state! 13)))

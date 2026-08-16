@@ -8,32 +8,21 @@ documentation in separate areas.
 - src/ contains the package, cartridge, device, bus, CPU, APU, PPU, and NES
   layers. CPU state, shared addressing helpers, ALU operations, control flow,
   opcode dispatch, APU channel units, frame sequencing, and cycle orchestration
-  are kept in separate source components. Register-heavy subsystems keep their
-  immutable decode tables in dedicated `*-data.lisp` files and generate the
-  repetitive write paths with macros so hardware constants stay auditable while
-  the runtime path remains direct. That split now covers CPU ALU unofficial
-  helper bodies as data-driven generated definitions as well, so opcode-side
-  irregularities stay grouped in one review surface instead of being spread
-  across the runtime file. CPU opcode-range dispatch follows the same rule:
-  the declarative `#x00-#x7F` and `#x80-#xFF` tables live in dedicated
-  `src/cpu-opcodes-*-data.lisp` files, while the runtime files keep the BRK,
-  stack, jump, and unstable-store handlers that are not plain table entries.
-  MMC5 expansion-register decode follows the same rule: the fixed register map
-  lives in `src/cartridge-mapper5-control-data.lisp`, while
-  `src/cartridge-mapper5-control.lisp` only keeps the range writes and
-  read/write side effects that are not plain field assignments.
+  are kept in separate source components.
 - t/ contains the complete cl-weave test system. State-transition contracts
-  are grouped by subsystem in `cpu-state-transitions.lisp`,
-  `cpu-addressing-transitions.lisp`, `cpu-interrupt-transitions.lisp`,
-  `nes-transitions.lisp`, `ppu-register-transitions.lisp`, and
-  `bus-transitions.lisp`; property and state-machine contracts live in
-  `properties.lisp`. Reusable fixture builders, cartridge constructors,
-  expectation helpers, and macro support stay in dedicated support files so
-  subsystem contracts can stay focused on the behavior under test. Runtime
-  coverage files are split by subsystem as well, so PPU timing/rendering
-  probes and NES lifecycle/interrupt probes do not accumulate in one file.
-- run-tests.lisp is the thin launcher for the canonical ASDF test system; it
-  does not load test files independently.
+  are grouped by subsystem in `cpu-transition-fixtures.lisp`,
+  `cpu-state-transitions.lisp`, `cpu-hardware-interrupt-transitions.lisp`,
+  `cpu-flag-transitions.lisp`, `cpu-addressing-transitions.lisp`,
+  `nes-transitions.lisp`, `ppu-transition-fixtures.lisp`,
+  `ppu-register-memory-transitions.lisp`,
+  `ppu-nametable-memory-transitions.lisp`,
+  `ppu-mmc5-memory-transitions.lisp`,
+  `ppu-background-rendering-transitions.lisp`,
+  `ppu-sprite-rendering-transitions.lisp`, `ppu-timing-transitions.lisp`,
+  `bus-routing-transitions.lisp`, and `bus-memory-transitions.lisp`.
+- run-tests.lisp loads the ASDF test system and forwards focused cl-weave
+  selection from environment variables without requiring ad hoc edits to the
+  test files.
 - run-coverage.lisp writes the SBCL expression and branch report under
   coverage/.
 
@@ -48,23 +37,6 @@ contracts; [paredit-cli](https://github.com/nerima-lisp/paredit-cli) is a
 development tool for structure-aware Lisp editing. Keeping those concerns
 outside the runtime preserves direct data and logic paths, so unrelated
 organization packages are not pulled into the core merely for infrastructure.
-
-The 2026 refactoring policy is deliberately selective. `defmacro` is used for
-compile-time dispatch and repetitive register/opcode write paths where the
-input tables are the source of truth; stateful hardware behavior stays in
-ordinary functions so evaluation order, mutation, and stack use remain visible.
-The public CPS entry points (`nes-step/k` and `nes-run-frame/k`) expose
-continuation boundaries, while frame stepping keeps an iterative loop so long
-frames do not grow the call stack. Data tables and generated definitions are
-kept apart from runtime logic, and no compatibility aliases or adapter layer
-are retained for removed APIs.
-
-The organization repository was reviewed for additional dependencies. The
-current pins are the latest release tags: cl-weave v1.3.0 and paredit-cli
-v1.6.0. `cl-process-kit` was not added: it is an SBCL-only process toolkit for
-launchers and test infrastructure, not a dependency of the deterministic,
-dependency-free emulator core. This keeps package selection purposeful rather
-than coupling runtime behavior to unrelated infrastructure.
 
 The flake publishes checks and development shells for aarch64-darwin,
 aarch64-linux, and x86_64-linux. x86_64-darwin is not declared because the
@@ -89,17 +61,56 @@ Run coverage separately when its generated report is needed:
 sbcl --noinform --non-interactive --load run-coverage.lisp --quit
 ~~~
 
-The coverage runner fails when instrumentation is empty and enforces 100% for
-both expression and branch coverage. Constructor and loader keyword defaults
-have explicit coverage contracts. The aggregate excludes only the
-ASDF-required `in-package` form in each measured file and the load-time PPU
-decay constant; all runtime forms remain instrumented. Condition type
-declarations are excluded because they declare the condition hierarchy but do
-not contain runtime paths; compile-time macros and pure state layouts are
-likewise kept outside the runtime measurement set. The flake check evaluates
-the declared formatter, bounds each emulator and documentation command with a
-finite timeout, compiles the ASDF system, runs the canonical test and coverage
-checks, and builds the documentation strictly into a temporary site directory.
+Focused cl-weave runs use the same launcher and optional environment
+variables:
+
+~~~sh
+CL_NES_TEST_NAME_FILTER=mmc1 \
+CL_NES_TEST_LOCATION_FILTER=t/coverage-mapper-contracts.lisp \
+CL_NES_TEST_PATH_FILTER='mapper contracts > mmc1 updates mirroring and chr banks' \
+CL_NES_TEST_INCLUDE_TAGS=mapper,contracts \
+CL_NES_TEST_EXCLUDE_TAGS=slow \
+CL_NES_TEST_REPORTER=spec \
+CL_NES_TEST_SEED=20260813 \
+CL_NES_TEST_TIMEOUT_MS=1000 \
+CL_NES_TEST_MAX_WORKERS=1 \
+sbcl --noinform --non-interactive --load run-tests.lisp --quit
+~~~
+
+`CL_NES_TEST_LOCATION_FILTER` and `CL_NES_TEST_PATH_FILTER` accept
+comma-separated lists. Test paths use cl-weave's `suite > nested suite > test`
+spelling. Direct `asdf:test-system "cl-nes/test"` execution still runs the
+entire suite with the system's built-in `:spec` reporter.
+
+The coverage runner fails when instrumentation or generated report files are
+empty and enforces a non-regression floor for expression and branch coverage.
+The long-term target is 100% for both categories. Constructor and loader
+keyword defaults have explicit coverage contracts. The deterministic
+`coverage-summary.txt` contains aggregate totals followed by one row per
+measured source file, making the remaining test seams reviewable without
+depending on temporary HTML paths. Condition type declarations are excluded
+because they declare the condition hierarchy but do not contain runtime paths;
+package declarations, compile-time macros, and pure state layouts are likewise
+kept outside the runtime measurement set. The flake check
+evaluates the declared formatter, bounds each emulator and documentation
+command with a finite timeout, compiles the ASDF
+system, runs the canonical test and coverage checks, and builds the
+documentation strictly into a temporary site directory.
+
+The reproducible native-system gate can also be invoked directly:
+
+~~~sh
+nix build .#checks.aarch64-darwin.cl-nes --print-build-logs
+~~~
+
+That derivation checks every Lisp source file with `paredit-cli`, rejects an
+empty cl-weave test suite, generates the SBCL coverage artifacts, and builds
+this manual with strict MkDocs navigation. The working build keeps the HTML
+reports and `sb-cover.data` for local inspection. The published Nix check output
+contains only the deterministic `coverage-summary.txt`; the raw reports embed
+temporary build paths and would make a content-addressed output
+non-reproducible. Long-running phases use the pinned Coreutils `timeout`
+executable from the Nix environment.
 
 ## Documentation
 
@@ -157,3 +168,8 @@ artifacts outside the checkout and use the same bounded runner and TSV output
 as for a legally obtained corpus. Mapper 5 cases that access PRG-RAM must first
 unlock it with the mapper's protection registers; a locked read is a valid
 hardware state, not evidence that the ROM loader failed.
+
+The validation corpus for this refactor was kept outside the checkout and
+covered every mapper named in the compatibility reference, including
+mirroring, trainer, and PRG-RAM variants. Preserve the per-ROM TSV output when
+recording a comparable validation run.

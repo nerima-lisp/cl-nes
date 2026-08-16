@@ -60,6 +60,25 @@ nix flake check
 The cl-weave suite includes generated property contracts for controller
 serialization, CHR writes, PPU address wrapping, and NROM reads.
 
+`run-tests.lisp` also accepts focused cl-weave selection through environment
+variables. The values below keep the full-suite default when unset:
+
+~~~sh
+CL_NES_TEST_NAME_FILTER=mmc1 \
+CL_NES_TEST_LOCATION_FILTER=t/coverage-mapper-contracts.lisp \
+CL_NES_TEST_PATH_FILTER='mapper contracts > mmc1 updates mirroring and chr banks' \
+CL_NES_TEST_INCLUDE_TAGS=mapper,contracts \
+CL_NES_TEST_REPORTER=spec \
+CL_NES_TEST_SEED=20260813 \
+CL_NES_TEST_TIMEOUT_MS=1000 \
+CL_NES_TEST_MAX_WORKERS=1 \
+sbcl --noinform --non-interactive --load run-tests.lisp --quit
+~~~
+
+`CL_NES_TEST_LOCATION_FILTER` and `CL_NES_TEST_PATH_FILTER` accept
+comma-separated lists. Test paths use cl-weave's `suite > nested suite > test`
+form.
+
 `nix flake check` also enforces the coverage ratchet and builds the MkDocs
 manual with strict navigation checks. The long-term coverage target is 100%
 expression and branch coverage.

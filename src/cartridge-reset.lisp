@@ -13,12 +13,13 @@
 
 (defun cartridge-reset! (cartridge)
   "Reset mapper registers while retaining cartridge-backed RAM contents."
-  (let ((mapper (cartridge-mapper cartridge)))
-    (setf (cartridge-mirroring cartridge)
-          (cartridge-initial-mirroring cartridge)
-          (cartridge-prg-bank cartridge) 0
-          (cartridge-chr-bank cartridge) 0
-          (cartridge-mapper-shift cartridge) #x10
+  (let ((mapper (cartridge-mapper cartridge))
+        (mapper5-state (cartridge-mapper5-state cartridge)))
+    (set-cartridge-mirroring! cartridge
+                              (cartridge-initial-mirroring cartridge))
+    (set-cartridge-prg-bank! cartridge 0)
+    (set-cartridge-chr-bank! cartridge 0)
+    (setf (cartridge-mapper-shift cartridge) #x10
           (cartridge-mapper-control cartridge) #x0C
           (cartridge-mapper-chr-bank-0 cartridge) 0
           (cartridge-mapper-chr-bank-1 cartridge) 0
@@ -41,23 +42,23 @@
           (cartridge-mapper4-irq-pending-p cartridge) nil
           (cartridge-mapper4-ppu-a12-high-p cartridge) nil
           (cartridge-mapper4-ppu-a12-low-cycles cartridge) 0
-          (cartridge-mapper5-prg-mode cartridge) 3
-          (cartridge-mapper5-chr-mode cartridge) 3
-          (cartridge-mapper5-prg-ram-protect-1 cartridge) 0
-          (cartridge-mapper5-prg-ram-protect-2 cartridge) 0
-          (cartridge-mapper5-exram-mode cartridge) 0
-          (cartridge-mapper5-nametable-mapping cartridge) 0
-          (cartridge-mapper5-fill-tile cartridge) 0
-          (cartridge-mapper5-fill-attribute cartridge) 0
-          (cartridge-mapper5-split-control cartridge) 0
-          (cartridge-mapper5-split-scroll cartridge) 0
-          (cartridge-mapper5-split-bank cartridge) 0
-          (cartridge-mapper5-irq-scanline cartridge) 0
-          (cartridge-mapper5-irq-enabled-p cartridge) nil
-          (cartridge-mapper5-irq-pending-p cartridge) nil
-          (cartridge-mapper5-in-frame-p cartridge) nil
-          (cartridge-mapper5-multiplier-a cartridge) 0
-          (cartridge-mapper5-multiplier-b cartridge) 0)
+          (cartridge-mapper5-state-prg-mode mapper5-state) 3
+          (cartridge-mapper5-state-chr-mode mapper5-state) 3
+          (cartridge-mapper5-state-prg-ram-protect-1 mapper5-state) 0
+          (cartridge-mapper5-state-prg-ram-protect-2 mapper5-state) 0
+          (cartridge-mapper5-state-exram-mode mapper5-state) 0
+          (cartridge-mapper5-state-nametable-mapping mapper5-state) 0
+          (cartridge-mapper5-state-fill-tile mapper5-state) 0
+          (cartridge-mapper5-state-fill-attribute mapper5-state) 0
+          (cartridge-mapper5-state-split-control mapper5-state) 0
+          (cartridge-mapper5-state-split-scroll mapper5-state) 0
+          (cartridge-mapper5-state-split-bank mapper5-state) 0
+          (cartridge-mapper5-state-irq-scanline mapper5-state) 0
+          (cartridge-mapper5-state-irq-enabled-p mapper5-state) nil
+          (cartridge-mapper5-state-irq-pending-p mapper5-state) nil
+          (cartridge-mapper5-state-in-frame-p mapper5-state) nil
+          (cartridge-mapper5-state-multiplier-a mapper5-state) 0
+          (cartridge-mapper5-state-multiplier-b mapper5-state) 0)
     (fill (cartridge-mapper-registers cartridge) 0)
     (fill (cartridge-mapper4-registers cartridge) 0)
     (fill (cartridge-mapper5-chr-banks cartridge) 0)

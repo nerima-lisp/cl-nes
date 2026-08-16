@@ -12,6 +12,7 @@ constructors, accessors, state operations, and constants.
 | load-cartridge | Parse an iNES byte vector or pathname. Accepts mapper4-variant. |
 | cartridge-reset! | Reset mapper registers while retaining cartridge RAM. |
 | cartridge-prg-rom, cartridge-chr-rom | Return the cartridge ROM vectors. |
+| cartridge-prg-size, cartridge-chr-size | Return the PRG-ROM and CHR storage sizes in bytes. |
 | cartridge-prg-ram | Return PRG-RAM. |
 | cartridge-mapper, cartridge-mapper4-variant | Return mapper metadata. |
 | cartridge-mirroring | Return the nametable mirroring mode. |

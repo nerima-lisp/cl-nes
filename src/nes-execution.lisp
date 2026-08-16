@@ -1,5 +1,47 @@
 (in-package #:cl-nes)
 
+(defun %nes-run-instruction! (nes &optional nmi-poll cycle-hook pre-cycle-hook)
+  (with-nes-cpu-operation (nes cycle-hook pre-cycle-hook)
+    (cpu-step! (nes-cpu nes) (nes-bus nes) nmi-poll)))
+
+(defun %nes-run-interrupt! (nes type &optional brk-p nmi-poll cycle-hook
+                                          pre-cycle-hook)
+  (with-nes-cpu-operation (nes cycle-hook pre-cycle-hook)
+    (cpu-interrupt! (nes-cpu nes) (nes-bus nes) type brk-p nmi-poll)))
+
+(defun %nes-irq-eligible-p (cpu irq-disabled-at-start)
+  (if (plusp (cpu-irq-delay cpu))
+      (not irq-disabled-at-start)
+      (not (%flag-set-p cpu +flag-interrupt-disable+))))
+
+(defun %nes-cartridge-irq-pending-p (nes)
+  (let ((cartridge (bus-cartridge (nes-bus nes))))
+    (and cartridge
+         (cartridge-irq-pending-p cartridge))))
+
+(defun %nes-irq-pending-p (nes)
+  (or (apu-irq-pending-p (nes-apu nes))
+      (%nes-cartridge-irq-pending-p nes)))
+
+(defun %nes-take-nmi! (nes)
+  "Consume an NMI edge which is already visible to the CPU."
+  (let ((ppu (nes-ppu nes)))
+    (and (ppu-nmi-pending-p ppu)
+         (not (ppu-nmi-delay-p ppu))
+         (ppu-take-nmi! ppu))))
+
+(defun %nes-poll-nmi-during-operation! (nes)
+  "Consume an NMI at an interrupt-response vector polling point.
+
+The PPU models the short propagation delay separately from the pending edge.
+At the CPU's vector polling point both states are observable: the first read
+advances a delayed edge to the CPU, and the following poll consumes it."
+  (let ((ppu (nes-ppu nes)))
+    (when (and (ppu-nmi-pending-p ppu)
+               (ppu-nmi-delay-p ppu))
+      (ppu-take-nmi! ppu))
+    (%nes-take-nmi! nes)))
+
 (defun nes-step/k (nes continuation)
   "Run one NES step and pass its CPU-cycle count to CONTINUATION.
 
@@ -34,11 +76,23 @@ been applied.  The function returns the continuation's result."
                   (%nes-run-dma-stalls! nes dma-cycles
                                          #'poll-irq-before-clock)))
           ;; NMI is sampled before maskable IRQ, matching the 6502 priority.
-          (incf cycles
-                (%nes-run-post-instruction-interrupts!
-                 nes cpu irq-disabled-at-start dma-cycles
-                 irq-seen-p irq-seen-before-last-p nmi-hijacked-p
-                 #'poll-nmi-event #'poll-irq-before-clock))
+          (let ((nmi-taken-p
+                  (or nmi-hijacked-p
+                      (ppu-take-nmi! (nes-ppu nes)))))
+            (when (and nmi-taken-p (not nmi-hijacked-p))
+              (incf cycles (%nes-run-interrupt! nes :nmi)))
+            (when (and (not nmi-taken-p)
+                       (zerop dma-cycles)
+                       (or (not (cpu-irq-poll-delay cpu))
+                           irq-seen-before-last-p)
+                       (%nes-irq-eligible-p cpu irq-disabled-at-start)
+                       irq-seen-p)
+              (let ((interrupt-cycles
+                      (%nes-run-interrupt!
+                       nes :irq t #'poll-nmi-event
+                       nil #'poll-irq-before-clock)))
+                (when interrupt-cycles
+                  (incf cycles interrupt-cycles)))))
           ;; CLI/SEI/PLP delay IRQ recognition for the following instruction.
           (when (plusp (cpu-irq-delay cpu))
             (decf (cpu-irq-delay cpu)))

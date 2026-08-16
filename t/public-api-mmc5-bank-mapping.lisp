@@ -1,0 +1,31 @@
+(in-package #:cl-nes/test)
+
+(describe "MMC5 mapper bank mapping surface"
+  (it "maps CPU PRG windows according to the selected MMC5 PRG mode"
+    (with-mmc5-cartridge (cart)
+      (labels ((write-register (address value)
+                 (cl-nes::cartridge-write-expansion! cart address value))
+               (sample-window (mode writes address expected)
+                 (write-register #x5100 mode)
+                 (dolist (write writes)
+                   (write-register (+ #x5110 (first write)) (second write)))
+                 (expect (cartridge-read-prg cart address) :to-be expected)))
+        (sample-window 0 '((7 #x80)) #x8000 #x00)
+        (sample-window 1 '((5 #x82) (7 #x83)) #x8000 #x02)
+        (sample-window 2 '((5 #x84) (6 #x85) (7 #x87)) #xc000 #x05)
+        (sample-window 3 '((4 #x86) (5 #x87) (6 #x88) (7 #x89))
+                       #xe000 #x09))))
+
+  (it "maps CHR windows according to the selected MMC5 CHR mode"
+    (with-mmc5-cartridge (cart)
+      (labels ((write-register (address value)
+                 (cl-nes::cartridge-write-expansion! cart address value))
+               (sample-window (mode writes address expected)
+                 (write-register #x5101 mode)
+                 (dolist (write writes)
+                   (write-register (+ #x5120 (first write)) (second write)))
+                 (expect (cartridge-read-chr cart address) :to-be expected)))
+        (sample-window 0 '((7 #x08)) #x1fff #x0f)
+        (sample-window 1 '((7 #x14)) #x1000 #x04)
+        (sample-window 2 '((4 #x06)) #x0800 #x06)
+        (sample-window 3 '((1 #x09)) #x0400 #x09)))))

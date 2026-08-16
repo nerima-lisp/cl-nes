@@ -31,20 +31,62 @@
             +prg-bank-size+)
          (mod address +prg-bank-size+)))))
 
+(defun %mapper28-update-mirroring! (cartridge)
+  (set-cartridge-mirroring!
+   cartridge
+   (case (logand (cartridge-mapper-mode cartridge) #x03)
+     (0 :single-screen-lower)
+     (1 :single-screen-upper)
+     (2 :vertical)
+     (otherwise :horizontal))))
+
+(defun %mapper28-write-user-mirroring! (cartridge value)
+  (when (zerop (logand (cartridge-mapper-mode cartridge) #x02))
+    (setf (cartridge-mapper-mode cartridge)
+          (dpb (ldb (byte 1 4) value)
+               (byte 1 0)
+               (cartridge-mapper-mode cartridge))))
+  (%mapper28-update-mirroring! cartridge))
+
 (defun %mapper22-write! (cartridge address value)
-  (let* ((logical-low (%mapper22-logical-low address))
+  (let* ((physical-low (logand address #x03))
+         (logical-low (logior (ash (logand physical-low #x01) 1)
+                              (ash (logand physical-low #x02) -1)))
          (page (logand address #xF000)))
     (cond
-      ((= page #x8000) (%mapper22-write-prg-bank! cartridge value))
+      ((= page #x8000)
+       (set-cartridge-prg-bank! cartridge (logand value #x1F)))
       ((and (= page #x9000) (zerop logical-low))
-       (%mapper22-write-mirroring! cartridge value))
-      ((= page #xA000) (%mapper22-write-prg-bank-1! cartridge value))
+       (set-cartridge-mirroring!
+        cartridge
+        (if (logbitp 0 value) :horizontal :vertical)))
+      ((= page #xA000)
+       (setf (cartridge-mapper-prg-bank-1 cartridge) (logand value #x1F)))
       ((<= #xB000 page #xE000)
-       (%mapper22-write-chr-bank-nibble! cartridge address value logical-low))))
+       (let* ((register (+ (* (floor (- page #xB000) #x1000) 2)
+                           (floor logical-low 2)))
+              (old (aref (cartridge-mapper-registers cartridge) register)))
+         (setf (aref (cartridge-mapper-registers cartridge) register)
+               (if (logbitp 0 logical-low)
+                   (logior (logand old #x0F) (ash (logand value #x0F) 4))
+                   (logior (logand old #xF0) (logand value #x0F))))))))
   value)
 
 (defun %mapper28-write! (cartridge address value)
   (if (<= #x5000 address #x5FFF)
       (setf (cartridge-mapper-register-select cartridge) (logand value #x81))
-      (%mapper28-handle-register-write! cartridge value))
+       (case (cartridge-mapper-register-select cartridge)
+         (#x00
+          (setf (aref (cartridge-mapper-registers cartridge) 0) value)
+          (set-cartridge-chr-bank! cartridge (logand value #x03))
+          (%mapper28-write-user-mirroring! cartridge value))
+         (#x01
+          (setf (aref (cartridge-mapper-registers cartridge) 1) value)
+          (set-cartridge-prg-bank! cartridge (logand value #x0F))
+          (%mapper28-write-user-mirroring! cartridge value))
+        (#x80
+         (setf (cartridge-mapper-mode cartridge) (logand value #x3F))
+         (%mapper28-update-mirroring! cartridge))
+        (#x81
+         (setf (cartridge-mapper-outer-bank cartridge) (logand value #x3F)))))
   value)

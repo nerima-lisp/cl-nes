@@ -1,12 +1,13 @@
 (in-package #:cl-nes)
 
 (defun %mapper1-update-mirroring! (cartridge)
-  (setf (cartridge-mirroring cartridge)
-        (case (logand (cartridge-mapper-control cartridge) #x03)
-          (0 :single-screen-lower)
-          (1 :single-screen-upper)
-          (2 :vertical)
-          (otherwise :horizontal))))
+  (set-cartridge-mirroring!
+   cartridge
+   (case (logand (cartridge-mapper-control cartridge) #x03)
+     (0 :single-screen-lower)
+     (1 :single-screen-upper)
+     (2 :vertical)
+     (otherwise :horizontal))))
 
 (defun %mapper1-commit! (cartridge address value)
   (case (logand address #x6000)
@@ -18,13 +19,13 @@
     (#x4000
      (setf (cartridge-mapper-chr-bank-1 cartridge) value))
     (otherwise
-     (setf (cartridge-prg-bank cartridge) value))))
+     (set-cartridge-prg-bank! cartridge value))))
 
 (defun %mapper1-write! (cartridge address value)
   (cond
     ((logbitp 7 value)
-     (setf (cartridge-mapper-shift cartridge) #x10
-           (cartridge-mapper-control cartridge)
+     (setf (cartridge-mapper-shift cartridge) #x10)
+     (setf (cartridge-mapper-control cartridge)
            (logior (cartridge-mapper-control cartridge) #x0C))
      (%mapper1-update-mirroring! cartridge))
     ((logbitp 0 (cartridge-mapper-shift cartridge))

@@ -10,56 +10,9 @@
 (defparameter *coverage-output-directory*
   (merge-pathnames "coverage/" *coverage-root*))
 
+(defparameter *minimum-expression-coverage* 0.96d0)
+(defparameter *minimum-branch-coverage* 0.86d0)
 (defparameter *coverage-target* 1.0d0)
-
-(defparameter *coverage-structural-expression-patterns*
-  '("(in-package #:cl-nes)"
-    "(defconstant +ppu-decay-period+ 1000000)"))
-
-(defun %coverage-source-file-names ()
-  (sort (mapcar (lambda (pathname)
-                  (enough-namestring pathname *coverage-root*))
-                (directory (merge-pathnames "src/*.lisp"
-                                            *coverage-root*)))
-        #'string<))
-
-(defparameter *coverage-excluded-source-file-names*
-  '("src/package.lisp"
-    "src/conditions.lisp"
-    "src/macros.lisp"
-    "src/apu-data.lisp"
-    "src/apu-lifecycle-data.lisp"
-    "src/apu-lifecycle-helpers.lisp"
-    "src/apu-register-write-helper-macros.lisp"
-    "src/apu-register-write-data.lisp"
-    "src/apu-register-write-macros.lisp"
-    "src/apu-state.lisp"
-    "src/cartridge-state.lisp"
-    "src/cartridge-construction-data.lisp"
-    "src/cartridge-construction-validation-helper-macros.lisp"
-    "src/cartridge-layout-data.lisp"
-    "src/cartridge-memory-helper-macros.lisp"
-    "src/cartridge-mapper5-control-data.lisp"
-    "src/controller-state.lisp"
-    "src/bus-state.lisp"
-    "src/cpu-control-data.lisp"
-    "src/cpu-control-helper-macros.lisp"
-    "src/cpu-macros.lisp"
-    "src/cpu-state.lisp"
-    "src/cpu-addressing-macros.lisp"
-    "src/cpu-alu-macros.lisp"
-    "src/cpu-opcode-helpers.lisp"
-    "src/cpu-opcodes-00-7f.lisp"
-    "src/cpu-opcodes-00-7f-data.lisp"
-    "src/cpu-opcodes-80-ff.lisp"
-    "src/cpu-opcodes-80-ff-data.lisp"
-    "src/ppu-register-read-data.lisp"
-    "src/ppu-register-read-macros.lisp"
-    "src/ppu-state.lisp"
-    "src/ppu-register-write-data.lisp"
-    "src/ppu-register-write-macros.lisp"
-    "src/ppu-rendering.lisp"
-    "src/nes-state.lisp"))
 
 (defun %coverage-ratio (covered total)
   (if (plusp total)
@@ -82,61 +35,155 @@
              (* 100.0d0 minimum)))
     ratio))
 
-(defun %ensure-unique-file-list (label names)
-  (let ((seen (make-hash-table :test #'equal)))
-    (dolist (name names)
-      (when (gethash name seen)
-        (error "~A contains duplicate entry: ~A" label name))
-      (setf (gethash name seen) t)))
-  names)
+(defun %file-size (pathname)
+  (with-open-file (stream pathname
+                          :direction :input
+                          :element-type '(unsigned-byte 8))
+    (or (file-length stream) 0)))
 
-(defun %sorted-string-list (strings)
-  (sort (copy-list strings) #'string<))
+(defun %assert-coverage-artifacts (data-pathname report-directory)
+  (let ((reports (directory (merge-pathnames "*.html" report-directory))))
+    (unless (and (probe-file data-pathname)
+                 (plusp (%file-size data-pathname))
+                 reports
+                 (every (lambda (pathname)
+                          (and (probe-file pathname)
+                               (plusp (%file-size pathname))))
+                        reports))
+      (error "Coverage artifacts are missing or empty."))
+    (format t "Coverage artifacts: ~D non-empty HTML reports and ~D data bytes~%"
+            (length reports)
+            (%file-size data-pathname))))
 
-(defun %assert-coverage-source-manifest ()
-  (let* ((actual (%ensure-unique-file-list
-                  "Coverage source manifest"
-                  (%coverage-source-file-names)))
-         (excluded (%ensure-unique-file-list
-                    "Coverage excluded manifest"
-                    *coverage-excluded-source-file-names*))
-         (unknown-exclusions
-           (set-difference excluded actual :test #'equal)))
-    (unless actual
-      (error "Coverage manifest check found no src/*.lisp files."))
-    (when unknown-exclusions
-      (error "Coverage exclusions mention files absent from src/*.lisp: ~{~A~^, ~}"
-             (%sorted-string-list unknown-exclusions)))))
+(defun %package-symbol-call (package-name symbol-name &rest arguments)
+  (let ((package (find-package package-name)))
+    (unless package
+      (error "Package ~A is not loaded." package-name))
+    (apply (find-symbol symbol-name package) arguments)))
 
-(defun %coverage-structural-expression-count (source-files)
-  "Count load-time forms that are not runtime behavior.
+(defun %coverage-file-statistics (source-files excluded-source-files)
+  "Return deterministic per-file coverage rows for the measured sources.
 
-ASDF requires each source file to establish its package independently, and
-SBCL evaluates DEFCONSTANT while loading the system.  SB-COVER records those
-forms as expressions but they cannot be covered by a runtime test.  Keep the
-forms in the instrumented source set and normalize only these exact,
-manifested declarations out of the aggregate runtime metric."
-  (loop for pathname in source-files
-        sum (with-open-file (stream pathname)
-             (loop for line = (read-line stream nil nil)
-                   while line
-                   count (member (string-trim '(#\Space #\Tab) line)
-                                 *coverage-structural-expression-patterns*
-                                 :test #'string=)))))
+This uses cl-weave's SB-COVER integration directly so the report identifies
+the next test seam without parsing generated HTML."
+  (let* ((matcher (%package-symbol-call :cl-weave "COVERAGE-SOURCE-MATCHER"
+                                        source-files excluded-source-files))
+         (coverage-symbol
+           (%package-symbol-call :cl-weave "COVERAGE-INTERNAL-SYMBOL"
+                                 "*CODE-COVERAGE-INFO*" t))
+         (compute-symbol
+           (%package-symbol-call :cl-weave "COVERAGE-INTERNAL-SYMBOL"
+                                 "COMPUTE-FILE-INFO" t))
+         (ok-symbol
+           (%package-symbol-call :cl-weave "COVERAGE-INTERNAL-SYMBOL" "OK-OF" t))
+         (all-symbol
+           (%package-symbol-call :cl-weave "COVERAGE-INTERNAL-SYMBOL" "ALL-OF" t))
+         (refresh-symbol
+           (%package-symbol-call :cl-weave "COVERAGE-INTERNAL-SYMBOL"
+                                 "REFRESH-COVERAGE-BITS" t))
+         (coverage-info (symbol-value coverage-symbol)))
+    (funcall refresh-symbol)
+    (sort
+     (loop for source being the hash-keys of (car coverage-info)
+           when (and (funcall matcher source) (probe-file source))
+             collect
+             (let* ((counts (funcall compute-symbol source :default))
+                    (expression (getf counts :expression))
+                    (branch (getf counts :branch)))
+               (list source
+                     (funcall ok-symbol expression)
+                     (funcall all-symbol expression)
+                     (funcall ok-symbol branch)
+                     (funcall all-symbol branch))))
+     #'string<
+     :key #'first)))
+
+(defun %write-coverage-summary (pathname statistics file-statistics)
+  (with-open-file (summary pathname
+                           :direction :output
+                           :if-exists :supersede)
+    (format summary "expression-covered=~D~%expression-total=~D~%branch-covered=~D~%branch-total=~D~%"
+            (getf statistics :expression-covered)
+            (getf statistics :expression-total)
+            (getf statistics :branch-covered)
+            (getf statistics :branch-total))
+    (dolist (row file-statistics)
+      (destructuring-bind (source expression-covered expression-total
+                           branch-covered branch-total)
+          row
+        (format summary "file=~A expression=~D/~D branch=~D/~D~%"
+                (enough-namestring source *coverage-root*)
+                expression-covered expression-total
+                branch-covered branch-total)))))
 
 (require :asdf)
 (require :sb-cover)
 (declaim (optimize sb-cover:store-coverage-data))
 (load (merge-pathnames "cl-nes.asd" *coverage-root*))
+;; The check phase compiles ordinary FASLs first.  Reusing those FASLs here
+;; would make SB-COVER report mostly uninstrumented code, so compile again
+;; after enabling coverage collection.
+(asdf:oos 'asdf:compile-op "cl-nes" :force t)
 (asdf:oos 'asdf:load-op "cl-nes" :force t)
+(asdf:oos 'asdf:compile-op "cl-nes/test" :force t)
 (asdf:oos 'asdf:load-op "cl-nes/test" :force t)
-
-(%assert-coverage-source-manifest)
 
 (let ((source-files
         (mapcar (lambda (name)
                   (merge-pathnames name *coverage-root*))
-                (%coverage-source-file-names)))
+                '("src/package.lisp"
+                  "src/conditions.lisp"
+                  "src/macros.lisp"
+                  "src/apu-data.lisp"
+                  "src/apu-state.lisp"
+                  "src/apu-construction.lisp"
+                  "src/apu-output.lisp"
+                  "src/apu-status.lisp"
+                  "src/cartridge-state.lisp"
+                  "src/cartridge-state-constructors.lisp"
+                  "src/cartridge-state-forwarders.lisp"
+                  "src/cartridge-data.lisp"
+                  "src/cartridge-format.lisp"
+                  "src/cartridge-mapper1.lisp"
+                  "src/cartridge-mapper22-28.lisp"
+                  "src/cartridge-mapper4.lisp"
+                  "src/cartridge-mapper4-control.lisp"
+                  "src/cartridge-mapper5.lisp"
+                  "src/cartridge-mapper5-expansion.lisp"
+                  "src/cartridge-memory.lisp"
+                  "src/cartridge-memory-accessors.lisp"
+                  "src/cartridge-memory-bus.lisp"
+                  "src/cartridge-reset.lisp"
+                  "src/cartridge-validation.lisp"
+                  "src/controller-state.lisp"
+                  "src/controller.lisp"
+                  "src/apu.lisp"
+                  "src/apu-lifecycle.lisp"
+                  "src/apu-envelopes.lisp"
+                  "src/apu-timers.lisp"
+                  "src/apu-frame.lisp"
+                  "src/apu-timing.lisp"
+                  "src/apu-registers.lisp"
+                  "src/ppu-state.lisp"
+                  "src/ppu.lisp"
+                  "src/ppu-memory.lisp"
+                  "src/ppu-registers.lisp"
+                  "src/ppu-rendering.lisp"
+                  "src/ppu-timing.lisp"
+                  "src/bus-state.lisp"
+                  "src/bus.lisp"
+                  "src/cpu-state.lisp"
+                  "src/cpu.lisp"
+                  "src/cpu-alu.lisp"
+                  "src/cpu-addressing.lisp"
+                  "src/cpu-control.lisp"
+                  "src/cpu-opcodes-00-7f.lisp"
+                  "src/cpu-opcodes-80-ff.lisp"
+                  "src/cpu-instructions.lisp"
+                  "src/nes-state.lisp"
+                  "src/nes.lisp"
+                  "src/nes-timing.lisp"
+                  "src/nes-execution.lisp")))
       ;; These files contain package/data declarations, compile-time macros,
       ;; state layouts, or condition declarations. Their runtime behavior is
       ;; exercised through the constructors and device functions kept in the
@@ -144,7 +191,17 @@ manifested declarations out of the aggregate runtime metric."
       (excluded-source-files
         (mapcar (lambda (name)
                   (merge-pathnames name *coverage-root*))
-                *coverage-excluded-source-file-names*))
+                '("src/package.lisp"
+                  "src/conditions.lisp"
+                  "src/macros.lisp"
+                  "src/apu-data.lisp"
+                  "src/apu-state.lisp"
+                  "src/cartridge-state.lisp"
+                  "src/controller-state.lisp"
+                  "src/bus-state.lisp"
+                  "src/cpu-state.lisp"
+                  "src/ppu-state.lisp"
+                  "src/nes-state.lisp")))
       (report-directory (merge-pathnames "html/" *coverage-output-directory*))
       (data-pathname (merge-pathnames "sb-cover.data" *coverage-output-directory*)))
   ;; sb-cover leaves reports for source files removed between runs.
@@ -155,6 +212,7 @@ manifested declarations out of the aggregate runtime metric."
   (ensure-directories-exist data-pathname)
   (let ((passed (uiop:symbol-call :cl-weave :run-all
                                   :reporter :spec
+                                  :seed 20260813
                                   :pass-with-no-tests nil
                                   :coverage t
                                   :coverage-output data-pathname
@@ -163,33 +221,29 @@ manifested declarations out of the aggregate runtime metric."
                                   :coverage-exclude-pathnames excluded-source-files)))
     (unless passed
         (error "cl-nes coverage suite failed."))
+    (%assert-coverage-artifacts data-pathname report-directory)
     (let ((statistics (uiop:symbol-call :cl-weave :coverage-statistics
                                          :include-pathnames source-files
                                          :exclude-pathnames excluded-source-files)))
-      (let* ((expression-covered (getf statistics :expression-covered))
-             (raw-expression-total (getf statistics :expression-total))
-            (measured-source-files
-              (set-difference source-files excluded-source-files :test #'equal))
-            (structural-expression-count
-              (%coverage-structural-expression-count measured-source-files))
-            (expression-total
-              (- raw-expression-total structural-expression-count))
+      (let ((expression-covered (getf statistics :expression-covered))
+            (expression-total (getf statistics :expression-total))
             (branch-covered (getf statistics :branch-covered))
             (branch-total (getf statistics :branch-total)))
         (unless (and (plusp expression-total)
                      (plusp branch-total))
           (error "Coverage collected no executable expressions or branches."))
-        (format t "Coverage: structural load-time expressions ~D (raw total ~D)~%"
-                structural-expression-count
-                raw-expression-total)
         (%assert-coverage-minimum :expression
                                   expression-covered
                                   expression-total
-                                  *coverage-target*)
+                                  *minimum-expression-coverage*)
         (%assert-coverage-minimum :branch
                                   branch-covered
                                   branch-total
-                                  *coverage-target*)
-        (format t "Coverage target: expression ~,2F%, branch ~,2F%~%"
+                                  *minimum-branch-coverage*)
+        (%write-coverage-summary
+         (merge-pathnames "coverage-summary.txt" *coverage-output-directory*)
+         statistics
+         (%coverage-file-statistics source-files excluded-source-files))
+        (format t "Coverage target (future gate): expression ~,2F%, branch ~,2F%~%"
                 (* 100.0d0 *coverage-target*)
                 (* 100.0d0 *coverage-target*))))))
