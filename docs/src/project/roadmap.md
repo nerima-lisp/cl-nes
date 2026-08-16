@@ -22,5 +22,7 @@ schedule.
 - Keep the API reference synchronized with exported symbols.
 - Add documentation-build verification to project automation when the build
   environment provides the required MkDocs tooling.
-- Record compatibility results for each newly supported mapper or test-ROM
-  family.
+- Preserve external manifest, hash, license, and TSV evidence when extending
+  mapper or test-ROM coverage.
+- Add reference-frame, input, and audio assertions beyond bounded frame
+  progression.

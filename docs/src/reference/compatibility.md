@@ -15,6 +15,24 @@ CHR-ROM receives writable CHR-RAM. PRG-RAM, battery-backed state, four-screen
 metadata, and nametable mirroring are represented where the header and mapper
 support them.
 
+## ROM verification evidence
+
+External validation artifacts are kept outside the checkout. Their records
+include the source revision, per-file SHA-256, and available license or
+permission metadata; ROM binaries are not part of the repository.
+
+For the current validation run, each valid manifest entry was executed in a
+fresh emulator process with a bounded wall-clock limit. Every valid iNES or
+NES 2.0 entry in the public test-ROM manifest reached 10 frames, covering all
+mapper numbers listed above. A separate homebrew corpus reached 60 frames per
+entry. A malformed ROM was reported as `invalid` and excluded from the valid
+ROM pass.
+
+These results verify bounded loading, mapper selection, reset execution, and
+continued frame progression. They do not verify reference framebuffer output,
+interactive controls, audio fidelity, exact cycle traces, or compatibility
+with every NES game.
+
 ## Mapper 4
 
 Mapper 4 defaults to the MMC3 IRQ reload behavior. Some ROMs need the
