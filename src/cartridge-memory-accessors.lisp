@@ -28,6 +28,8 @@
                 (- offset +prg-bank-size+)))))
       (4 (%mapper4-prg-offset cartridge address))
       ((7 11 34) (%banked-32k-prg-offset cartridge address))
+      (9 (%mapper9-prg-offset cartridge address))
+      (10 (%mapper10-prg-offset cartridge address))
       (22 (%mapper22-prg-offset cartridge address))
       (28 (%mapper28-prg-offset cartridge address)))))
 
@@ -95,6 +97,7 @@
       (11 (%write-cartridge-mapper11-prg! cartridge value))
       (22 (%mapper22-write! cartridge address value))
       (28 (%mapper28-write! cartridge address value))
+      ((9 10) (%mapper9-10-write! cartridge address value))
       (34 (set-cartridge-prg-bank! cartridge value))))
   value)
 
@@ -119,6 +122,7 @@
 
 (defun cartridge-read-chr (cartridge address &optional (sprite-p t))
   (when (<= 0 address #x1FFF)
+    (cartridge-clock-ppu-latch! cartridge address)
     (let ((rom (cartridge-chr-rom cartridge)))
       (aref rom
             (mod (%cartridge-chr-offset cartridge address sprite-p)

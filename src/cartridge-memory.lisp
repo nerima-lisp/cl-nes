@@ -43,6 +43,7 @@
        (+ (* (ash (aref (cartridge-mapper-registers cartridge) slot) -1)
              +chr-bank-1k-size+)
           (mod address +chr-bank-1k-size+))))
+    ((9 10) (%mapper9-10-chr-offset cartridge address))
     (4 (%mapper4-chr-offset cartridge address))
     (5 (%mapper5-chr-offset cartridge address sprite-p))
     (otherwise address)))

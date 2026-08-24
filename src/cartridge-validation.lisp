@@ -1,7 +1,7 @@
 (in-package #:cl-nes)
 
 (defun %ensure-supported-mapper! (mapper)
-  (unless (member mapper '(0 1 2 3 4 5 7 11 22 28 34))
+  (unless (member mapper '(0 1 2 3 4 5 7 9 10 11 22 28 34))
     (error 'unsupported-mapper :number mapper)))
 
 (defun %ensure-valid-mapper4-variant! (mapper4-variant)
@@ -67,6 +67,17 @@
     (error 'invalid-rom
            :reason "MMC3/MMC5 PRG data must have at least two 8 KiB banks")))
 
+(defun %ensure-mmc2-prg-layout! (prg)
+  (unless (and (>= (length prg) (* 4 +prg-bank-8k-size+))
+               (zerop (mod (length prg) +prg-bank-8k-size+)))
+    (error 'invalid-rom
+           :reason "MMC2 PRG data must have at least four 8 KiB banks")))
+
+(defun %ensure-mmc4-prg-layout! (prg)
+  (unless (and (>= (length prg) +prg-bank-size+)
+               (zerop (mod (length prg) +prg-bank-size+)))
+    (error 'invalid-rom :reason "MMC4 PRG data must use 16 KiB banks")))
+
 (defun %ensure-valid-prg-layout! (mapper prg)
   (when (= mapper 28)
     (%ensure-action53-prg-layout! prg))
@@ -78,7 +89,9 @@
     ((= mapper 7) (%ensure-axrom-prg-layout! prg))
     ((member mapper '(11 34)) (%ensure-32k-banked-prg-layout! prg))
     ((= mapper 22) (%ensure-vrc2-prg-layout! prg))
-    ((member mapper '(4 5)) (%ensure-mmc3/mmc5-prg-layout! prg))))
+    ((member mapper '(4 5)) (%ensure-mmc3/mmc5-prg-layout! prg))
+    ((= mapper 9) (%ensure-mmc2-prg-layout! prg))
+    ((= mapper 10) (%ensure-mmc4-prg-layout! prg))))
 
 (defun %ensure-valid-chr-layout! (mapper chr)
   (unless (case mapper
@@ -88,6 +101,8 @@
                               (zerop (mod (length chr) +chr-bank-size+))))
             ((4 5) (and (plusp (length chr))
                         (zerop (mod (length chr) +chr-bank-1k-size+))))
+            ((9 10) (and (plusp (length chr))
+                         (zerop (mod (length chr) +chr-bank-4k-size+))))
             (otherwise (= (length chr) +chr-bank-size+)))
     (error 'invalid-rom
            :reason "CHR storage size is not supported by this mapper")))
