@@ -3,7 +3,7 @@
 cl-nes is a headless Nintendo Entertainment System core written in Common
 Lisp. It has no third-party runtime dependency and supports iNES cartridges,
 the supported subset of NES 2.0, mappers 0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22,
-28, and 34, and headless CPU, PPU, controller, and APU execution.
+28, 34, 66, 71, and 87, and headless CPU, PPU, controller, and APU execution.
 
 ## Quick Start
 

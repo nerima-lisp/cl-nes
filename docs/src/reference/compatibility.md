@@ -8,7 +8,7 @@ hardware compatibility.
 The parser accepts iNES 1.0 and the supported subset of NES 2.0 headers. The
 supported mapper numbers are:
 
-0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28, and 34.
+0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28, 34, 66, 71, and 87.
 
 PRG-ROM and CHR-ROM are banked according to the mapper. A cartridge with no
 CHR-ROM receives writable CHR-RAM. PRG-RAM, battery-backed state, four-screen
@@ -18,6 +18,11 @@ support them.
 Mapper 9 (MMC2) and mapper 10 (MMC4) support CHR bank switching through PPU
 address latches, along with their mapper-controlled PRG and nametable behavior.
 
+Mapper 66 selects 32 KiB PRG and 8 KiB CHR banks. Mapper 71 uses a UxROM-like
+layout with a switchable lower 16 KiB PRG bank and a fixed upper 16 KiB bank.
+Mapper 87 selects its CHR bank through writes in the `$6000-$7FFF` range and
+does not expose PRG-RAM through that range.
+
 ## ROM verification evidence
 
 External validation artifacts are kept outside the checkout. Their records
@@ -26,10 +31,12 @@ permission metadata; ROM binaries are not part of the repository.
 
 For the current validation run, each valid manifest entry was executed in a
 fresh emulator process with a bounded wall-clock limit. Every valid iNES or
-NES 2.0 entry in the public test-ROM manifest reached 10 frames, covering all
-mapper numbers listed above. A separate homebrew corpus reached 60 frames per
-entry. A malformed ROM was reported as `invalid` and excluded from the valid
-ROM pass.
+NES 2.0 entry in the public test-ROM manifest reached 10 frames, covering the
+mapper numbers represented by that manifest. A separate homebrew corpus reached
+60 frames per entry. A malformed ROM was reported as `invalid` and excluded
+from the valid ROM pass. Focused mapper contracts also cover the discrete
+banking paths for mappers 66, 71, and 87; those contracts are separate from the
+ROM-corpus evidence above.
 
 These results verify bounded loading, mapper selection, reset execution, and
 continued frame progression. They do not verify reference framebuffer output,
