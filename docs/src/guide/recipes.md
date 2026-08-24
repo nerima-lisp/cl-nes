@@ -69,3 +69,16 @@ sbcl --script run-nes.lisp game.nes 10 frame
 
 It writes frame-0001.ppm through frame-0010.ppm using the standard 64-entry
 NES palette.
+
+Library callers can use the same formatters directly. `nes-framebuffer-rgb-octets`
+returns packed RGB data, and `nes-write-ppm` writes a framebuffer to a binary
+P6 image:
+
+~~~lisp
+(cl-nes:nes-write-ppm "frame.ppm" framebuffer)
+~~~
+
+To save audio, collect unsigned 8-bit samples with the `:sample-continuation`
+keyword of `nes-run-frames/k`, then pass the samples to `nes-write-wav`. The
+optional `:sample-rate` keyword controls the output rate and defaults to 44100
+Hz.

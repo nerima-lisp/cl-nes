@@ -8,12 +8,15 @@ hardware compatibility.
 The parser accepts iNES 1.0 and the supported subset of NES 2.0 headers. The
 supported mapper numbers are:
 
-0, 1, 2, 3, 4, 5, 7, 11, 22, 28, and 34.
+0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28, and 34.
 
 PRG-ROM and CHR-ROM are banked according to the mapper. A cartridge with no
 CHR-ROM receives writable CHR-RAM. PRG-RAM, battery-backed state, four-screen
 metadata, and nametable mirroring are represented where the header and mapper
 support them.
+
+Mapper 9 (MMC2) and mapper 10 (MMC4) support CHR bank switching through PPU
+address latches, along with their mapper-controlled PRG and nametable behavior.
 
 ## ROM verification evidence
 
@@ -63,6 +66,10 @@ cycle-exact hardware trace.
 The APU models pulse, triangle, noise, and DMC register/state behavior, frame
 sequencing, frame IRQ, status reads, and a headless mixed sample. DMC memory
 reads use the CPU bus when the APU is connected to one.
+
+The headless output API converts framebuffers to RGB octets, writes binary P6
+PPM images, and writes unsigned 8-bit mono PCM samples as RIFF/WAVE files. It
+does not open an audio output device.
 
 Controllers implement the standard eight-button mask and serial strobe/shift
 behavior. OAM DMA is routed through the CPU bus and contributes its stall

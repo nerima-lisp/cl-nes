@@ -38,10 +38,12 @@ The mapper4-variant values are :mmc3 (default), :mmc6, and :mmc3-alt.
 | nes-reset! | Reset the machine. |
 | nes-step/k | Execute one CPU instruction and call a continuation with cycle count. |
 | nes-run-frame/k | Run until a frame is ready and call a continuation with the framebuffer. |
+| nes-run-frames/k | Run a number of frames and optionally call a continuation for each audio sample. |
 
 The continuation passed to nes-step/k receives the final CPU-cycle count after
 DMA and interrupt clocks. The continuation passed to nes-run-frame/k receives
-the PPU framebuffer.
+the PPU framebuffer. The optional :cycle-hook keyword on these functions is
+called once after each elapsed CPU cycle, including DMA and interrupt clocks.
 
 ## CPU and bus
 
@@ -94,6 +96,22 @@ corresponding DMA stall and transfer.
 | apu-tick! | Advance APU timing by one CPU-cycle tick. |
 | apu-irq-pending-p | Report a pending frame IRQ. |
 | apu-sample | Return the current unsigned 8-bit headless mix. |
+
+## Headless output
+
+| Name | Purpose |
+| --- | --- |
+| +nes-frame-width+, +nes-frame-height+ | Frame dimensions, 256x240. |
+| +nes-framebuffer-size+ | Number of palette-index pixels in a framebuffer. |
+| +nes-ntsc-cpu-frequency+ | CPU frequency used for output sample scheduling. |
+| +nes-default-audio-sample-rate+ | Default audio sample rate, 44100 Hz. |
+| nes-framebuffer-rgb-octets | Convert a palette-index framebuffer to packed RGB octets. |
+| nes-write-ppm | Write a framebuffer as a binary P6 PPM image. |
+| nes-write-wav | Write unsigned 8-bit mono PCM samples as a RIFF/WAVE file. |
+
+nes-run-frames/k calls its frame continuation once per completed frame. Its
+optional :sample-continuation receives unsigned 8-bit samples scheduled from
+the same CPU-cycle clock; :sample-rate selects the requested output rate.
 
 ## Controllers
 

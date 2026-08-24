@@ -2,8 +2,8 @@
 
 cl-nes is a headless Nintendo Entertainment System core written in Common
 Lisp. It has no third-party runtime dependency and supports iNES cartridges,
-the supported subset of NES 2.0, mappers 0, 1, 2, 3, 4, 5, 7, 11, 22, 28, and
-34, and headless CPU, PPU, controller, and APU execution.
+the supported subset of NES 2.0, mappers 0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22,
+28, and 34, and headless CPU, PPU, controller, and APU execution.
 
 ## Quick Start
 
@@ -22,7 +22,8 @@ the supported subset of NES 2.0, mappers 0, 1, 2, 3, 4, 5, 7, 11, 22, 28, and
 
 The continuation receives the headless 256x240 framebuffer. The core does not
 open a window or an audio device; callers choose how to display or encode the
-result.
+result. `nes-write-ppm` and `nes-write-wav` provide portable file output for
+framebuffers and unsigned 8-bit audio samples.
 
 ## Install
 
