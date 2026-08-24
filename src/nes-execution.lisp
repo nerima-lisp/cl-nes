@@ -42,11 +42,13 @@ advances a delayed edge to the CPU, and the following poll consumes it."
       (ppu-take-nmi! ppu))
     (%nes-take-nmi! nes)))
 
-(defun nes-step/k (nes continuation)
+(defun nes-step/k (nes continuation &key cycle-hook)
   "Run one NES step and pass its CPU-cycle count to CONTINUATION.
 
 The continuation is called after instruction, DMA, and interrupt clocks have
-been applied.  The function returns the continuation's result."
+been applied.  CYCLE-HOOK, when supplied, is called after every elapsed CPU
+cycle, including DMA and interrupt clocks.  The function returns the
+continuation's result."
   (let* ((cpu (nes-cpu nes))
          (irq-disabled-at-start
            (%flag-set-p cpu +flag-interrupt-disable+))
@@ -69,18 +71,20 @@ been applied.  The function returns the continuation's result."
                  t)))
       (let ((cycles
               (%nes-run-instruction!
-               nes #'poll-nmi-event nil #'poll-irq-before-clock)))
+               nes #'poll-nmi-event cycle-hook #'poll-irq-before-clock)))
         (let ((dma-cycles (bus-take-dma-stall-cycles! (nes-bus nes))))
           (when (plusp dma-cycles)
             (incf cycles
                   (%nes-run-dma-stalls! nes dma-cycles
-                                         #'poll-irq-before-clock)))
+                                         #'poll-irq-before-clock
+                                         cycle-hook)))
           ;; NMI is sampled before maskable IRQ, matching the 6502 priority.
           (let ((nmi-taken-p
                   (or nmi-hijacked-p
                       (ppu-take-nmi! (nes-ppu nes)))))
             (when (and nmi-taken-p (not nmi-hijacked-p))
-              (incf cycles (%nes-run-interrupt! nes :nmi)))
+              (incf cycles (%nes-run-interrupt!
+                            nes :nmi nil nil cycle-hook nil)))
             (when (and (not nmi-taken-p)
                        (zerop dma-cycles)
                        (or (not (cpu-irq-poll-delay cpu))
@@ -90,7 +94,7 @@ been applied.  The function returns the continuation's result."
               (let ((interrupt-cycles
                       (%nes-run-interrupt!
                        nes :irq t #'poll-nmi-event
-                       nil #'poll-irq-before-clock)))
+                       cycle-hook #'poll-irq-before-clock)))
                 (when interrupt-cycles
                   (incf cycles interrupt-cycles)))))
           ;; CLI/SEI/PLP delay IRQ recognition for the following instruction.
@@ -98,9 +102,9 @@ been applied.  The function returns the continuation's result."
             (decf (cpu-irq-delay cpu)))
           (funcall continuation cycles))))))
 
-(defun nes-run-frame/k (nes continuation)
+(defun nes-run-frame/k (nes continuation &key cycle-hook)
   "Run until a frame is ready and pass its framebuffer to CONTINUATION."
   (setf (ppu-frame-ready-p (nes-ppu nes)) nil)
   (loop until (ppu-frame-ready-p (nes-ppu nes))
-        do (nes-step/k nes #'identity))
+        do (nes-step/k nes #'identity :cycle-hook cycle-hook))
   (funcall continuation (ppu-framebuffer (nes-ppu nes))))

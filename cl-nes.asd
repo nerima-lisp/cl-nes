@@ -62,7 +62,8 @@
    (:file "src/nes-state")
    (:file "src/nes")
    (:file "src/nes-timing")
-   (:file "src/nes-execution"))
+   (:file "src/nes-execution")
+   (:file "src/nes-output"))
   :in-order-to ((test-op (test-op "cl-nes/test"))))
 
 (defsystem "cl-nes/test"
@@ -167,7 +168,8 @@
      (:file "coverage-nes-lifecycle-surface")
      (:file "coverage-nes-step-runtime")
      (:file "coverage-nes-irq-runtime")
-     (:file "coverage-nes-nmi-runtime"))
+     (:file "coverage-nes-nmi-runtime")
+     (:file "output-contracts"))
   :perform
   (test-op (operation component)
     (declare (ignore operation))

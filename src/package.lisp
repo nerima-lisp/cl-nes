@@ -113,4 +113,13 @@
    #:nes-load-cartridge!
    #:nes-reset!
    #:nes-step/k
-   #:nes-run-frame/k))
+   #:nes-run-frame/k
+   #:nes-run-frames/k
+   #:+nes-frame-width+
+   #:+nes-frame-height+
+   #:+nes-framebuffer-size+
+   #:+nes-ntsc-cpu-frequency+
+   #:+nes-default-audio-sample-rate+
+   #:nes-framebuffer-rgb-octets
+   #:nes-write-ppm
+   #:nes-write-wav))

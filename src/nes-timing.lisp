@@ -16,9 +16,10 @@
           do (%nes-clock-cpu-cycle! nes bus cycle-hook pre-cycle-hook)))
   cycles)
 
-(defun %nes-run-dma-stalls! (nes dma-cycles poll-irq-before-clock)
+(defun %nes-run-dma-stalls! (nes dma-cycles poll-irq-before-clock
+                              &optional cycle-hook)
   (let ((bus (nes-bus nes)))
     (loop repeat dma-cycles
           do (funcall poll-irq-before-clock)
-             (%nes-clock-cpu-cycle! nes bus nil nil)))
+             (%nes-clock-cpu-cycle! nes bus cycle-hook nil)))
   dma-cycles)
