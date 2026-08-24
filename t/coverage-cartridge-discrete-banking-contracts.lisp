@@ -23,4 +23,19 @@
       (expect (cartridge-read-prg mapper-34 #x8000) :to-be 4)
       (expect (cartridge-read-prg nrom-368 #x4800) :to-be 0)
       (expect (cartridge-read-prg nrom-368 #x8000) :to-be 2)
-      (expect (cartridge-read-prg nrom-368 #xFFFF) :to-be 5))))
+      (expect (cartridge-read-prg nrom-368 #xFFFF) :to-be 5)))
+
+  (it "covers mapper 66, 71, and 87 discrete banking"
+    (with-patterned-cartridges ((mapper-66 :mapper 66 :prg-banks 16 :chr-banks 32)
+                                (mapper-71 :mapper 71 :prg-banks 8 :chr-banks 8)
+                                (mapper-87 :mapper 87 :prg-banks 4 :chr-banks 16
+                                            :prg-ram-size 0))
+      (cartridge-write-prg! mapper-66 #x8000 #x13)
+      (expect (cartridge-read-prg mapper-66 #x8000) :to-be 4)
+      (expect (cartridge-read-chr mapper-66 0) :to-be 24)
+      (cartridge-write-prg! mapper-71 #x8000 2)
+      (expect (cartridge-read-prg mapper-71 #x8000) :to-be 4)
+      (expect (cartridge-read-prg mapper-71 #xC000) :to-be 6)
+      (cartridge-write-prg-ram! mapper-87 #x6000 1)
+      (expect (cartridge-read-chr mapper-87 0) :to-be 8)
+      (expect (cartridge-read-prg-ram mapper-87 #x6000) :to-be nil))))

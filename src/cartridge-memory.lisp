@@ -38,6 +38,9 @@
     ((3 11 28)
      (+ (* (cartridge-chr-bank cartridge) +chr-bank-size+)
         (mod address +chr-bank-size+)))
+    ((66 87)
+     (+ (* (cartridge-chr-bank cartridge) +chr-bank-size+)
+        (mod address +chr-bank-size+)))
     (22
      (let ((slot (floor address +chr-bank-1k-size+)))
        (+ (* (ash (aref (cartridge-mapper-registers cartridge) slot) -1)

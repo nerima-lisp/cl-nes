@@ -4,6 +4,18 @@
   (+ (* (cartridge-prg-bank cartridge) (* 2 +prg-bank-size+))
      (- address #x8000)))
 
+(defun %mapper71-prg-offset (cartridge address)
+  (let* ((bank-count (floor (length (cartridge-prg-rom cartridge))
+                            +prg-bank-size+))
+         (switchable-bank-count (1- bank-count))
+         (offset (- address #x8000)))
+    (if (< offset +prg-bank-size+)
+        (+ (* (mod (cartridge-prg-bank cartridge) switchable-bank-count)
+              +prg-bank-size+)
+           offset)
+        (+ (* switchable-bank-count +prg-bank-size+)
+           (- offset +prg-bank-size+)))))
+
 (defun %mapper22-prg-offset (cartridge address)
   (let* ((bank-count (floor (length (cartridge-prg-rom cartridge))
                             +prg-bank-8k-size+))

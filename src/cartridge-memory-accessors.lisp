@@ -27,7 +27,8 @@
              (+ (* fixed-bank +prg-bank-size+)
                 (- offset +prg-bank-size+)))))
       (4 (%mapper4-prg-offset cartridge address))
-      ((7 11 34) (%banked-32k-prg-offset cartridge address))
+      ((7 11 34 66 87) (%banked-32k-prg-offset cartridge address))
+      (71 (%mapper71-prg-offset cartridge address))
       (9 (%mapper9-prg-offset cartridge address))
       (10 (%mapper10-prg-offset cartridge address))
       (22 (%mapper22-prg-offset cartridge address))
@@ -62,6 +63,23 @@
   (set-cartridge-prg-bank! cartridge (logand value #x03))
   (set-cartridge-chr-bank! cartridge (ldb (byte 4 4) value)))
 
+(defun %write-cartridge-mapper66-prg! (cartridge value)
+  (let ((prg-bank-count (floor (length (cartridge-prg-rom cartridge))
+                               (* 2 +prg-bank-size+)))
+        (chr-bank-count (floor (length (cartridge-chr-rom cartridge))
+                               +chr-bank-size+)))
+    (set-cartridge-prg-bank! cartridge
+                             (mod (ldb (byte 2 4) value) prg-bank-count))
+    (set-cartridge-chr-bank! cartridge
+                             (mod (logand value #x03) chr-bank-count))))
+
+(defun %write-cartridge-mapper71-prg! (cartridge value)
+  (let ((switchable-bank-count
+          (1- (floor (length (cartridge-prg-rom cartridge))
+                     +prg-bank-size+))))
+    (set-cartridge-prg-bank! cartridge
+                             (mod value switchable-bank-count))))
+
 (defun %cartridge-prg-ram-offset (cartridge address)
   (case (cartridge-mapper cartridge)
     (4 (and (cartridge-mapper4-prg-ram-enabled-p cartridge)
@@ -95,6 +113,8 @@
       (5 (%mapper5-write-mapped-prg! cartridge address value))
       (7 (%write-cartridge-mapper7-prg! cartridge value))
       (11 (%write-cartridge-mapper11-prg! cartridge value))
+      (66 (%write-cartridge-mapper66-prg! cartridge value))
+      (71 (%write-cartridge-mapper71-prg! cartridge value))
       (22 (%mapper22-write! cartridge address value))
       (28 (%mapper28-write! cartridge address value))
       ((9 10) (%mapper9-10-write! cartridge address value))
@@ -102,7 +122,8 @@
   value)
 
 (defun cartridge-read-prg-ram (cartridge address)
-  (when (and (<= #x6000 address #x7FFF)
+  (when (and (not (= (cartridge-mapper cartridge) 87))
+             (<= #x6000 address #x7FFF)
              (plusp (length (cartridge-prg-ram cartridge))))
     (let ((offset (%cartridge-prg-ram-offset cartridge address)))
       (when offset
@@ -110,14 +131,22 @@
               (mod offset (length (cartridge-prg-ram cartridge))))))))
 
 (defun cartridge-write-prg-ram! (cartridge address value)
-  (when (and (<= #x6000 address #x7FFF)
-             (plusp (length (cartridge-prg-ram cartridge)))
-             (%cartridge-prg-ram-writable-p cartridge))
-    (let ((offset (%cartridge-prg-ram-offset cartridge address)))
-      (when offset
-        (setf (aref (cartridge-prg-ram cartridge)
-                    (mod offset (length (cartridge-prg-ram cartridge))))
-              (logand value #xFF)))))
+  (let ((mapper (cartridge-mapper cartridge)))
+    (when (and (= mapper 87)
+               (<= #x6000 address #x7FFF))
+      (let ((chr-bank-count (floor (length (cartridge-chr-rom cartridge))
+                                   +chr-bank-size+)))
+        (set-cartridge-chr-bank! cartridge
+                                 (mod (logand value #x03) chr-bank-count))))
+    (when (and (not (= mapper 87))
+               (<= #x6000 address #x7FFF)
+               (plusp (length (cartridge-prg-ram cartridge)))
+               (%cartridge-prg-ram-writable-p cartridge))
+      (let ((offset (%cartridge-prg-ram-offset cartridge address)))
+        (when offset
+          (setf (aref (cartridge-prg-ram cartridge)
+                      (mod offset (length (cartridge-prg-ram cartridge))))
+                (logand value #xFF))))))
   value)
 
 (defun cartridge-read-chr (cartridge address &optional (sprite-p t))
