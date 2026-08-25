@@ -30,6 +30,25 @@ The controller strobe and serial reads are driven through bus writes and reads
 at the normal controller addresses. The first eight reads return the latched
 button bits; subsequent reads return the controller's post-shift value.
 
+## Drive controller input at frame boundaries
+
+The `:input-continuation` keyword of `nes-run-frame/k` and `nes-run-frames/k`
+is called once per frame, before that frame's first CPU step, with the nes
+instance:
+
+~~~lisp
+(cl-nes:nes-run-frames/k
+ nes 60
+ (lambda (framebuffer)
+   (write-frame-to-your-backend framebuffer))
+ :input-continuation
+ (lambda (nes)
+   (cl-nes:controller-set-buttons! controller-1 (next-input-frame))))
+~~~
+
+This lets a caller update live controller state each frame during a headless
+run, without stepping the CPU manually between frames.
+
 ## Connect DMC memory reads
 
 An APU that is not connected through make-bus can receive a reader directly:

@@ -44,6 +44,9 @@ The continuation passed to nes-step/k receives the final CPU-cycle count after
 DMA and interrupt clocks. The continuation passed to nes-run-frame/k receives
 the PPU framebuffer. The optional :cycle-hook keyword on these functions is
 called once after each elapsed CPU cycle, including DMA and interrupt clocks.
+The optional :input-continuation keyword on nes-run-frame/k is called once
+with the nes instance before the frame's first CPU step, letting a caller
+update controller state at the frame boundary.
 
 ## CPU and bus
 
@@ -111,7 +114,9 @@ corresponding DMA stall and transfer.
 
 nes-run-frames/k calls its frame continuation once per completed frame. Its
 optional :sample-continuation receives unsigned 8-bit samples scheduled from
-the same CPU-cycle clock; :sample-rate selects the requested output rate.
+the same CPU-cycle clock; :sample-rate selects the requested output rate. Its
+optional :input-continuation is forwarded to nes-run-frame/k and called once
+per frame before that frame's first CPU step.
 
 ## Controllers
 
