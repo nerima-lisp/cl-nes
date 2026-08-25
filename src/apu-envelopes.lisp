@@ -53,7 +53,7 @@
         (divider (apu-pulse-sweep-divider pulse)))
     (when (and (apu-pulse-sweep-enabled-p pulse)
                (plusp (apu-pulse-sweep-shift pulse))
-               (plusp divider))
+               (zerop divider))
       (let ((target (%apu-pulse-sweep-target pulse first-p)))
         (when (and (<= 0 target) (<= target #x7FF))
           (setf (apu-pulse-timer-period pulse) target))))

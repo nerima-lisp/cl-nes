@@ -40,10 +40,18 @@
             (cl-nes::apu-pulse-sweep-enabled-p pulse) t
             (cl-nes::apu-pulse-sweep-shift pulse) 1
             (cl-nes::apu-pulse-sweep-period pulse) 2
-            (cl-nes::apu-pulse-sweep-divider pulse) 1
+            (cl-nes::apu-pulse-sweep-divider pulse) 0
             (cl-nes::apu-pulse-sweep-reload-p pulse) nil)
       (cl-nes::%apu-clock-sweep! pulse t)
       (expect (cl-nes::apu-pulse-timer-period pulse) :to-be 24)
+      (setf (cl-nes::apu-pulse-timer-period pulse) 16
+            (cl-nes::apu-pulse-sweep-divider pulse) 1)
+      (cl-nes::%apu-clock-sweep! pulse t)
+      (expect (cl-nes::apu-pulse-timer-period pulse) :to-be 16)
+      (expect (cl-nes::apu-pulse-sweep-divider pulse) :to-be 0)
+      (cl-nes::%apu-clock-sweep! pulse t)
+      (expect (cl-nes::apu-pulse-timer-period pulse) :to-be 24)
+      (expect (cl-nes::apu-pulse-sweep-divider pulse) :to-be 2)
       (setf (cl-nes::apu-pulse-sweep-reload-p pulse) t
             (cl-nes::apu-pulse-sweep-divider pulse) 0)
       (cl-nes::%apu-clock-sweep! pulse nil)

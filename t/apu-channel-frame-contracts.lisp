@@ -13,25 +13,25 @@
         :sweep-period 1
         :timer-period 16
         :sweep-negate-p t)
-      (setf (cl-nes::apu-pulse-sweep-divider pulse) 1)
+      (setf (cl-nes::apu-pulse-sweep-divider pulse) 0)
       (cl-nes::%apu-clock-sweep! pulse t)
       (expect (cl-nes::apu-pulse-timer-period pulse) :to-be 7)
       (seed-apu-pulse-channel! pulse
         :sweep-negate-p nil
         :timer-period 16)
-      (setf (cl-nes::apu-pulse-sweep-divider pulse) 1)
+      (setf (cl-nes::apu-pulse-sweep-divider pulse) 0)
       (cl-nes::%apu-clock-sweep! pulse nil)
       (expect (cl-nes::apu-pulse-timer-period pulse) :to-be 24)
       (seed-apu-pulse-channel! pulse
         :sweep-negate-p t
         :timer-period 0)
-      (setf (cl-nes::apu-pulse-sweep-divider pulse) 1)
+      (setf (cl-nes::apu-pulse-sweep-divider pulse) 0)
       (cl-nes::%apu-clock-sweep! pulse t)
       (expect (cl-nes::apu-pulse-timer-period pulse) :to-be 0)
       (seed-apu-pulse-channel! pulse
         :sweep-negate-p nil
         :timer-period #x7FF)
-      (setf (cl-nes::apu-pulse-sweep-divider pulse) 1)
+      (setf (cl-nes::apu-pulse-sweep-divider pulse) 0)
       (cl-nes::%apu-clock-sweep! pulse nil)
       (expect (cl-nes::apu-pulse-timer-period pulse) :to-be #x7FF)))
 
