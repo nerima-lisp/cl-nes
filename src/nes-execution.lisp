@@ -102,9 +102,19 @@ continuation's result."
             (decf (cpu-irq-delay cpu)))
           (funcall continuation cycles))))))
 
-(defun nes-run-frame/k (nes continuation &key cycle-hook)
-  "Run until a frame is ready and pass its framebuffer to CONTINUATION."
+(defun nes-run-frame/k (nes continuation &key cycle-hook input-continuation)
+  "Run until a frame is ready and pass its framebuffer to CONTINUATION.
+
+CYCLE-HOOK, when supplied, is forwarded to NES-STEP/K for every CPU cycle.
+INPUT-CONTINUATION, when supplied, is called once with NES before the frame's
+first CPU step, allowing live controller state to be updated at a frame
+boundary."
+  (when input-continuation
+    (unless (functionp input-continuation)
+      (error "Input continuation must be a function: ~S" input-continuation)))
   (setf (ppu-frame-ready-p (nes-ppu nes)) nil)
+  (when input-continuation
+    (funcall input-continuation nes))
   (loop until (ppu-frame-ready-p (nes-ppu nes))
         do (nes-step/k nes #'identity :cycle-hook cycle-hook))
   (funcall continuation (ppu-framebuffer (nes-ppu nes))))

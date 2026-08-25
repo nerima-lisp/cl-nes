@@ -34,4 +34,40 @@
                (setf continuation-cycles cycles)
                :continued)))
       (expect continuation-cycles :to-be 2)
-      (expect continuation-result :to-be :continued))))
+      (expect continuation-result :to-be :continued)))
+
+  (it "invokes input-continuation once before the frame's first step"
+    (let* ((controller-1 (make-controller))
+           (controller-2 (make-controller))
+           (cartridge (make-fixture-cartridge :program '(#xEA)))
+           (nes (make-nes :cartridge cartridge
+                          :controller-1 controller-1
+                          :controller-2 controller-2))
+           (input-calls 0)
+           (frame-calls 0))
+      (nes-run-frame/k
+       nes
+       (lambda (framebuffer)
+         (incf frame-calls)
+         (length framebuffer))
+       :input-continuation
+       (lambda (current)
+         (incf input-calls)
+         (expect current :to-be nes)
+         (controller-set-buttons! controller-1 (logior +button-a+ +button-start+))
+         (controller-set-buttons! controller-2 +button-right+)))
+      (expect input-calls :to-be 1)
+      (expect frame-calls :to-be 1)
+      (expect (controller-buttons controller-1)
+              :to-be (logior +button-a+ +button-start+))
+      (expect (controller-buttons controller-2) :to-be +button-right+)))
+
+  (it "rejects a non-function input-continuation"
+    (let* ((cartridge (make-fixture-cartridge :program '(#xEA)))
+           (nes (make-nes :cartridge cartridge))
+           (condition
+             (captured-condition
+              (lambda ()
+                (nes-run-frame/k nes #'identity
+                                 :input-continuation :not-a-function)))))
+      (expect (typep condition 'error) :to-be t))))

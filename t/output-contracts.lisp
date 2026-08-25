@@ -74,4 +74,20 @@
       (expect frames :to-be 1)
       (expect (plusp (length samples)) :to-be t)
       (expect (every (lambda (sample) (<= 0 sample 255)) samples)
-              :to-be t))))
+              :to-be t)))
+  (it "forwards input-continuation to each frame's execution"
+    (let* ((controller-1 (make-controller))
+           (nes (make-nes :cartridge (make-fixture-cartridge)
+                          :controller-1 controller-1))
+           (input-calls 0))
+      (expect (nes-run-frames/k
+               nes 3
+               (lambda (framebuffer) (declare (ignore framebuffer)) nil)
+               :input-continuation
+               (lambda (current)
+                 (incf input-calls)
+                 (controller-set-buttons! controller-1 +button-a+)
+                 (expect current :to-be nes)))
+              :to-be nes)
+      (expect input-calls :to-be 3)
+      (expect (controller-buttons controller-1) :to-be +button-a+))))

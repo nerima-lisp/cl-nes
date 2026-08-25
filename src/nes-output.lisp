@@ -128,12 +128,15 @@ PALETTE is a sequence of 192 RGB values for the 64 NES palette entries."
 (defun nes-run-frames/k
     (nes frame-count frame-continuation
      &key (sample-rate +nes-default-audio-sample-rate+)
-          sample-continuation)
+          sample-continuation input-continuation)
   "Run FRAME-COUNT frames and call FRAME-CONTINUATION for each framebuffer.
 
 When SAMPLE-CONTINUATION is supplied, it receives unsigned 8-bit mixer samples
 at SAMPLE-RATE.  Sampling is driven by the same CPU-cycle clock as the PPU,
-APU, DMA, and interrupt paths.  The function returns NES."
+APU, DMA, and interrupt paths.  INPUT-CONTINUATION, when supplied, is
+forwarded to NES-RUN-FRAME/K and called once per frame before its first CPU
+step, allowing live controller state to be updated at each frame boundary.
+The function returns NES."
   (%nes-check-positive-integer frame-count "Frame count")
   (%nes-check-positive-integer sample-rate "Sample rate")
   (unless (functionp frame-continuation)
@@ -142,6 +145,9 @@ APU, DMA, and interrupt paths.  The function returns NES."
     (unless (functionp sample-continuation)
       (error "Sample continuation must be a function: ~S"
              sample-continuation)))
+  (when input-continuation
+    (unless (functionp input-continuation)
+      (error "Input continuation must be a function: ~S" input-continuation)))
   (let ((sample-phase 0))
     (labels ((sample-cycle ()
                (when sample-continuation
@@ -152,4 +158,5 @@ APU, DMA, and interrupt paths.  The function returns NES."
                                    (apu-sample (nes-apu nes)))))))
       (dotimes (frame frame-count nes)
         (nes-run-frame/k nes frame-continuation
-                         :cycle-hook #'sample-cycle)))))
+                         :cycle-hook #'sample-cycle
+                         :input-continuation input-continuation)))))
