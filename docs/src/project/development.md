@@ -37,6 +37,12 @@ reachable from `main` is redundant and can be removed after the reference
 check; a dirty worktree stays in place until its changes have been assigned to
 an owner and split into explicit commits.
 
+In the bare-repository layout, inspect branches with `git -C <repository>
+...` and inspect a worktree with `git -C <worktree> ...`; running `git status`
+from the `.worktrees` container itself does not address a worktree. Integrate
+each completed unit into `main`, re-check reachability, and only then remove
+that unit's worktree.
+
 After a unit is integrated, verify that its commit is reachable from `main`
 before deleting the completed worktree or branch. Scratch probes and generated
 artifacts should be removed once their result has been recorded, while
