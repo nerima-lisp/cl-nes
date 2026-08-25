@@ -1,13 +1,5 @@
 (in-package #:cl-nes)
 
-(defun %read-rom-file (pathname)
-  (with-open-file (stream pathname :direction :input
-                                  :element-type '(unsigned-byte 8))
-    (let ((result (make-array (file-length stream)
-                              :element-type '(unsigned-byte 8))))
-      (read-sequence result stream)
-      result)))
-
 (defun %valid-ines-header-p (octets)
   (and (>= (length octets) +ines-header-size+)
        (= (aref octets 0) #x4E)
@@ -29,7 +21,7 @@
 (defun load-cartridge (source &key (mapper4-variant :mmc3))
   (let ((octets (cond
                   ((or (stringp source) (pathnamep source))
-                   (%read-rom-file source))
+                   (read-file-octets source))
                   ((vectorp source) (%octet-vector source))
                   (t (%ines-error "Expected a pathname or octet vector")))))
     (unless (%valid-ines-header-p octets)

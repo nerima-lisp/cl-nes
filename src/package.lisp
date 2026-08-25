@@ -2,6 +2,8 @@
 
 (defpackage #:cl-nes
   (:use #:cl)
+  (:import-from #:host-kit
+                #:read-file-octets)
   (:export
    ;; Errors
    #:nes-error

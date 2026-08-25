@@ -1,119 +1,149 @@
 {
-  description = "A production-oriented, headless Nintendo Entertainment System core in Common Lisp.";
+  description = "A headless Nintendo Entertainment System core in Common Lisp.";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+
+    # The org flake preset. This one `mkPackageFlake` call generates the
+    # entire required-output table (packages, checks.default,
+    # checks.formatting, checks.docs, apps.test, apps.default, devShells,
+    # formatter, overlays.default) so none of it drifts from the other
+    # nerima-lisp repositories. See PACKAGE_STANDARD.md, "flake.nix の書き方".
+    cl-nix-forge = {
+      url = "github:nerima-lisp/cl-nix-forge/v0.5.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # Test-only (L0): only cl-nes/test loads it. Pulled through
+    # lispCheckDependencies below, never lispDependencies.
     cl-weave = {
       url = "github:nerima-lisp/cl-weave/v1.3.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    # Runtime dependency (L1, depth 0): cartridge ROM file reads
+    # (host-kit:read-file-octets). See cl-nes.asd's :depends-on comment and
+    # DEPENDENCY_POLICY.md's 3-checkpoint record for why this repository no
+    # longer claims to be dependency-free.
+    cl-host-kit = {
+      url = "github:nerima-lisp/cl-host-kit/v0.3.1";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    # Dev-time only (outside the dependency layers entirely): structural
+    # refactoring input for `paredit inspect check`, never linked into the
+    # Lisp image.
     paredit-cli = {
       url = "github:nerima-lisp/paredit-cli/v1.6.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    treefmt-nix = {
+      url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
   outputs =
     {
+      self,
       nixpkgs,
+      cl-nix-forge,
       cl-weave,
+      cl-host-kit,
       paredit-cli,
+      treefmt-nix,
       ...
     }:
     let
+      # x86_64-linux is what CI would gate; aarch64-darwin is the
+      # development machine this repository is actually built on today.
+      # cl-host-kit's own flake.nix (the immediately adjacent, most
+      # recently migrated sibling) reverted a Linux-only `systems` the day
+      # after trying it, for exactly this reason -- see its flake.nix
+      # comment. aarch64-linux is neither, so it is left out; it was never
+      # covered by this repository's own former three-system list in any
+      # way this project's tooling could verify.
       systems = [
-        "aarch64-darwin"
-        "aarch64-linux"
         "x86_64-linux"
+        "aarch64-darwin"
       ];
-      forAllSystems = nixpkgs.lib.genAttrs systems;
-      checkTimeout = "120s";
-    in
-    {
-      devShells = forAllSystems (
-        system:
-        let
-          pkgs = import nixpkgs { inherit system; };
-          docs = pkgs.python3.withPackages (
-            pythonPackages: with pythonPackages; [
-              mkdocs
-              mkdocs-material
-              pymdown-extensions
-            ]
-          );
-        in
-        {
-          default = pkgs.mkShell {
-            packages = [
-              pkgs.sbcl
-              pkgs.coreutils
-              pkgs.jq
-              pkgs.perl
-              docs
-            ]
-            ++
-              pkgs.lib.optional (builtins.hasAttr system paredit-cli.packages)
-                paredit-cli.packages.${system}.default;
-            shellHook = ''
-              export CL_SOURCE_REGISTRY="(:source-registry (:tree \"$PWD\") (:tree \"${cl-weave.outPath}\") :ignore-inherited-configuration)"
-            '';
-          };
-        }
-      );
 
-      checks = forAllSystems (
-        system:
+      testTimeoutSeconds = 300;
+      benchmarkTimeoutSeconds = 120;
+      timeoutGraceSeconds = 15;
+    in
+    cl-nix-forge.lib.${builtins.head systems}.mkPackageFlake {
+      inherit self systems nixpkgs;
+
+      pname = "cl-nes";
+      asd = ./cl-nes.asd;
+      root = ./.;
+
+      meta = {
+        description = "A headless Nintendo Entertainment System core in Common Lisp.";
+        homepage = "https://github.com/nerima-lisp/cl-nes";
+        license = nixpkgs.lib.licenses.mit;
+        platforms = nixpkgs.lib.platforms.unix;
+      };
+
+      lispDependencies = ctx: [ cl-host-kit.packages.${ctx.system}.cl-host-kit ];
+      lispCheckDependencies = ctx: [ cl-weave.packages.${ctx.system}.cl-weave ];
+
+      runner = "run-tests.lisp";
+      timeoutSeconds = testTimeoutSeconds;
+      killAfterSeconds = timeoutGraceSeconds;
+
+      docs.root = ./docs;
+
+      treefmt.evalModule = treefmt-nix.lib.evalModule;
+
+      extraOutputs =
+        ctx:
         let
-          pkgs = import nixpkgs { inherit system; };
-          docs = pkgs.python3.withPackages (
-            pythonPackages: with pythonPackages; [
-              mkdocs
-              mkdocs-material
-              pymdown-extensions
-            ]
-          );
+          pkgs = ctx.pkgs;
+          paredit = paredit-cli.packages.${ctx.system}.default or null;
         in
         {
-          cl-nes =
-            pkgs.runCommand "cl-nes-checks"
-              {
-                nativeBuildInputs = [
-                  pkgs.sbcl
-                  pkgs.coreutils
-                  docs
-                ]
-                ++
-                  pkgs.lib.optional (builtins.hasAttr system paredit-cli.packages)
-                    paredit-cli.packages.${system}.default;
-                src = ./.;
-              }
-              ''
-                set -eu
-                cp -r "$src" project
-                chmod -R u+w project
-                export HOME="$TMPDIR/home"
-                export XDG_CACHE_HOME="$TMPDIR/cache"
-                mkdir -p "$HOME" "$XDG_CACHE_HOME"
-                cd project
-                export CL_SOURCE_REGISTRY="(:source-registry (:tree \"$PWD\") (:tree \"${cl-weave.outPath}\") :ignore-inherited-configuration)"
-                if command -v paredit >/dev/null 2>&1; then
-                  for file in src/*.lisp t/*.lisp run-*.lisp; do
+          checks = {
+            # run-coverage.lisp asserts its own 96%/86% floor and errors
+            # (non-zero exit) below it, so this check needs no separate
+            # threshold script -- unlike cl-host-kit, which scrapes raw
+            # sb-cover HTML because its run-coverage.lisp has no such
+            # in-Lisp gate.
+            coverage = ctx.cl.mkScriptCheck {
+              drv = ctx.package;
+              entryPoint = "run-coverage.lisp";
+              name = "cl-nes-coverage";
+              timeoutSeconds = testTimeoutSeconds;
+              killAfterSeconds = timeoutGraceSeconds;
+            };
+          }
+          // pkgs.lib.optionalAttrs (paredit != null) {
+            paredit =
+              pkgs.runCommand "cl-nes-paredit"
+                {
+                  nativeBuildInputs = [ paredit ];
+                  src = ./.;
+                }
+                ''
+                  cd "$src"
+                  for file in src/*.lisp t/*.lisp run-*.lisp benchmark/*.lisp; do
                     paredit inspect check --file "$file" --timeout-ms 30000
                   done
-                else
-                  echo "warning: paredit-cli is unavailable for ${system}; syntax check skipped" >&2
-                fi
-                ${pkgs.coreutils}/bin/timeout --signal=TERM --kill-after=10s ${checkTimeout} ${pkgs.sbcl}/bin/sbcl --noinform --non-interactive --eval '(require :asdf)' --load cl-nes.asd --eval '(asdf:compile-system "cl-nes" :force t)' --quit
-                ${pkgs.coreutils}/bin/timeout --signal=TERM --kill-after=10s ${checkTimeout} ${pkgs.sbcl}/bin/sbcl --noinform --non-interactive --load run-tests.lisp --quit
-                ${pkgs.coreutils}/bin/timeout --signal=TERM --kill-after=10s ${checkTimeout} ${pkgs.sbcl}/bin/sbcl --noinform --non-interactive --load run-coverage.lisp --quit
-                ${pkgs.coreutils}/bin/timeout --signal=TERM --kill-after=10s ${checkTimeout} mkdocs build --strict --config-file docs/mkdocs.yml --site-dir "$TMPDIR/site"
-                mkdir -p "$out/coverage"
-                cp coverage/coverage-summary.txt "$out/coverage/"
-                cp -r coverage/html "$out/coverage/"
-              '';
-        }
-      );
+                  touch "$out"
+                '';
+          };
 
-      formatter = forAllSystems (system: (import nixpkgs { inherit system; }).nixfmt);
+          apps.bench = ctx.cl.mkTestApp {
+            pname = "cl-nes-bench";
+            runner = "benchmark/run-benchmarks.lisp";
+            timeoutSeconds = benchmarkTimeoutSeconds;
+            killAfterSeconds = timeoutGraceSeconds;
+            src = ctx.src;
+            lisp = ctx.lispDerivationArgs.lisp;
+            lispDependencies = ctx.lispDerivationArgs.lispDependencies;
+          };
+        };
     };
 }

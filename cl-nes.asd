@@ -1,73 +1,94 @@
+;;; This form comes first, before any defsystem. ASDF binds *package* to
+;;; ASDF-USER only for a file it loads itself; read any other way -- a REPL
+;;; `load`, an editor evaluating the buffer, flake.nix parsing :version -- the
+;;; file is read in whatever package happens to be current.
 (in-package #:asdf-user)
 
 (defsystem "cl-nes"
   :description "A headless Nintendo Entertainment System core."
+  :long-description "A headless, cycle-driven Nintendo Entertainment System
+core supporting iNES cartridges, the supported subset of NES 2.0, mappers 0,
+1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28, and 34, and headless CPU, PPU,
+controller, and APU execution. Its only runtime dependency is the
+nerima-lisp cl-host-kit toolkit, used for cartridge ROM file reads."
   :author "nerima-lisp"
+  :maintainer "nerima-lisp"
   :license "MIT"
   :version "0.1.1"
   :homepage "https://github.com/nerima-lisp/cl-nes"
+  :bug-tracker "https://github.com/nerima-lisp/cl-nes/issues"
   :source-control (:git "https://github.com/nerima-lisp/cl-nes.git")
+  ;; cl-host-kit (L1, depth 0): read-file-octets for cartridge ROM loading.
+  :depends-on ("cl-host-kit")
+  :pathname "src"
   :serial t
   :components
-  ((:file "src/package")
-   (:file "src/conditions")
-   (:file "src/macros")
-   (:file "src/apu-data")
-   (:file "src/apu-state")
-   (:file "src/apu-construction")
-   (:file "src/cartridge-state")
-   (:file "src/cartridge-state-constructors")
-   (:file "src/cartridge-state-forwarders")
-   (:file "src/cartridge-validation")
-   (:file "src/cartridge-data")
-   (:file "src/cartridge-reset")
-   (:file "src/cartridge-format")
-   (:file "src/cartridge-mapper1")
-   (:file "src/cartridge-mapper22-28")
-   (:file "src/cartridge-mapper4")
-   (:file "src/cartridge-mapper4-control")
-   (:file "src/cartridge-mapper5")
-   (:file "src/cartridge-mapper5-expansion")
-   (:file "src/cartridge-mapper9-10")
-   (:file "src/cartridge-memory")
-   (:file "src/cartridge-memory-accessors")
-   (:file "src/cartridge-memory-bus")
-   (:file "src/controller-state")
-   (:file "src/controller")
-   (:file "src/apu")
-   (:file "src/apu-lifecycle")
-   (:file "src/apu-envelopes")
-   (:file "src/apu-timers")
-   (:file "src/apu-frame")
-   (:file "src/apu-timing")
-   (:file "src/apu-status")
-   (:file "src/apu-registers")
-   (:file "src/apu-output")
-   (:file "src/ppu-state")
-   (:file "src/ppu")
-   (:file "src/ppu-memory")
-   (:file "src/ppu-registers")
-   (:file "src/ppu-rendering")
-   (:file "src/ppu-timing")
-   (:file "src/bus-state")
-   (:file "src/bus")
-   (:file "src/cpu-state")
-   (:file "src/cpu")
-   (:file "src/cpu-addressing")
-   (:file "src/cpu-alu")
-   (:file "src/cpu-control")
-   (:file "src/cpu-opcodes-00-7f")
-   (:file "src/cpu-opcodes-80-ff")
-   (:file "src/cpu-instructions")
-   (:file "src/nes-state")
-   (:file "src/nes")
-   (:file "src/nes-timing")
-   (:file "src/nes-execution")
-   (:file "src/nes-output"))
+  ((:file "package")
+   (:file "conditions")
+   (:file "macros")
+   (:file "apu-data")
+   (:file "apu-state")
+   (:file "apu-construction")
+   (:file "cartridge-state")
+   (:file "cartridge-state-constructors")
+   (:file "cartridge-state-forwarders")
+   (:file "cartridge-validation")
+   (:file "cartridge-data")
+   (:file "cartridge-reset")
+   (:file "cartridge-format")
+   (:file "cartridge-mapper1")
+   (:file "cartridge-mapper22-28")
+   (:file "cartridge-mapper4")
+   (:file "cartridge-mapper4-control")
+   (:file "cartridge-mapper5")
+   (:file "cartridge-mapper5-expansion")
+   (:file "cartridge-mapper9-10")
+   (:file "cartridge-memory")
+   (:file "cartridge-memory-accessors")
+   (:file "cartridge-memory-bus")
+   (:file "controller-state")
+   (:file "controller")
+   (:file "apu")
+   (:file "apu-lifecycle")
+   (:file "apu-envelopes")
+   (:file "apu-timers")
+   (:file "apu-frame")
+   (:file "apu-timing")
+   (:file "apu-status")
+   (:file "apu-registers")
+   (:file "apu-output")
+   (:file "ppu-state")
+   (:file "ppu")
+   (:file "ppu-memory")
+   (:file "ppu-registers")
+   (:file "ppu-rendering")
+   (:file "ppu-timing")
+   (:file "bus-state")
+   (:file "bus")
+   (:file "cpu-state")
+   (:file "cpu")
+   (:file "cpu-addressing")
+   (:file "cpu-alu")
+   (:file "cpu-control")
+   (:file "cpu-opcodes-00-7f")
+   (:file "cpu-opcodes-80-ff")
+   (:file "cpu-instructions")
+   (:file "nes-state")
+   (:file "nes")
+   (:file "nes-timing")
+   (:file "nes-execution")
+   (:file "nes-output"))
   :in-order-to ((test-op (test-op "cl-nes/test"))))
 
 (defsystem "cl-nes/test"
   :description "cl-nes tests driven by cl-weave."
+  :author "nerima-lisp"
+  :maintainer "nerima-lisp"
+  :license "MIT"
+  :version "0.1.1"
+  :homepage "https://github.com/nerima-lisp/cl-nes"
+  :bug-tracker "https://github.com/nerima-lisp/cl-nes/issues"
+  :source-control (:git "https://github.com/nerima-lisp/cl-nes.git")
   :depends-on ("cl-nes" "cl-weave")
   :pathname "t"
   :serial t
@@ -177,3 +198,20 @@
                               :reporter :spec
                               :pass-with-no-tests nil)
       (error "cl-nes cl-weave test suite failed."))))
+
+;;; Third system, per PERFORMANCE_STANDARD.md: benchmarks are not folded into
+;;; cl-nes/test. run-benchmarks.lisp is the entry point `apps.bench` in
+;;; flake.nix drives.
+(defsystem "cl-nes/benchmark"
+  :description "Benchmarks for cl-nes."
+  :author "nerima-lisp"
+  :maintainer "nerima-lisp"
+  :license "MIT"
+  :version "0.1.1"
+  :homepage "https://github.com/nerima-lisp/cl-nes"
+  :bug-tracker "https://github.com/nerima-lisp/cl-nes/issues"
+  :source-control (:git "https://github.com/nerima-lisp/cl-nes.git")
+  :depends-on ("cl-nes")
+  :pathname "benchmark"
+  :serial t
+  :components ((:file "run-benchmarks")))

@@ -93,3 +93,39 @@ SLOTS is a list of (slot-name initform accessor-name) triples."
                           ,@(mapcan #'constructor-initarg slots)))
          (defun ,predicate-name (object)
            (typep object ',name))))))
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun %expand-cpu-opcode-clause (cpu bus clause)
+    (let ((tag (first clause))
+          (rest (rest clause)))
+      (case tag
+        (:read
+         (destructuring-bind (opcodes mode operation page-cycle-p) rest
+           `(,opcodes (%read-op! ,cpu ,bus ,mode ,operation ,page-cycle-p))))
+        (:write
+         (destructuring-bind (opcodes mode value-form) rest
+           `(,opcodes (%write-op! ,cpu ,bus ,mode ,value-form))))
+        (:rmw
+         (destructuring-bind (opcodes mode operation cycles) rest
+           `(,opcodes (%rmw-op! ,cpu ,bus ,mode ,operation ,cycles))))
+        (:nop
+         (destructuring-bind (opcodes mode cycles) rest
+           `(,opcodes (%nop-op! ,cpu ,bus ,mode ,cycles))))
+        (:branch
+         (destructuring-bind (opcode condition-form) rest
+           `(,opcode (%branch! ,cpu ,bus ,condition-form))))
+        (otherwise clause)))))
+
+(defmacro define-cpu-opcodes ((cpu bus opcode) &body clauses)
+  "Expand CLAUSES, a declarative 6502 opcode table, into a CASE dispatch on
+OPCODE.
+
+Each clause is either a tagged table row -- :READ, :WRITE, :RMW, :NOP, or
+:BRANCH, naming the addressing mode and operation -- or a literal CASE
+clause for an opcode whose real-hardware behavior (stack frames, dummy
+reads, interrupt-flag delay) does not reduce to an addressing-mode table.
+Keeping the table declarative lets it be read, and audited against a 6502
+reference, as data rather than as control flow."
+  `(case ,opcode
+     ,@(mapcar (lambda (clause) (%expand-cpu-opcode-clause cpu bus clause))
+               clauses)))
