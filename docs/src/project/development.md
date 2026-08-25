@@ -46,13 +46,15 @@ integrated `main` tree so cleanup does not hide an unverified change.
 
 ## Dependency policy
 
-The emulator runtime remains dependency-free: its deterministic device model
-does not need transport, retry, logging, or boundary adapters. [cl-weave](https://github.com/nerima-lisp/cl-weave)
-is test-only and provides the regression, property, and state-machine
-contracts; [paredit-cli](https://github.com/nerima-lisp/paredit-cli) is a
-development tool for structure-aware Lisp editing. Keeping those concerns
-outside the runtime preserves direct data and logic paths, so unrelated
-organization packages are not pulled into the core merely for infrastructure.
+The emulator runtime carries one runtime dependency: [cl-host-kit](https://github.com/nerima-lisp/cl-host-kit)
+supplies `read-file-octets` for cartridge ROM file reads (L1, depth 0).
+[cl-weave](https://github.com/nerima-lisp/cl-weave) is test-only and provides
+the regression, property, and state-machine contracts;
+[paredit-cli](https://github.com/nerima-lisp/paredit-cli) is a dev-time
+structural refactoring tool, never linked into the Lisp image. Keeping those
+concerns outside the runtime preserves direct data and logic paths, so
+unrelated organization packages are not pulled into the core merely for
+infrastructure.
 
 The 2026 refactoring policy is deliberately selective. `defmacro` is used for
 compile-time dispatch and repetitive register/opcode write paths where the
@@ -65,17 +67,20 @@ kept apart from runtime logic, and no compatibility aliases or adapter layer
 are retained for removed APIs.
 
 The organization repository was reviewed for additional dependencies. The
-current pins are the latest release tags: cl-weave v1.3.0 and paredit-cli
-v1.6.0. `cl-process-kit` was not added: it is an SBCL-only process toolkit for
-launchers and test infrastructure, not a dependency of the deterministic,
-dependency-free emulator core. This keeps package selection purposeful rather
-than coupling runtime behavior to unrelated infrastructure.
+current pins are the latest release tags: cl-host-kit v0.3.1, cl-weave
+v1.3.0, and paredit-cli v1.6.0. `cl-process-kit` was not added: it is an
+SBCL-only process toolkit for launchers and test infrastructure, unrelated to
+cartridge ROM reads, the one runtime need this core has. This keeps package
+selection purposeful rather than coupling runtime behavior to unrelated
+infrastructure.
 
-The flake publishes checks and development shells for aarch64-darwin,
-aarch64-linux, and x86_64-linux. x86_64-darwin is not declared because the
-pinned nixpkgs release no longer supports that platform.
-The pinned paredit-cli package is included on systems where its v1.6.0 flake
-publishes a package; its current upstream output omits aarch64-linux.
+The flake, migrated to the [cl-nix-forge](https://github.com/nerima-lisp/cl-nix-forge)
+`mkPackageFlake` preset, publishes checks, development shells, and a
+benchmark app for x86_64-linux and aarch64-darwin: x86_64-linux is what CI
+would gate, aarch64-darwin is the development machine this repository is
+actually built on today. aarch64-linux and x86_64-darwin are left out;
+neither was covered by this repository's own tooling in a way it could
+verify.
 
 ## Verification
 
@@ -92,6 +97,13 @@ Run coverage separately when its generated report is needed:
 
 ~~~sh
 sbcl --noinform --non-interactive --load run-coverage.lisp --quit
+~~~
+
+Run the benchmark suite (warmed samples, median/min/max, GC outside the
+measured region) with:
+
+~~~sh
+nix run .#bench
 ~~~
 
 Focused cl-weave runs use the same launcher and optional environment
