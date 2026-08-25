@@ -1,9 +1,10 @@
 # cl-nes
 
 cl-nes is a headless Nintendo Entertainment System core written in Common
-Lisp. It has no third-party runtime dependency and supports iNES cartridges,
-the supported subset of NES 2.0, mappers 0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22,
-28, 34, 66, 71, and 87, and headless CPU, PPU, controller, and APU execution.
+Lisp. Its only runtime dependency is [cl-host-kit](https://github.com/nerima-lisp/cl-host-kit),
+used for cartridge ROM file reads. It supports iNES cartridges, the
+supported subset of NES 2.0, mappers 0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28,
+34, 66, 71, and 87, and headless CPU, PPU, controller, and APU execution.
 
 ## Quick Start
 
@@ -84,8 +85,9 @@ form.
 manual with strict navigation checks. The long-term coverage target is 100%
 expression and branch coverage.
 
-The flake currently supports aarch64-darwin, aarch64-linux, and x86_64-linux;
-the pinned nixpkgs release no longer supports x86_64-darwin.
+The flake currently supports x86_64-linux and aarch64-darwin. aarch64-linux
+and x86_64-darwin are left out; neither was covered by this repository's own
+tooling in a way it could verify.
 
 run-nes.lisp writes rendered frames as binary PPM images:
 
