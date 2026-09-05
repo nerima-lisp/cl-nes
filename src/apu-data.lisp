@@ -1,9 +1,5 @@
 (in-package #:cl-nes)
 
-;; Immutable APU data is kept separate from state transitions and register
-;; logic.  Keeping these tables in one file makes timing data auditable and
-;; prevents the behavioral code from hiding hardware constants.
-
 (defparameter +apu-length-table+
   #(10 254 20  2 40  4 80  6
     160 8  60 10 14 12 26 14

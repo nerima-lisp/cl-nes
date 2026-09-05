@@ -1,11 +1,5 @@
 (in-package #:cl-nes)
 
-;; The APU is deliberately kept headless.  It implements the CPU-visible
-;; registers, frame sequencer, channel timers, length/envelope state, and a
-;; small integer mixer.  A frontend can sample APU-SAMPLE without requiring a
-;; platform audio library.  Hardware tables live in APU-DATA.LISP and state
-;; types live in APU-STATE.LISP.
-
 (defun apu-set-memory-reader! (apu reader)
   "Set the function used by the DMC to read the CPU address space.
 

@@ -1,8 +1,5 @@
 (in-package #:cl-nes)
 
-;; Channel timers and DMC sample-unit transitions.  These functions are
-;; called by the per-cycle orchestrator in APU-TIMING.LISP.
-
 (defun %apu-clock-pulse-timer! (pulse)
   (if (zerop (apu-pulse-timer pulse))
       (setf (apu-pulse-timer pulse) (apu-pulse-timer-period pulse)
