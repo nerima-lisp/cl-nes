@@ -1,9 +1,5 @@
 (in-package #:cl-nes)
 
-;; Envelope, length-counter, and pulse-sweep transitions.  Frame sequencing
-;; invokes these primitives, while register decoding remains in
-;; APU-REGISTERS.LISP.
-
 (defun %apu-length-value (value)
   (aref +apu-length-table+ (logand (ash value -3) #x1F)))
 

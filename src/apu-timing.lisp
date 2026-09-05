@@ -1,9 +1,5 @@
 (in-package #:cl-nes)
 
-;; One CPU-cycle APU transition.  Channel units, envelopes, DMC, and frame
-;; events live in their focused source components; this function owns only
-;; their execution order and frame-clock arbitration.
-
 (defun apu-tick! (apu cycles)
   (loop repeat (max 0 cycles) do
     (when (plusp (apu-frame-reset-delay apu))

@@ -1,8 +1,5 @@
 (in-package #:cl-nes)
 
-;; Quarter/half-frame clocks and frame-counter event transitions.  The
-;; cycle-level timer loop remains in APU-TIMING.LISP.
-
 (defun %apu-clock-quarter-frame! (apu)
   (%apu-clock-envelope! (apu-pulse-envelope (apu-pulse-1 apu)))
   (%apu-clock-envelope! (apu-pulse-envelope (apu-pulse-2 apu)))

@@ -1,7 +1,5 @@
 (in-package #:cl-nes)
 
-;; APU state is kept separate from timing, register, and mixing behavior.
-
 (defstruct (apu-envelope
              (:constructor %make-apu-envelope))
   (loop-p nil)
