@@ -126,8 +126,8 @@
                 :protocol :blargg :expected 0 :max-frames 360 :state :pass
                 :failure-text "status 0; measured pass")
                (:id "ppu-vbl-08" :path "ppu_vbl_nmi/rom_singles/08-nmi_off_timing.nes"
-                :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
-                :failure-text "status 128; nmi_off_timing failed")
+                :protocol :blargg :expected 0 :max-frames 360 :state :pass
+                :failure-text "status 0; measured pass")
                (:id "ppu-vbl-09" :path "ppu_vbl_nmi/rom_singles/09-even_odd_frames.nes"
                 :protocol :blargg :expected 0 :max-frames 360 :state :pass
                 :failure-text "status 0; measured pass")
