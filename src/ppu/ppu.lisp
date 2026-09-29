@@ -24,6 +24,7 @@ console reset for callers that want to preserve cartridge-backed state."
         (ppu-dot ppu) 0
         (ppu-frame-ready-p ppu) nil
         (ppu-odd-frame-p ppu) nil
+        (ppu-vblank-suppression-p ppu) nil
         (ppu-nmi-pending-p ppu) nil
         (ppu-nmi-delay-p ppu) nil
         (ppu-background-shift-low ppu) 0

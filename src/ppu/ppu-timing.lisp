@@ -1,10 +1,13 @@
 (in-package #:cl-nes)
 
 (defun %start-vblank! (ppu)
-  (setf (ppu-status ppu) (logior (ppu-status ppu) #x80)
-        (ppu-frame-ready-p ppu) t)
-  (when (logbitp 7 (ppu-control ppu))
-    (%request-nmi! ppu)))
+  (if (ppu-vblank-suppression-p ppu)
+      (setf (ppu-vblank-suppression-p ppu) nil)
+      (progn
+        (setf (ppu-status ppu) (logior (ppu-status ppu) #x80)
+              (ppu-frame-ready-p ppu) t)
+        (when (logbitp 7 (ppu-control ppu))
+          (%request-nmi! ppu)))))
 
 (defun %start-frame! (ppu)
   (setf (ppu-status ppu) (logand (ppu-status ppu) #x1F)

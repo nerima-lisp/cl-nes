@@ -1,9 +1,11 @@
 (in-package #:cl-nes)
 
-(defun %nes-clock-cpu-cycle! (nes bus cycle-hook pre-cycle-hook)
+(defun %nes-clock-cpu-cycle! (nes bus cycle-hook pre-cycle-hook
+                              &optional (ppu-ticks 3))
   (when pre-cycle-hook
     (funcall pre-cycle-hook))
-  (%nes-tick! nes 1)
+  (ppu-tick! (nes-ppu nes) ppu-ticks)
+  (apu-tick! (nes-apu nes) 1)
   (let ((cartridge (bus-cartridge bus)))
     (when (and cartridge (cartridge-cpu-clock-required-p cartridge))
       (cartridge-clock-cpu! cartridge 1)))

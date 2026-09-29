@@ -9,7 +9,7 @@
                 (&key cartridge control mask status oam-address oam nametable
                       palette vram-address temporary-address fine-x write-toggle
                       scroll-x scroll-y read-buffer scanline dot frame-ready-p
-                      odd-frame-p nmi-pending-p nmi-delay-p decay-value decay-clock
+                      odd-frame-p vblank-suppression-p nmi-pending-p nmi-delay-p decay-value decay-clock
                       decay-deadlines decay-next-expiry rendering-mask
                       rendering-mask-pending rendering-mask-delay
                       rendering-mask-valid-p framebuffer
@@ -48,6 +48,7 @@
   (dot 0 :type fixnum)
   (frame-ready-p nil)
   (odd-frame-p nil)
+  (vblank-suppression-p nil)
   (nmi-pending-p nil)
   (nmi-delay-p nil)
   (decay-value 0 :type (unsigned-byte 8))

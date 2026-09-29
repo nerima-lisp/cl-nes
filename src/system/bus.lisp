@@ -55,11 +55,20 @@
   (let ((address (logand address #xFFFF)))
     (setf (bus-last-cpu-access-kind bus) :read
           (bus-last-cpu-access-address bus) address)
-    (let ((value (%bus-read-device bus address)))
-      (setf value (logand (or value (bus-open-bus bus)) #xFF)
-            (bus-open-bus bus) value)
-      (%bus-cpu-access! bus)
-      value)))
+    ;; A CPU read observes PPU status late in its cycle.  Advance the PPU to
+    ;; the final two dots before the device read, then charge the last dot in
+    ;; the normal CPU-cycle clock below.
+    (let ((ppu-ticks 3))
+      (when (and (bus-cpu-access-active-p bus)
+                 (< address #x4000)
+                 (= (logand address 7) 2))
+        (ppu-tick! (bus-ppu bus) 2)
+        (setf ppu-ticks 1))
+      (let ((value (%bus-read-device bus address)))
+        (setf value (logand (or value (bus-open-bus bus)) #xFF)
+              (bus-open-bus bus) value)
+        (%bus-cpu-access! bus ppu-ticks)
+        value))))
 
 (defun %perform-oam-dma! (bus page)
   (let ((base (ash (logand page #xFF) 8)))
@@ -113,14 +122,15 @@
     (%bus-cpu-access! bus)
     value))
 
-(defun %bus-cpu-access! (bus)
+(defun %bus-cpu-access! (bus &optional (ppu-ticks 3))
   (if (bus-cpu-access-active-p bus)
       (progn
         (incf (bus-cpu-access-count bus))
         (%nes-clock-cpu-cycle! (bus-cpu-access-nes bus)
                                bus
                                (bus-cpu-access-cycle-hook bus)
-                               (bus-cpu-access-pre-cycle-hook bus)))
+                               (bus-cpu-access-pre-cycle-hook bus)
+                               ppu-ticks))
       (let ((hook (bus-cpu-access-hook bus)))
         (when hook
           (funcall hook)))))

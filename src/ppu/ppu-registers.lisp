@@ -10,6 +10,9 @@
     (prog1 value
       (setf (ppu-status ppu) (logand (ppu-status ppu) #x7F)
             (ppu-write-toggle ppu) nil)
+      (when (and (= (ppu-scanline ppu) 241)
+                 (zerop (ppu-dot ppu)))
+        (setf (ppu-vblank-suppression-p ppu) t))
       (%cancel-nmi-delay! ppu))))
 
 (defun %ppu-read-oam-data-register (ppu bus-access-p)
