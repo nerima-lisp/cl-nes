@@ -43,19 +43,19 @@
       (:id "instr-test-v5-04-zero-page" :path "instr_test-v5/rom_singles/04-zero_page.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; 04-zero_page..Passed")
       (:id "instr-test-v5-05-zp-xy" :path "instr_test-v5/rom_singles/05-zp_xy.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+       :protocol :blargg :expected 0 :max-frames 600 :state :pass :failure-text "status 0; 05-zp_xy..Passed")
       (:id "instr-test-v5-06-absolute" :path "instr_test-v5/rom_singles/06-absolute.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; 06-absolute..Passed")
       (:id "instr-test-v5-07-abs-xy" :path "instr_test-v5/rom_singles/07-abs_xy.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+       :protocol :blargg :expected 0 :max-frames 600 :state :pass :failure-text "status 0; 07-abs_xy..Passed")
       (:id "instr-test-v5-08-ind-x" :path "instr_test-v5/rom_singles/08-ind_x.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+       :protocol :blargg :expected 0 :max-frames 600 :state :pass :failure-text "status 0; 08-ind_x..Passed")
       (:id "instr-test-v5-09-ind-y" :path "instr_test-v5/rom_singles/09-ind_y.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+       :protocol :blargg :expected 0 :max-frames 600 :state :pass :failure-text "status 0; 09-ind_y..Passed")
       (:id "instr-test-v5-10-branches" :path "instr_test-v5/rom_singles/10-branches.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; 10-branches..Passed")
       (:id "instr-test-v5-11-stack" :path "instr_test-v5/rom_singles/11-stack.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+       :protocol :blargg :expected 0 :max-frames 600 :state :pass :failure-text "status 0; 11-stack..Passed")
       (:id "instr-test-v5-12-jmp-jsr" :path "instr_test-v5/rom_singles/12-jmp_jsr.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; 12-jmp_jsr..Passed")
       (:id "instr-test-v5-13-rts" :path "instr_test-v5/rom_singles/13-rts.nes"
