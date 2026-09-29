@@ -58,7 +58,7 @@
     ((:file "controller-state") (:file "controller") (:file "timing-macros")
      (:file "bus-state")
      (:file "bus") (:file "nes-state") (:file "nes")
-     (:file "nes-timing")
+     (:file "nes-timing") (:file "nes-audio-data")
      (:file "nes-execution") (:file "nes-output"))))
   :in-order-to ((test-op (test-op "cl-nes/test"))))
 

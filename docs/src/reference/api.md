@@ -39,7 +39,7 @@ The mapper4-variant values are :mmc3 (default), :mmc6, and :mmc3-alt.
 | nes-reset! | Reset the machine. |
 | nes-step/k | Execute one CPU instruction and call a continuation with cycle count. |
 | nes-run-frame/k | Run until a frame is ready and call a continuation with the framebuffer. |
-| nes-run-frames/k | Run a number of frames and optionally call a continuation for each audio sample. |
+| nes-run-frames/k | Run frames and fill reusable fixed-size audio buffers through CPS. |
 
 The continuation passed to nes-step/k receives the final CPU-cycle count after
 DMA and interrupt clocks. The continuation passed to nes-run-frame/k receives
@@ -99,7 +99,7 @@ corresponding DMA stall and transfer.
 | apu-read-register, apu-write-register! | Read or write APU registers. |
 | apu-tick! | Advance APU timing by one CPU-cycle tick. |
 | apu-irq-pending-p | Report a pending frame IRQ. |
-| apu-sample | Return the current unsigned 8-bit headless mix. |
+| apu-mix | Return the current nonlinear hardware mix in the range 0..1. |
 
 ## Headless output
 
@@ -111,13 +111,21 @@ corresponding DMA stall and transfer.
 | +nes-default-audio-sample-rate+ | Default audio sample rate, 44100 Hz. |
 | nes-framebuffer-rgb-octets | Convert a palette-index framebuffer to packed RGB octets. |
 | nes-write-ppm | Write a framebuffer as a binary P6 PPM image. |
-| nes-write-wav | Write unsigned 8-bit mono PCM samples as a RIFF/WAVE file. |
+| nes-write-wav | Write centered single-float mono samples as 16-bit PCM RIFF/WAVE. |
 
-nes-run-frames/k calls its frame continuation once per completed frame. Its
-optional :sample-continuation receives unsigned 8-bit samples scheduled from
-the same CPU-cycle clock; :sample-rate selects the requested output rate. Its
-optional :input-continuation is forwarded to nes-run-frame/k and called once
-per frame before that frame's first CPU step.
+nes-run-frames/k calls its frame continuation once per completed frame. Pass
+`:audio-buffer` from `make-nes-audio-buffer` and `:audio-continuation` to
+receive that same buffer whenever it is full. Each buffer contains
+single-float samples in `[-1,1]`; `nes-audio-buffer-count` is the number of
+valid samples (the callback receives a full buffer). `:sample-rate` selects
+the requested output rate. The resampler is a blip-buffer style band-limited
+step synthesizer with a 256-tap, 64-phase Blackman table. A cycle only
+compares the current mixer value; the table is accumulated when a step occurs,
+and output samples integrate the pending impulse. This keeps the per-cycle
+steady-state path allocation-free while the measured 30 kHz third harmonic
+at 48 kHz is -61.88 dB. The
+optional `:input-continuation` is called once per frame before its first CPU
+step.
 
 ## Controllers
 

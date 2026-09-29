@@ -37,43 +37,96 @@
                (expect (aref bytes 1) :to-be (char-code #\6))))
         (when (probe-file pathname)
           (delete-file pathname)))))
-  (it "writes unsigned 8-bit mono PCM WAV data"
+  (it "writes single-float 16-bit mono PCM WAV data"
     (let ((pathname (output-test-pathname "wav")))
       (unwind-protect
            (progn
-             (nes-write-wav pathname #(0 128 255) :sample-rate 22050)
+             (nes-write-wav pathname #(-1.0f0 0.0f0 1.0f0) :sample-rate 22050)
              (let ((bytes (read-output-octets pathname)))
-               (expect (length bytes) :to-be 47)
+               (expect (length bytes) :to-be 50)
                (expect (aref bytes 0) :to-be (char-code #\R))
                (expect (aref bytes 1) :to-be (char-code #\I))
                (expect (aref bytes 8) :to-be (char-code #\W))
                (expect (aref bytes 12) :to-be (char-code #\f))
                (expect (aref bytes 36) :to-be (char-code #\d))
-               (expect (aref bytes 44) :to-be 0)
+               (expect (aref bytes 34) :to-be 16)
+               (expect (aref bytes 44) :to-be 1)
                (expect (aref bytes 45) :to-be 128)
-               (expect (aref bytes 46) :to-be 255)))
+               (expect (aref bytes 48) :to-be 255)
+               (expect (aref bytes 49) :to-be 127)))
         (when (probe-file pathname)
           (delete-file pathname)))))
-  (it "samples audio while running complete frames"
+  (it "fills and reuses a fixed-size audio buffer while running frames"
     (let ((nes (make-nes :cartridge (make-fixture-cartridge)))
           (frames 0)
-          (samples (make-array 0
-                               :element-type '(unsigned-byte 8)
-                               :adjustable t
-                               :fill-pointer 0)))
+          (buffer (make-nes-audio-buffer :size 32))
+          (callbacks 0)
+          (same-buffer t))
       (expect (nes-run-frames/k
                nes 1
                (lambda (framebuffer)
                  (incf frames)
                  (expect (length framebuffer)
                          :to-be +nes-framebuffer-size+))
-               :sample-continuation
-               (lambda (sample)
-                 (vector-push-extend sample samples)))
+               :audio-buffer buffer
+               :audio-continuation
+               (lambda (received)
+                 (incf callbacks)
+                 (setf same-buffer (and same-buffer (eq received buffer)))
+                 (expect (length (nes-audio-buffer-samples received)) :to-be 32)
+                 (expect (nes-audio-buffer-count received) :to-be 32)))
               :to-be nes)
       (expect frames :to-be 1)
-      (expect (plusp (length samples)) :to-be t)
-      (expect (every (lambda (sample) (<= 0 sample 255)) samples)
+      (expect (plusp callbacks) :to-be t)
+      (expect same-buffer :to-be t)))
+  (it "suppresses a Nyquist input in the band-limited resampler"
+    (let* ((buffer (make-nes-audio-buffer :size 32))
+           (peak 0.0f0)
+           (callbacks 0)
+           (stream (cl-nes::%nes-make-audio-stream
+                    44100 buffer
+                    (lambda (received)
+                      (incf callbacks)
+                      (when (> callbacks 10)
+                        (dotimes (index (nes-audio-buffer-count received))
+                          (setf peak (max peak (abs (aref
+                                                     (nes-audio-buffer-samples received)
+                                                     index))))))))))
+      (dotimes (cycle 10000)
+        (cl-nes::%nes-audio-push! stream
+                                  (if (evenp cycle) 1.0f0 0.0f0)))
+      (expect (< peak 0.25f0) :to-be t)))
+  (it "keeps the 30 kHz third harmonic below -60 dB at 48 kHz"
+    (let* ((size 4096)
+           (buffer (make-nes-audio-buffer :size size))
+           (samples (make-array size :element-type 'single-float))
+           (stream (cl-nes::%nes-make-audio-stream
+                    48000 buffer
+                    (lambda (received)
+                      (replace samples (nes-audio-buffer-samples received)))))
+           (magnitude
+             (lambda (bin)
+               (let ((real 0.0d0) (imaginary 0.0d0))
+                 (dotimes (index size (sqrt (+ (* real real)
+                                               (* imaginary imaginary))))
+                   (let ((angle (* 2d0 pi bin index (/ 1d0 size))))
+                     (incf real (* (aref samples index) (cos angle)))
+                     (decf imaginary (* (aref samples index) (sin angle))))))))
+           (fundamental (funcall magnitude 853))
+           (aliased-third (funcall magnitude 1536)))
+      (dotimes (cycle 170000)
+        (cl-nes::%nes-audio-push!
+         stream
+         (if (< (mod (* cycle 10000) +nes-ntsc-cpu-frequency+)
+                (/ +nes-ntsc-cpu-frequency+ 2))
+             1.0f0
+             0.0f0)))
+      (setf fundamental (funcall magnitude 853)
+            aliased-third (funcall magnitude 1536))
+      (expect (< (* 20.0d0 (log (max 1.0d-12
+                                       (/ aliased-third fundamental))
+                                10.0d0))
+                  -60.0d0)
               :to-be t)))
   (it "forwards input-continuation to each frame's execution"
     (let* ((controller-1 (make-controller))
