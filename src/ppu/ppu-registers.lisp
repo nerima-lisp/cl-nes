@@ -13,7 +13,12 @@
       (when (and (= (ppu-scanline ppu) 241)
                  (zerop (ppu-dot ppu)))
         (setf (ppu-vblank-suppression-p ppu) t))
-      (%cancel-nmi-delay! ppu))))
+      (if (%nmi-suppression-window-p ppu)
+          (%cancel-nmi-delay! ppu)
+          (when (and (logbitp 7 value)
+                     (ppu-nmi-pending-p ppu)
+                     (%nmi-delay-active-p ppu))
+            (setf (ppu-nmi-delay-p ppu) 0))))))
 
 (defun %ppu-read-oam-data-register (ppu bus-access-p)
   (let* ((raw (aref (ppu-oam ppu) (ppu-oam-address ppu)))
@@ -77,9 +82,9 @@
             (ppu-vram-address ppu) (ppu-temporary-address ppu)
             (ppu-write-toggle ppu) nil)))
 
-(defun %request-nmi! (ppu)
+(defun %request-nmi! (ppu &optional (delay 3))
   (unless (ppu-nmi-pending-p ppu)
-    (setf (ppu-nmi-delay-p ppu) 3))
+    (setf (ppu-nmi-delay-p ppu) delay))
   (setf (ppu-nmi-pending-p ppu) t)
   ppu)
 
@@ -108,8 +113,7 @@
                (logbitp 7 (ppu-status ppu)))
       (%request-nmi! ppu))
     (when (and was-enabled (not (logbitp 7 value)))
-      (when (%nmi-suppression-window-p ppu)
-        (%cancel-nmi-delay! ppu)))))
+      (%cancel-nmi-delay! ppu))))
 
 (defun %ppu-write-mask-register! (ppu value)
   (setf (ppu-mask ppu) value
