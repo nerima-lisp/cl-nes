@@ -110,10 +110,17 @@ PALETTE is a sequence of 192 RGB values for the 64 NES palette entries."
   continuation)
 
 (defconstant +nes-audio-ring-mask+ #x7FFF)
+(defconstant +nes-audio-output-scale+ 0.8f0)
+(defvar *nes-audio-cycle-nes*)
+(defvar *nes-audio-cycle-stream*)
 
 (defun %nes-make-audio-stream (sample-rate buffer continuation)
   (%make-nes-audio-stream :sample-rate sample-rate :buffer buffer
                            :continuation continuation))
+
+(defun %nes-audio-cycle-hook ()
+  (%nes-audio-push! *nes-audio-cycle-stream*
+                    (apu-mix (nes-apu *nes-audio-cycle-nes*))))
 
 (defun %nes-blip-add-step! (stream delta)
   (let* ((phase (floor (* 64 (nes-audio-stream-phase stream))
@@ -143,7 +150,9 @@ PALETTE is a sequence of 192 RGB values for the 64 NES palette entries."
             (nes-audio-stream-ring-index stream)
             (logand (1+ index) +nes-audio-ring-mask+)
             (aref (nes-audio-buffer-samples buffer) count)
-            (- (* 2.0f0 (nes-audio-stream-integrator stream)) 1.0f0))
+            (* +nes-audio-output-scale+
+               (- (* 2.0f0 (nes-audio-stream-integrator stream))
+                  1.0f0)))
       (incf count)
       (setf (nes-audio-buffer-count buffer) count)
       (when (= count (length (nes-audio-buffer-samples buffer)))
@@ -225,12 +234,25 @@ The function returns NES."
     (unless (functionp input-continuation)
       (error "Input continuation must be a function: ~S" input-continuation)))
   (let ((audio (and audio-buffer
-                    (%nes-make-audio-stream sample-rate audio-buffer
-                                            audio-continuation))))
-    (labels ((sample-cycle ()
-               (when audio
-                 (%nes-audio-push! audio (apu-mix (nes-apu nes))))))
+                    (or (and (nes-audio-stream nes)
+                             (= sample-rate
+                                (nes-audio-stream-sample-rate
+                                 (nes-audio-stream nes)))
+                             (eq audio-buffer
+                                 (nes-audio-stream-buffer
+                                  (nes-audio-stream nes)))
+                             (setf (nes-audio-stream-continuation
+                                    (nes-audio-stream nes))
+                                   audio-continuation)
+                             (nes-audio-stream nes))
+                        (let ((stream (%nes-make-audio-stream
+                                       sample-rate audio-buffer
+                                       audio-continuation)))
+                          (setf (nes-audio-stream nes) stream)
+                          stream)))))
+    (let ((*nes-audio-cycle-nes* nes)
+          (*nes-audio-cycle-stream* audio))
       (dotimes (frame frame-count nes)
         (nes-run-frame/k nes frame-continuation
-                         :cycle-hook #'sample-cycle
+                         :cycle-hook (if audio #'%nes-audio-cycle-hook nil)
                          :input-continuation input-continuation)))))
