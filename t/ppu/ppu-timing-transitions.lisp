@@ -11,6 +11,7 @@
             (cl-nes::ppu-dot ppu) dot
             (ppu-status ppu) initial-status)
       (when (eql kind :overflow)
+        (setf (ppu-mask ppu) #x08)
         (dotimes (sprite 9)
           (setf (aref (ppu-oam ppu) (* sprite 4)) 0)))
       (ppu-tick! ppu)
