@@ -35,6 +35,8 @@
               (aref (ppu-oam ppu) #x12) #xA6)
         (expect (ppu-read-register ppu 4) :to-be #xA6)
         (expect (ppu-read-register ppu 1) :to-be 0)
+        (setf (cl-nes::ppu-scanline ppu) 241
+              (cl-nes::ppu-dot ppu) 0)
         (ppu-read-register ppu 2)
         (expect (ppu-nmi-pending-p ppu) :to-be nil)
         (expect (cl-nes::ppu-nmi-delay-p ppu) :to-be nil)))))
