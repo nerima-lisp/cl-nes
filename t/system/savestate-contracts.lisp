@@ -59,3 +59,14 @@
              (octets (funcall save state)))
         (funcall load state octets)
         (expect (equalp (funcall save state) octets) :to-be t)))))
+
+  (it "round-trips mapper state for the supported mapper fixtures"
+    (dolist (spec '((0 2 8) (1 4 8) (4 8 8) (5 8 8)))
+      (destructuring-bind (mapper prg-banks chr-banks) spec
+        (let* ((cartridge (make-patterned-cartridge
+                           :mapper mapper :prg-banks prg-banks
+                           :chr-banks chr-banks))
+               (nes (make-nes :cartridge cartridge))
+               (state (nes-save-state nes)))
+          (nes-load-state nes state)
+          (expect (equalp state (nes-save-state nes)) :to-be t)))))
