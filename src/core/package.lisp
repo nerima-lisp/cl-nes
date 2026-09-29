@@ -117,6 +117,7 @@
    #:nes-ppu
    #:nes-apu
    #:nes-load-cartridge!
+   #:nes-initialize!
    #:nes-reset!
    #:nes-step/k
    #:nes-run-frame/k

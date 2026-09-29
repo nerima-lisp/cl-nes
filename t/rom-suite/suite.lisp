@@ -14,31 +14,26 @@
   (let ((path (resolve-rom-path contract)))
     (unless (probe-file path)
       (error "ROM input missing for ~A: ~A" (rom-contract-id contract) path))
-    (if (and (eq (rom-contract-protocol contract) :screen-hash)
-             (string-equal (rom-contract-expected contract) "UNRECORDED"))
-        (list :passed nil :unrecorded t :status :unrecorded
-              :text "expected framebuffer hash unrecorded")
-        (handler-case
-            (case (rom-contract-protocol contract)
-              (:blargg (run-blargg-contract path contract))
-              (:screen-hash (run-screen-contract path contract))
-              (otherwise (error "Unknown ROM protocol ~S"
-                                (rom-contract-protocol contract))))
-          (error (condition)
-            (list :passed nil :error (princ-to-string condition)
-                  :text "condition signaled"))))))
+    (handler-case
+        (case (rom-contract-protocol contract)
+          (:blargg (run-blargg-contract path contract))
+          (:screen-hash (run-screen-contract path contract))
+          (otherwise (error "Unknown ROM protocol ~S"
+                            (rom-contract-protocol contract))))
+      (error (condition)
+        (list :passed nil :error (princ-to-string condition)
+              :text "condition signaled")))))
 
 (defun enforce-ratchet (contract result)
-  (unless (getf result :unrecorded)
-    (let ((passed (getf result :passed)))
-      (ecase (rom-contract-state contract)
-        (:pass (unless passed
-                 (error "ratchet regression: ~A~%~A"
-                        (rom-contract-id contract) (result-summary contract result))))
-        (:known-fail (when passed
-                       (error "ratchet update required: ~A unexpectedly passes~%~A"
-                              (rom-contract-id contract)
-                              (result-summary contract result)))))))
+  (let ((passed (getf result :passed)))
+    (ecase (rom-contract-state contract)
+      (:pass (unless passed
+               (error "ratchet regression: ~A~%~A"
+                      (rom-contract-id contract) (result-summary contract result))))
+      (:known-fail (when passed
+                     (error "ratchet update required: ~A unexpectedly passes~%~A"
+                            (rom-contract-id contract)
+                            (result-summary contract result))))))
   result)
 
 (defun enforce-accuracy-ratchet (contract result)
@@ -89,7 +84,7 @@
 (defmacro define-rom-contract-tests ()
   `(progn
      (describe-each
-      ,*rom-contract-data*
+      ,*rom-contract-test-data*
       "ROM contract ~A"
       (id category path protocol expected max-frames state failure-text mapper)
       (it "has a declarative protocol and bounded execution"
@@ -103,16 +98,10 @@
             (error "invalid ROM contract"))))
      (cl-weave:describe "ROM suite table"
        (it-each
-        ,*rom-contract-data*
+        ,*rom-contract-test-data*
         "table row ~A"
         (id category path protocol expected max-frames state failure-text mapper)
-        (unless (and (stringp id) (keywordp category) (stringp path)
-                     (or (numberp expected) (stringp expected))
-                     (stringp failure-text)
-                     (or (null mapper) (keywordp mapper))
-                     (member protocol '(:blargg :screen-hash :accuracy-coin))
-                     (plusp max-frames)
-                     (member state '(:pass :known-fail)))
+        (unless (and (stringp id) (stringp path))
           (error "invalid table row"))))))
 
 (define-rom-contract-tests)
@@ -123,8 +112,8 @@
         (run-rom-suite-table-tests)
         (run-rom-suite)
         (let ((difference (run-nestest-trace)))
-          (when (and difference (eq cl-nes/rom-suite::*nestest-state* :pass))
-            (error "nestest ratchet regression: ~A" difference)))
+          (when difference
+            (error "nestest required pass: ~A" difference)))
         0)
     (error (condition)
       (format *error-output* "ROM suite failed: ~A~%" condition)

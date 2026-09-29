@@ -72,10 +72,9 @@
       (error "nestest inputs missing: ROM=~A LOG=~A" rom log))
     (let ((nes (cl-nes:make-nes :cartridge (cl-nes:load-cartridge rom))))
       ;; nestest's automation contract starts at $C000, while this ROM's
-      ;; reset vector enters at $C004. The public API intentionally exposes
-      ;; CPU state read access only, so this harness uses the state accessor
-      ;; here to select the documented automation entry point.
-      (setf (cl-nes:cpu-pc (cl-nes:nes-cpu nes)) #xc000)
+      ;; reset vector enters at $C004. Use the public initialization API so
+      ;; the harness does not reach into CPU state to choose its entry point.
+      (cl-nes:nes-initialize! nes :pc #xc000)
       (let* ((initial-cpu-cycles (cl-nes:cpu-cycles (cl-nes:nes-cpu nes)))
              (initial-ppu (ppu-state nes))
              (initial-scanline (getf initial-ppu :scanline))

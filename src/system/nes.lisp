@@ -37,6 +37,13 @@
   (%nes-reset-cpu-and-clock! nes)
   nes)
 
+(defun nes-initialize! (nes &key pc)
+  "Reset NES and optionally select the CPU entry point for a ROM harness."
+  (nes-reset! nes)
+  (when pc
+    (setf (cpu-pc (nes-cpu nes)) pc))
+  nes)
+
 (defun nes-reset! (nes)
   (setf (bus-dma-stall-cycles (nes-bus nes)) 0)
   (when (bus-cartridge (nes-bus nes))

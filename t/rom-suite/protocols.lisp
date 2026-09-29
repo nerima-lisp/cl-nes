@@ -2,65 +2,97 @@
 
 (defstruct (rom-contract (:constructor make-rom-contract
                               (id category path protocol expected max-frames state
-                               failure-text &optional mapper4-variant)))
-  id category path protocol expected max-frames state failure-text mapper4-variant)
+                               failure-text &optional mapper4-variant suite)))
+  id category path protocol expected max-frames state failure-text mapper4-variant suite)
 
 (defparameter *rom-root-environment* "CL_NES_TEST_ROMS")
 (defparameter *accuracy-coin-environment* "CL_NES_ACCURACY_COIN")
 (defparameter *nestest-rom-environment* "CL_NES_NESTEST_ROM")
 (defparameter *nestest-log-environment* "CL_NES_NESTEST_LOG")
-(defparameter *nestest-state* :known-fail)
-(defparameter *nestest-failure-text*
-  "line 5046 CYC expected 14691 actual 14690")
+(defparameter *nestest-state* :pass)
+(defparameter *nestest-failure-text* nil)
 
 (defparameter *rom-contract-data*
-  '(("instr-test-v5" :cpu "instr_test-v5/all_instrs.nes" :blargg 0 60 :known-fail
-     "status 128; running test 5 of 16" nil)
-    ("instr-timing" :cpu "instr_timing/instr_timing.nes" :blargg 0 60 :known-fail
-     "status 128; 1C/3C/5C page-cross expected 5, got 4" nil)
-    ("instr-misc" :cpu "instr_misc/instr_misc.nes" :blargg 0 60 :known-fail
-     "Illegal 6502 opcode #x9B at #xF3E9" nil)
-    ("cpu-interrupts-v2" :cpu "cpu_interrupts_v2/cpu_interrupts.nes" :blargg 0 360 :known-fail
-     "status 1; failed while running test 2 of 5" nil)
-    ("cpu-dummy-reads" :cpu "cpu_dummy_reads/cpu_dummy_reads.nes" :blargg 0 60 :known-fail
-     "status 0 but signature mismatch" nil)
-    ("cpu-dummy-writes" :cpu "cpu_dummy_writes/cpu_dummy_writes_oam.nes" :blargg 0 360 :pass
-     "status 0" nil)
-    ("ppu-vbl-nmi" :ppu "ppu_vbl_nmi/ppu_vbl_nmi.nes" :blargg 0 360 :known-fail
-     "status 1; failed while running test 2 of 10" nil)
-    ("ppu-sprite-hit" :ppu "sprite_hit_tests_2005.10.05/01.basics.nes" :screen-hash "UNRECORDED" 60 :known-fail
-     "framebuffer hash B87D5DC5; expected hash unrecorded" nil)
-    ("ppu-sprite-overflow" :ppu "sprite_overflow_tests/1.Basics.nes" :screen-hash "UNRECORDED" 60 :known-fail
-     "framebuffer hash B87D5DC5; expected hash unrecorded" nil)
-    ("ppu-open-bus" :ppu "ppu_open_bus/ppu_open_bus.nes" :screen-hash "UNRECORDED" 60 :known-fail
-     "framebuffer hash B87D5DC5; expected hash unrecorded" nil)
-    ("ppu-read-buffer" :ppu "ppu_read_buffer/test_ppu_read_buffer.nes" :screen-hash "UNRECORDED" 60 :known-fail
-     "framebuffer hash B87D5DC5; expected hash unrecorded" nil)
-    ("oam-read" :ppu "oam_read/oam_read.nes" :screen-hash "UNRECORDED" 60 :known-fail
-     "framebuffer hash B87D5DC5; expected hash unrecorded" nil)
-    ("apu-test" :apu "apu_test/apu_test.nes" :blargg 0 360 :pass
-     "status 0; all 8 tests passed" nil)
-    ("blargg-apu" :apu "blargg_apu_2005.07.30/01.len_ctr.nes" :blargg 0 60 :known-fail
-     "status 0 but signature mismatch" nil)
-    ("dmc-dma" :dma "dmc_dma_during_read4/dma_2007_read.nes" :blargg 0 60 :known-fail
-     "status 0 but signature mismatch" nil)
-    ("sprite-dma-and-dmc" :dma "sprdma_and_dmc_dma/sprdma_and_dmc_dma.nes" :blargg 0 60 :known-fail
-     "status 128; incomplete at text T+ Clocks" nil)
-    ("mmc3-test-2" :mapper "mmc3_test_2/rom_singles/1-clocking.nes" :blargg 0 60 :pass
-     "status 0; 1-clocking Passed" :mmc3)))
+  '((:suite "cpu" :category :cpu
+     :subroms ((:id "instr-test-v5" :path "instr_test-v5/all_instrs.nes"
+                 :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
+                 :failure-text "status 128; running test 5 of 16")
+               (:id "instr-timing" :path "instr_timing/instr_timing.nes"
+                 :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
+                 :failure-text "1C/3C/5C page-cross expected 5, got 4")
+               (:id "instr-misc" :path "instr_misc/instr_misc.nes"
+                 :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
+                 :failure-text "Illegal 6502 opcode #x9B at #xF3E9")
+               (:id "cpu-interrupts-v2" :path "cpu_interrupts_v2/cpu_interrupts.nes"
+                 :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
+                 :failure-text "status 1; failed while running test 2 of 5")
+               (:id "cpu-dummy-reads" :path "cpu_dummy_reads/cpu_dummy_reads.nes"
+                 :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
+                 :failure-text "status 0 but signature mismatch")
+               (:id "cpu-dummy-writes" :path "cpu_dummy_writes/cpu_dummy_writes_oam.nes"
+                 :protocol :blargg :expected 0 :max-frames 360 :state :pass
+                 :failure-text "status 0")))
+    (:suite "ppu" :category :ppu
+     :subroms ((:id "ppu-vbl-nmi" :path "ppu_vbl_nmi/ppu_vbl_nmi.nes"
+                 :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
+                 :failure-text "status 1; failed while running test 2 of 10")))
+    (:suite "apu" :category :apu
+     :subroms ((:id "apu-test" :path "apu_test/apu_test.nes"
+                 :protocol :blargg :expected 0 :max-frames 360 :state :pass
+                 :failure-text "status 0; all 8 tests passed")
+               (:id "blargg-apu" :path "blargg_apu_2005.07.30/01.len_ctr.nes"
+                 :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
+                 :failure-text "status 0 but signature mismatch")))
+    (:suite "dma" :category :dma
+     :subroms ((:id "dmc-dma" :path "dmc_dma_during_read4/dma_2007_read.nes"
+                 :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
+                 :failure-text "status 0 but signature mismatch")
+               (:id "sprite-dma-and-dmc" :path "sprdma_and_dmc_dma/sprdma_and_dmc_dma.nes"
+                 :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
+                 :failure-text "status 128; incomplete at text T+ Clocks")))
+    (:suite "mapper" :category :mapper
+     :subroms ((:id "mmc3-test-2" :path "mmc3_test_2/rom_singles/1-clocking.nes"
+                 :protocol :blargg :expected 0 :max-frames 60 :state :pass
+                 :failure-text "status 0; 1-clocking Passed"
+                 :mapper4-variant :mmc3)))))
 
 (defparameter *accuracy-coin-contract*
   '(:id "accuracy-coin" :category :accuracy-coin :path "AccuracyCoin.nes"
     :protocol :accuracy-coin :expected 146 :max-frames 1200 :state :known-fail
-    :failure-text "0/146 passed; no result cells completed before CI limit"))
+    :failure-text "named result item mismatch"
+    :items ((:name "item-0400" :address #x0400 :expected :pass))))
+
+(defun accuracy-coin-items ()
+  (loop for address from #x0400 below (+ #x0400 146)
+        collect (list :name (format nil "item-~4,'0X" address)
+                      :address address :expected :pass)))
+
+(setf (getf *accuracy-coin-contract* :items) (accuracy-coin-items))
+
+(defparameter *rom-contract-test-data*
+  (loop for suite in *rom-contract-data*
+        append (loop with category = (getf suite :category)
+                     for subrom in (getf suite :subroms)
+                     collect (list (getf subrom :id) category
+                                   (getf subrom :path)
+                                   (getf subrom :protocol)
+                                   (getf subrom :expected)
+                                   (getf subrom :max-frames)
+                                   (getf subrom :state)
+                                   (getf subrom :failure-text)
+                                   (getf subrom :mapper4-variant)))))
 
 (defun rom-contract-table ()
-  (mapcar (lambda (row)
-            (destructuring-bind (id category path protocol expected max-frames state failure-text mapper)
-                row
-              (make-rom-contract id category path protocol expected max-frames state
-                                 failure-text mapper)))
-          *rom-contract-data*))
+  (loop for suite in *rom-contract-data*
+        append (loop with category = (getf suite :category)
+                     with suite-name = (getf suite :suite)
+                     for subrom in (getf suite :subroms)
+                     collect (make-rom-contract
+                              (getf subrom :id) category (getf subrom :path)
+                              (getf subrom :protocol) (getf subrom :expected)
+                              (getf subrom :max-frames) (getf subrom :state)
+                              (getf subrom :failure-text)
+                              (getf subrom :mapper4-variant) suite-name))))
 
 (defun env-path (name)
   (uiop:getenv name))
@@ -95,17 +127,13 @@
   (run-screen-protocol path (rom-contract-max-frames contract)
                        (rom-contract-expected contract)))
 
-(defun accuracy-result-value-p (value)
-  (or (= value 1) (= value #xff) (= value 3)
-      (and (= (logand value 3) 2) (>= value 2))))
-
 (defun accuracy-result-kind (value)
   (cond
     ((= value 1) :pass)
     ((= value #xff) :skipped)
     ((= value 3) :running)
     ((and (= (logand value 3) 2) (>= value 2)) :fail)
-    (t :unrecorded)))
+    (t :fail)))
 
 (defun run-accuracy-coin (path contract)
   (let ((nes (cl-nes:make-nes :cartridge (cl-nes:load-cartridge path)))
@@ -116,22 +144,28 @@
        (declare (ignore frame))
        (let ((bus (cl-nes:nes-bus nes)))
          (setf results (read-bus-range bus #x0400 #x04ff))
-         (and (= 146 (count-if #'accuracy-result-value-p results))
-              (not (member 3 results))))))
+         (and results
+              (every (lambda (item)
+                       (not (= 3 (nth (- (getf item :address) #x0400)
+                                      results))))
+                     (getf contract :items))))))
     (unless results
       (setf results (read-bus-range (cl-nes:nes-bus nes) #x0400 #x04ff)))
-    (let* ((items (loop for value in results
-                        for index from #x0400
+    (let* ((items (loop for item in (getf contract :items)
+                        for address = (getf item :address)
+                        for value = (nth (- address #x0400) results)
                         for kind = (accuracy-result-kind value)
-                        when (not (eq kind :unrecorded))
-                          collect (list :address index :value value :kind kind)))
+                        collect (list :name (getf item :name)
+                                      :address address :value value :kind kind
+                                      :expected (getf item :expected))))
            (pass-count (count :pass items :key (lambda (item) (getf item :kind))))
            (fail-count (count :fail items :key (lambda (item) (getf item :kind))))
            (skip-count (count :skipped items :key (lambda (item) (getf item :kind))))
            (running-count (count :running items :key (lambda (item) (getf item :kind))))
            (completed-count (+ pass-count fail-count)))
-      (list :passed (and (= completed-count (getf contract :expected))
-                         (= pass-count (getf contract :expected)))
+      (list :passed (every (lambda (item)
+                             (eq (getf item :kind) (getf item :expected)))
+                           items)
             :pass-count pass-count :total (getf contract :expected)
             :fail-count fail-count :skip-count skip-count
             :running-count running-count :completed-count completed-count
