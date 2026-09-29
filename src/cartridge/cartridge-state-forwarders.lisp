@@ -1,101 +1,74 @@
 (in-package #:cl-nes)
 
-(defmacro %define-mapper-forwarder (name slot-accessor slot-setter)
+(defmacro %define-mapper-forwarder (name slot-accessor)
   `(progn
      (defun ,name (cartridge)
        (,slot-accessor (cartridge-mapper-state cartridge)))
      (defsetf ,name (cartridge) (value)
-       `(,',slot-setter (cartridge-mapper-state ,cartridge) ,value))))
+       `(setf (,',slot-accessor (cartridge-mapper-state ,cartridge)) ,value))))
 
-(defmacro %define-mapper4-forwarder (name slot-accessor slot-setter)
+(defmacro %define-mapper4-forwarder (name slot-accessor)
   `(progn
      (defun ,name (cartridge)
        (,slot-accessor (cartridge-mapper4-state cartridge)))
      (defsetf ,name (cartridge) (value)
-       `(,',slot-setter (cartridge-mapper4-state ,cartridge) ,value))))
+       `(setf (,',slot-accessor (cartridge-mapper4-state ,cartridge)) ,value))))
 
 (%define-mapper-forwarder cartridge-mapper-shift
-                          mapper-state-core-mapper-shift
-                          set-mapper-state-core-mapper-shift!)
+                          mapper-state-core-mapper-shift)
 (%define-mapper-forwarder cartridge-mapper-control
-                          mapper-state-core-mapper-control
-                          set-mapper-state-core-mapper-control!)
+                          mapper-state-core-mapper-control)
 (%define-mapper-forwarder cartridge-mapper-chr-bank-0
-                          mapper-state-core-mapper-chr-bank-0
-                          set-mapper-state-core-mapper-chr-bank-0!)
+                          mapper-state-core-mapper-chr-bank-0)
 (%define-mapper-forwarder cartridge-mapper-chr-bank-1
-                          mapper-state-core-mapper-chr-bank-1
-                          set-mapper-state-core-mapper-chr-bank-1!)
+                          mapper-state-core-mapper-chr-bank-1)
 (%define-mapper-forwarder cartridge-mapper-prg-bank-1
-                          mapper-state-core-mapper-prg-bank-1
-                          set-mapper-state-core-mapper-prg-bank-1!)
+                          mapper-state-core-mapper-prg-bank-1)
 (%define-mapper-forwarder cartridge-mapper-registers
-                          mapper-state-core-mapper-registers
-                          set-mapper-state-core-mapper-registers!)
+                          mapper-state-core-mapper-registers)
 (%define-mapper-forwarder cartridge-mapper-register-select
-                          mapper-state-core-mapper-register-select
-                          set-mapper-state-core-mapper-register-select!)
+                          mapper-state-core-mapper-register-select)
 (%define-mapper-forwarder cartridge-mapper-mode
-                          mapper-state-core-mapper-mode
-                          set-mapper-state-core-mapper-mode!)
+                          mapper-state-core-mapper-mode)
 (%define-mapper-forwarder cartridge-mapper-outer-bank
-                          mapper-state-core-mapper-outer-bank
-                          set-mapper-state-core-mapper-outer-bank!)
+                          mapper-state-core-mapper-outer-bank)
 (%define-mapper-forwarder cartridge-mapper69-command
-                          mapper-state-core-mapper69-command
-                          set-mapper-state-core-mapper69-command!)
+                          mapper-state-core-mapper69-command)
 (%define-mapper-forwarder cartridge-mapper69-registers
-                          mapper-state-core-mapper69-registers
-                          set-mapper-state-core-mapper69-registers!)
+                          mapper-state-core-mapper69-registers)
 (%define-mapper-forwarder cartridge-mapper69-irq-counter
-                          mapper-state-core-mapper69-irq-counter
-                          set-mapper-state-core-mapper69-irq-counter!)
+                          mapper-state-core-mapper69-irq-counter)
 (%define-mapper-forwarder cartridge-mapper69-irq-enabled-p
-                          mapper-state-core-mapper69-irq-enabled-p
-                          set-mapper-state-core-mapper69-irq-enabled-p!)
+                          mapper-state-core-mapper69-irq-enabled-p)
 (%define-mapper-forwarder cartridge-mapper69-irq-pending-p
-                          mapper-state-core-mapper69-irq-pending-p
-                          set-mapper-state-core-mapper69-irq-pending-p!)
+                          mapper-state-core-mapper69-irq-pending-p)
 (%define-mapper-forwarder cartridge-mapper1-last-write-cycle
-                          mapper-state-core-mapper1-last-write-cycle
-                          set-mapper-state-core-mapper1-last-write-cycle!)
+                          mapper-state-core-mapper1-last-write-cycle)
 
 (%define-mapper4-forwarder cartridge-mapper4-bank-select
-                           cartridge-mapper4-state-mapper4-bank-select
-                           set-cartridge-mapper4-state-mapper4-bank-select!)
+                           cartridge-mapper4-state-mapper4-bank-select)
 (%define-mapper4-forwarder cartridge-mapper4-registers
-                           cartridge-mapper4-state-mapper4-registers
-                           set-cartridge-mapper4-state-mapper4-registers!)
+                           cartridge-mapper4-state-mapper4-registers)
 (%define-mapper4-forwarder cartridge-mapper4-variant
-                           cartridge-mapper4-state-mapper4-variant
-                           set-cartridge-mapper4-state-mapper4-variant!)
+                           cartridge-mapper4-state-mapper4-variant)
 (%define-mapper4-forwarder cartridge-mapper4-prg-ram-enabled-p
-                           cartridge-mapper4-state-mapper4-prg-ram-enabled-p
-                           set-cartridge-mapper4-state-mapper4-prg-ram-enabled-p!)
+                           cartridge-mapper4-state-mapper4-prg-ram-enabled-p)
 (%define-mapper4-forwarder cartridge-mapper4-prg-ram-write-protected-p
-                           cartridge-mapper4-state-mapper4-prg-ram-write-protected-p
-                           set-cartridge-mapper4-state-mapper4-prg-ram-write-protected-p!)
+                           cartridge-mapper4-state-mapper4-prg-ram-write-protected-p)
 (%define-mapper4-forwarder cartridge-mapper4-irq-latch
-                           cartridge-mapper4-state-mapper4-irq-latch
-                           set-cartridge-mapper4-state-mapper4-irq-latch!)
+                           cartridge-mapper4-state-mapper4-irq-latch)
 (%define-mapper4-forwarder cartridge-mapper4-irq-counter
-                           cartridge-mapper4-state-mapper4-irq-counter
-                           set-cartridge-mapper4-state-mapper4-irq-counter!)
+                           cartridge-mapper4-state-mapper4-irq-counter)
 (%define-mapper4-forwarder cartridge-mapper4-irq-reload-p
-                           cartridge-mapper4-state-mapper4-irq-reload-p
-                           set-cartridge-mapper4-state-mapper4-irq-reload-p!)
+                           cartridge-mapper4-state-mapper4-irq-reload-p)
 (%define-mapper4-forwarder cartridge-mapper4-irq-enabled-p
-                           cartridge-mapper4-state-mapper4-irq-enabled-p
-                           set-cartridge-mapper4-state-mapper4-irq-enabled-p!)
+                           cartridge-mapper4-state-mapper4-irq-enabled-p)
 (%define-mapper4-forwarder cartridge-mapper4-irq-pending-p
-                           cartridge-mapper4-state-mapper4-irq-pending-p
-                           set-cartridge-mapper4-state-mapper4-irq-pending-p!)
+                           cartridge-mapper4-state-mapper4-irq-pending-p)
 (%define-mapper4-forwarder cartridge-mapper4-ppu-a12-high-p
-                           cartridge-mapper4-state-mapper4-ppu-a12-high-p
-                           set-cartridge-mapper4-state-mapper4-ppu-a12-high-p!)
+                           cartridge-mapper4-state-mapper4-ppu-a12-high-p)
 (%define-mapper4-forwarder cartridge-mapper4-ppu-a12-low-cycles
-                           cartridge-mapper4-state-mapper4-ppu-a12-low-cycles
-                           set-cartridge-mapper4-state-mapper4-ppu-a12-low-cycles!)
+                           cartridge-mapper4-state-mapper4-ppu-a12-low-cycles)
 
 (defmacro %define-mapper5-forwarder (name slot-accessor)
   `(defun ,name (cartridge)

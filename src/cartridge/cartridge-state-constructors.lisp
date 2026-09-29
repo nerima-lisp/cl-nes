@@ -53,21 +53,21 @@
                                           (mapper69-irq-pending-p nil)
                                           (mapper1-last-write-cycle nil))
   (let ((state (%make-mapper-state-core-instance)))
-    (set-mapper-state-core-mapper-shift! state mapper-shift)
-    (set-mapper-state-core-mapper-control! state mapper-control)
-    (set-mapper-state-core-mapper-chr-bank-0! state mapper-chr-bank-0)
-    (set-mapper-state-core-mapper-chr-bank-1! state mapper-chr-bank-1)
-    (set-mapper-state-core-mapper-prg-bank-1! state mapper-prg-bank-1)
-    (set-mapper-state-core-mapper-registers! state mapper-registers)
-    (set-mapper-state-core-mapper-register-select! state mapper-register-select)
-    (set-mapper-state-core-mapper-mode! state mapper-mode)
-    (set-mapper-state-core-mapper-outer-bank! state mapper-outer-bank)
-    (set-mapper-state-core-mapper69-command! state mapper69-command)
-    (set-mapper-state-core-mapper69-registers! state mapper69-registers)
-    (set-mapper-state-core-mapper69-irq-counter! state mapper69-irq-counter)
-    (set-mapper-state-core-mapper69-irq-enabled-p! state mapper69-irq-enabled-p)
-    (set-mapper-state-core-mapper69-irq-pending-p! state mapper69-irq-pending-p)
-    (set-mapper-state-core-mapper1-last-write-cycle! state mapper1-last-write-cycle)
+    (setf (mapper-state-core-mapper-shift state) mapper-shift
+          (mapper-state-core-mapper-control state) mapper-control
+          (mapper-state-core-mapper-chr-bank-0 state) mapper-chr-bank-0
+          (mapper-state-core-mapper-chr-bank-1 state) mapper-chr-bank-1
+          (mapper-state-core-mapper-prg-bank-1 state) mapper-prg-bank-1
+          (mapper-state-core-mapper-registers state) mapper-registers
+          (mapper-state-core-mapper-register-select state) mapper-register-select
+          (mapper-state-core-mapper-mode state) mapper-mode
+          (mapper-state-core-mapper-outer-bank state) mapper-outer-bank
+          (mapper-state-core-mapper69-command state) mapper69-command
+          (mapper-state-core-mapper69-registers state) mapper69-registers
+          (mapper-state-core-mapper69-irq-counter state) mapper69-irq-counter
+          (mapper-state-core-mapper69-irq-enabled-p state) mapper69-irq-enabled-p
+          (mapper-state-core-mapper69-irq-pending-p state) mapper69-irq-pending-p
+          (mapper-state-core-mapper1-last-write-cycle state) mapper1-last-write-cycle)
     state))
 
 (defun %make-cartridge-mapper4-state (&key (mapper4-bank-select 0)
@@ -83,18 +83,18 @@
                                            (mapper4-ppu-a12-high-p nil)
                                            (mapper4-ppu-a12-low-cycles 0))
   (let ((state (%make-cartridge-mapper4-state-instance)))
-    (set-cartridge-mapper4-state-mapper4-bank-select! state mapper4-bank-select)
-    (set-cartridge-mapper4-state-mapper4-registers! state mapper4-registers)
-    (set-cartridge-mapper4-state-mapper4-variant! state mapper4-variant)
-    (set-cartridge-mapper4-state-mapper4-prg-ram-enabled-p! state mapper4-prg-ram-enabled-p)
-    (set-cartridge-mapper4-state-mapper4-prg-ram-write-protected-p! state mapper4-prg-ram-write-protected-p)
-    (set-cartridge-mapper4-state-mapper4-irq-latch! state mapper4-irq-latch)
-    (set-cartridge-mapper4-state-mapper4-irq-counter! state mapper4-irq-counter)
-    (set-cartridge-mapper4-state-mapper4-irq-reload-p! state mapper4-irq-reload-p)
-    (set-cartridge-mapper4-state-mapper4-irq-enabled-p! state mapper4-irq-enabled-p)
-    (set-cartridge-mapper4-state-mapper4-irq-pending-p! state mapper4-irq-pending-p)
-    (set-cartridge-mapper4-state-mapper4-ppu-a12-high-p! state mapper4-ppu-a12-high-p)
-    (set-cartridge-mapper4-state-mapper4-ppu-a12-low-cycles! state mapper4-ppu-a12-low-cycles)
+    (setf (cartridge-mapper4-state-mapper4-bank-select state) mapper4-bank-select
+          (cartridge-mapper4-state-mapper4-registers state) mapper4-registers
+          (cartridge-mapper4-state-mapper4-variant state) mapper4-variant
+          (cartridge-mapper4-state-mapper4-prg-ram-enabled-p state) mapper4-prg-ram-enabled-p
+          (cartridge-mapper4-state-mapper4-prg-ram-write-protected-p state) mapper4-prg-ram-write-protected-p
+          (cartridge-mapper4-state-mapper4-irq-latch state) mapper4-irq-latch
+          (cartridge-mapper4-state-mapper4-irq-counter state) mapper4-irq-counter
+          (cartridge-mapper4-state-mapper4-irq-reload-p state) mapper4-irq-reload-p
+          (cartridge-mapper4-state-mapper4-irq-enabled-p state) mapper4-irq-enabled-p
+          (cartridge-mapper4-state-mapper4-irq-pending-p state) mapper4-irq-pending-p
+          (cartridge-mapper4-state-mapper4-ppu-a12-high-p state) mapper4-ppu-a12-high-p
+          (cartridge-mapper4-state-mapper4-ppu-a12-low-cycles state) mapper4-ppu-a12-low-cycles)
     state))
 
 (defun %make-cartridge (&key (prg-rom #()) (chr-rom #()) (mapper 0)

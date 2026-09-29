@@ -37,7 +37,7 @@
     :depends-on ("core")
     :components
     ((:file "apu-data") (:file "apu-state") (:file "apu-construction")
-     (:file "apu") (:file "apu-lifecycle") (:file "apu-envelopes")
+     (:file "apu") (:file "apu-envelopes")
      (:file "apu-timers") (:file "apu-frame") (:file "apu-timing")
      (:file "apu-status") (:file "apu-registers") (:file "apu-output")))
    (:module "ppu"

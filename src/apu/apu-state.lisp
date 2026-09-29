@@ -82,7 +82,8 @@
    (cycle-parity 0 fixnum apu-cycle-parity)
    (memory-reader nil nil apu-memory-reader))
   :reset-preserve (memory-reader)
-  :console-reset %apu-console-reset!
+  :console-reset apu-console-reset!
+  :console-reset-values (((frame-reset-delay) 3))
   :console-preserve
   ((frame-last-five-step-p)
    (pulse-1 apu-pulse-duty)

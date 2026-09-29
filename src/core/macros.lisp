@@ -2,7 +2,7 @@
 
 (defmacro define-hardware-state
     (name slots &key constructor reset reset-preserve console-reset
-                              console-preserve)
+                              console-preserve console-reset-values)
   "Define a typed hardware state and its generated reset operations.
 
 Each slot is (NAME DEFAULT TYPE ACCESSOR). The declaration is also the
@@ -25,9 +25,6 @@ ordered source for future serialization."
                (or (fourth slot)
                    (intern (format nil "~A-~A" name (first slot))
                            (symbol-package name))))
-             (accessor-setter (accessor)
-               (intern (format nil "SET-~A!" accessor)
-                       (symbol-package accessor)))
              (slot-definition (slot)
                `(,(slot-name slot) ,(slot-default slot)
                  ,@(when (slot-type slot) `(:type ,(slot-type slot)))))
@@ -52,11 +49,6 @@ ordered source for future serialization."
                             (&key ,@(mapcar #'constructor-key slots)))
                         (:predicate ,predicate))
              ,@(mapcar #'slot-definition slots))
-           ,@(mapcar (lambda (slot)
-                       (let ((accessor (slot-accessor slot)))
-                         `(defun ,(accessor-setter accessor) (state value)
-                            (setf (,accessor state) value))))
-                     slots)
            (defun ,reset (state)
              ,@(mapcar (lambda (slot)
                          (unless (member (slot-name slot) preserve)
@@ -71,5 +63,9 @@ ordered source for future serialization."
                            `(setf ,(path-form path) ,(first binding)))
                          bindings
                          console-preserve)
+               ,@(mapcar (lambda (path-value)
+                           `(setf ,(path-form (first path-value))
+                                  ,(second path-value)))
+                         console-reset-values)
                state))
            ',name)))))
