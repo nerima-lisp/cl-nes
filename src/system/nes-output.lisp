@@ -106,9 +106,10 @@ PALETTE is a sequence of 192 RGB values for the 64 NES palette entries."
   (ring-index 0 :type fixnum)
   (integrator 0.0f0 :type single-float)
   (last-mix 0.0f0 :type single-float)
-  (seen-p nil)
   buffer
   continuation)
+
+(defconstant +nes-audio-ring-mask+ #x7FFF)
 
 (defun %nes-make-audio-stream (sample-rate buffer continuation)
   (%make-nes-audio-stream :sample-rate sample-rate :buffer buffer
@@ -121,13 +122,11 @@ PALETTE is a sequence of 192 RGB values for the 64 NES palette entries."
          (base (nes-audio-stream-ring-index stream))
          (offset (* phase 256)))
     (dotimes (tap 256)
-      (incf (aref ring (mod (+ base tap) (length ring)))
+      (incf (aref ring (logand (+ base tap) +nes-audio-ring-mask+))
             (* delta (aref +nes-blip-kernel-table+ (+ offset tap)))))))
 
 (defun %nes-audio-push! (stream sample)
   (let ((previous (nes-audio-stream-last-mix stream)))
-    (unless (nes-audio-stream-seen-p stream)
-      (setf (nes-audio-stream-seen-p stream) t))
     (unless (= sample previous)
       (%nes-blip-add-step! stream (- sample previous))
       (setf (nes-audio-stream-last-mix stream) sample)))
@@ -141,7 +140,8 @@ PALETTE is a sequence of 192 RGB values for the 64 NES palette entries."
            (count (nes-audio-buffer-count buffer)))
       (incf (nes-audio-stream-integrator stream) value)
       (setf (aref ring index) 0.0f0
-            (nes-audio-stream-ring-index stream) (mod (1+ index) (length ring))
+            (nes-audio-stream-ring-index stream)
+            (logand (1+ index) +nes-audio-ring-mask+)
             (aref (nes-audio-buffer-samples buffer) count)
             (- (* 2.0f0 (nes-audio-stream-integrator stream)) 1.0f0))
       (incf count)
@@ -160,8 +160,16 @@ PALETTE is a sequence of 192 RGB values for the 64 NES palette entries."
 
 (defun nes-write-wav
     (pathname samples &key (sample-rate +nes-default-audio-sample-rate+))
+  "Write single-float mono PCM SAMPLES as a RIFF/WAVE file.
+
+Samples outside the [-1, 1] range are clipped before signed 16-bit encoding."
+  (%nes-check-positive-integer sample-rate "Sample rate")
+  (unless (<= sample-rate #xFFFFFFFF)
+    (error "Sample rate does not fit in a WAV header: ~S" sample-rate))
   (let* ((data-size (* 2 (length samples)))
          (pcm (make-array data-size :element-type '(unsigned-byte 8))))
+    (unless (<= data-size #xFFFFFFFF)
+      (error "Audio data is too large for a RIFF/WAVE file: ~S" data-size))
     (with-open-file (stream pathname
                             :direction :output
                             :if-exists :supersede
