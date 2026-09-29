@@ -88,16 +88,67 @@ PALETTE is a sequence of 192 RGB values for the 64 NES palette entries."
       (write-sequence rgb stream)))
   pathname)
 
-(defun %nes-sequence-to-octets (samples)
-  (let ((octets (make-array (length samples)
-                            :element-type '(unsigned-byte 8))))
-    (loop for index below (length samples)
-          for sample = (elt samples index)
-          do (unless (and (integerp sample) (<= 0 sample 255))
-               (error "Audio sample is not an unsigned 8-bit value: ~S"
-                      sample))
-             (setf (aref octets index) sample))
-    octets))
+(defstruct (nes-audio-buffer (:constructor %make-nes-audio-buffer))
+  (samples (make-array 0 :element-type 'single-float)
+           :type (simple-array single-float (*)))
+  (count 0 :type fixnum))
+
+(defun make-nes-audio-buffer (&key (size 1024))
+  (%nes-check-positive-integer size "Audio buffer size")
+  (%make-nes-audio-buffer
+   :samples (make-array size :element-type 'single-float :initial-element 0.0f0)))
+
+(defstruct (nes-audio-stream (:constructor %make-nes-audio-stream))
+  (sample-rate 44100 :type fixnum)
+  (phase 0 :type fixnum)
+  (ring (make-array 32768 :element-type 'single-float :initial-element 0.0f0)
+        :type (simple-array single-float (*)))
+  (ring-index 0 :type fixnum)
+  (integrator 0.0f0 :type single-float)
+  (last-mix 0.0f0 :type single-float)
+  (seen-p nil)
+  buffer
+  continuation)
+
+(defun %nes-make-audio-stream (sample-rate buffer continuation)
+  (%make-nes-audio-stream :sample-rate sample-rate :buffer buffer
+                           :continuation continuation))
+
+(defun %nes-blip-add-step! (stream delta)
+  (let* ((phase (floor (* 64 (nes-audio-stream-phase stream))
+                       +nes-ntsc-cpu-frequency+))
+         (ring (nes-audio-stream-ring stream))
+         (base (nes-audio-stream-ring-index stream))
+         (offset (* phase 256)))
+    (dotimes (tap 256)
+      (incf (aref ring (mod (+ base tap) (length ring)))
+            (* delta (aref +nes-blip-kernel-table+ (+ offset tap)))))))
+
+(defun %nes-audio-push! (stream sample)
+  (let ((previous (nes-audio-stream-last-mix stream)))
+    (unless (nes-audio-stream-seen-p stream)
+      (setf (nes-audio-stream-seen-p stream) t))
+    (unless (= sample previous)
+      (%nes-blip-add-step! stream (- sample previous))
+      (setf (nes-audio-stream-last-mix stream) sample)))
+  (incf (nes-audio-stream-phase stream) (nes-audio-stream-sample-rate stream))
+  (when (>= (nes-audio-stream-phase stream) +nes-ntsc-cpu-frequency+)
+    (decf (nes-audio-stream-phase stream) +nes-ntsc-cpu-frequency+)
+    (let* ((ring (nes-audio-stream-ring stream))
+           (index (nes-audio-stream-ring-index stream))
+           (value (aref ring index))
+           (buffer (nes-audio-stream-buffer stream))
+           (count (nes-audio-buffer-count buffer)))
+      (incf (nes-audio-stream-integrator stream) value)
+      (setf (aref ring index) 0.0f0
+            (nes-audio-stream-ring-index stream) (mod (1+ index) (length ring))
+            (aref (nes-audio-buffer-samples buffer) count)
+            (- (* 2.0f0 (nes-audio-stream-integrator stream)) 1.0f0))
+      (incf count)
+      (setf (nes-audio-buffer-count buffer) count)
+      (when (= count (length (nes-audio-buffer-samples buffer)))
+        (funcall (nes-audio-stream-continuation stream) buffer)
+        (setf (nes-audio-buffer-count buffer) 0)))))
 
 (defun %nes-write-u16-le (value stream)
   (write-byte (ldb (byte 8 0) value) stream)
@@ -109,14 +160,8 @@ PALETTE is a sequence of 192 RGB values for the 64 NES palette entries."
 
 (defun nes-write-wav
     (pathname samples &key (sample-rate +nes-default-audio-sample-rate+))
-  "Write unsigned 8-bit mono PCM SAMPLES as a RIFF/WAVE file."
-  (%nes-check-positive-integer sample-rate "Sample rate")
-  (unless (<= sample-rate #xFFFFFFFF)
-    (error "Sample rate does not fit in a WAV header: ~S" sample-rate))
-  (let* ((octets (%nes-sequence-to-octets samples))
-         (data-size (length octets)))
-    (unless (<= data-size #xFFFFFFFF)
-      (error "Audio data is too large for a RIFF/WAVE file: ~S" data-size))
+  (let* ((data-size (* 2 (length samples)))
+         (pcm (make-array data-size :element-type '(unsigned-byte 8))))
     (with-open-file (stream pathname
                             :direction :output
                             :if-exists :supersede
@@ -130,45 +175,53 @@ PALETTE is a sequence of 192 RGB values for the 64 NES palette entries."
       (%nes-write-u16-le 1 stream)
       (%nes-write-u16-le 1 stream)
       (%nes-write-u32-le sample-rate stream)
-      (%nes-write-u32-le sample-rate stream)
-      (%nes-write-u16-le 1 stream)
-      (%nes-write-u16-le 8 stream)
+      (%nes-write-u32-le (* sample-rate 2) stream)
+      (%nes-write-u16-le 2 stream)
+      (%nes-write-u16-le 16 stream)
       (%nes-write-ascii "data" stream)
       (%nes-write-u32-le data-size stream)
-      (write-sequence octets stream)))
+      (loop for sample across samples
+            for index from 0 by 2
+            for value = (round (* 32767.0 (max -1.0 (min 1.0 sample))))
+            for encoded = (logand (+ value #x10000) #xFFFF)
+            do (setf (aref pcm index) (ldb (byte 8 0) encoded)
+                     (aref pcm (1+ index)) (ldb (byte 8 8) encoded)))
+      (write-sequence pcm stream)))
   pathname)
 
 (defun nes-run-frames/k
     (nes frame-count frame-continuation
      &key (sample-rate +nes-default-audio-sample-rate+)
-          sample-continuation input-continuation)
+          audio-buffer audio-continuation input-continuation)
   "Run FRAME-COUNT frames and call FRAME-CONTINUATION for each framebuffer.
 
-When SAMPLE-CONTINUATION is supplied, it receives unsigned 8-bit mixer samples
-at SAMPLE-RATE.  Sampling is driven by the same CPU-cycle clock as the PPU,
-APU, DMA, and interrupt paths.  INPUT-CONTINUATION, when supplied, is
-forwarded to NES-RUN-FRAME/K and called once per frame before its first CPU
-step, allowing live controller state to be updated at each frame boundary.
+When AUDIO-BUFFER and AUDIO-CONTINUATION are supplied, the continuation
+receives fixed-size single-float mixer buffers at SAMPLE-RATE.  Sampling is
+driven by the same CPU-cycle clock as the PPU, APU, DMA, and interrupt paths.
+INPUT-CONTINUATION, when supplied, is forwarded to NES-RUN-FRAME/K and called
+once per frame before its first CPU step, allowing live controller state to be
+updated at each frame boundary.
 The function returns NES."
   (%nes-check-positive-integer frame-count "Frame count")
   (%nes-check-positive-integer sample-rate "Sample rate")
   (unless (functionp frame-continuation)
     (error "Frame continuation must be a function: ~S" frame-continuation))
-  (when sample-continuation
-    (unless (functionp sample-continuation)
-      (error "Sample continuation must be a function: ~S"
-             sample-continuation)))
+  (when (or audio-buffer audio-continuation)
+    (unless (and audio-buffer audio-continuation)
+      (error "AUDIO-BUFFER and AUDIO-CONTINUATION must be supplied together."))
+    (unless (typep audio-buffer 'nes-audio-buffer)
+      (error "Audio buffer must be made by MAKE-NES-AUDIO-BUFFER: ~S" audio-buffer))
+    (unless (functionp audio-continuation)
+      (error "Audio continuation must be a function: ~S" audio-continuation)))
   (when input-continuation
     (unless (functionp input-continuation)
       (error "Input continuation must be a function: ~S" input-continuation)))
-  (let ((sample-phase 0))
+  (let ((audio (and audio-buffer
+                    (%nes-make-audio-stream sample-rate audio-buffer
+                                            audio-continuation))))
     (labels ((sample-cycle ()
-               (when sample-continuation
-                 (incf sample-phase sample-rate)
-                 (loop while (>= sample-phase +nes-ntsc-cpu-frequency+)
-                       do (decf sample-phase +nes-ntsc-cpu-frequency+)
-                          (funcall sample-continuation
-                                   (apu-sample (nes-apu nes)))))))
+               (when audio
+                 (%nes-audio-push! audio (apu-mix (nes-apu nes))))))
       (dotimes (frame frame-count nes)
         (nes-run-frame/k nes frame-continuation
                          :cycle-hook #'sample-cycle
