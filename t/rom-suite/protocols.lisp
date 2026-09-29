@@ -35,7 +35,94 @@
     (:suite "ppu" :category :ppu
      :subroms ((:id "ppu-vbl-nmi" :path "ppu_vbl_nmi/ppu_vbl_nmi.nes"
                  :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
-                 :failure-text "status 1; failed while running test 2 of 10")))
+                 :failure-text "status 128; vbl_set_time failed")
+               (:id "ppu-vbl-01" :path "ppu_vbl_nmi/rom_singles/01-vbl_basics.nes"
+                :protocol :blargg :expected 0 :max-frames 360 :state :pass
+                :failure-text "status 0; measured pass")
+               (:id "ppu-vbl-02" :path "ppu_vbl_nmi/rom_singles/02-vbl_set_time.nes"
+                :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
+                :failure-text "status 128; vbl_set_time failed")
+               (:id "ppu-vbl-03" :path "ppu_vbl_nmi/rom_singles/03-vbl_clear_time.nes"
+                :protocol :blargg :expected 0 :max-frames 360 :state :pass
+                :failure-text "status 0; measured pass")
+               (:id "ppu-vbl-04" :path "ppu_vbl_nmi/rom_singles/04-nmi_control.nes"
+                :protocol :blargg :expected 0 :max-frames 360 :state :pass
+                :failure-text "status 0; measured pass")
+               (:id "ppu-vbl-05" :path "ppu_vbl_nmi/rom_singles/05-nmi_timing.nes"
+                :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
+                :failure-text "status 128; nmi_timing failed")
+               (:id "ppu-vbl-06" :path "ppu_vbl_nmi/rom_singles/06-suppression.nes"
+                :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
+                :failure-text "status 128; suppression failed")
+               (:id "ppu-vbl-07" :path "ppu_vbl_nmi/rom_singles/07-nmi_on_timing.nes"
+                :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
+                :failure-text "status 128; nmi_on_timing failed")
+               (:id "ppu-vbl-08" :path "ppu_vbl_nmi/rom_singles/08-nmi_off_timing.nes"
+                :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
+                :failure-text "status 128; nmi_off_timing failed")
+               (:id "ppu-vbl-09" :path "ppu_vbl_nmi/rom_singles/09-even_odd_frames.nes"
+                :protocol :blargg :expected 0 :max-frames 360 :state :pass
+                :failure-text "status 0; measured pass")
+               (:id "ppu-vbl-10" :path "ppu_vbl_nmi/rom_singles/10-even_odd_timing.nes"
+                :protocol :blargg :expected 0 :max-frames 360 :state :pass
+                :failure-text "status 0; measured pass")
+               (:id "sprite-hit-01" :path "sprite_hit_tests_2005.10.05/01.basics.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "sprite-hit-02" :path "sprite_hit_tests_2005.10.05/02.alignment.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "sprite-hit-03" :path "sprite_hit_tests_2005.10.05/03.corners.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "sprite-hit-04" :path "sprite_hit_tests_2005.10.05/04.flip.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "sprite-hit-05" :path "sprite_hit_tests_2005.10.05/05.left_clip.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "sprite-hit-06" :path "sprite_hit_tests_2005.10.05/06.right_edge.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "sprite-hit-07" :path "sprite_hit_tests_2005.10.05/07.screen_bottom.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "sprite-hit-08" :path "sprite_hit_tests_2005.10.05/08.double_height.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "sprite-hit-09" :path "sprite_hit_tests_2005.10.05/09.timing_basics.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "sprite-hit-10" :path "sprite_hit_tests_2005.10.05/10.timing_order.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "sprite-hit-11" :path "sprite_hit_tests_2005.10.05/11.edge_timing.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "sprite-overflow-1" :path "sprite_overflow_tests/1.Basics.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "sprite-overflow-2" :path "sprite_overflow_tests/2.Details.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "sprite-overflow-3" :path "sprite_overflow_tests/3.Timing.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "sprite-overflow-4" :path "sprite_overflow_tests/4.Obscure.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "sprite-overflow-5" :path "sprite_overflow_tests/5.Emulator.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "ppu-open-bus" :path "ppu_open_bus/ppu_open_bus.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "ppu-read-buffer" :path "ppu_read_buffer/test_ppu_read_buffer.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")
+               (:id "oam-read" :path "oam_read/oam_read.nes"
+                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
+                :failure-text "observed hash B87D5DC5")))
     (:suite "apu" :category :apu
      :subroms ((:id "apu-test" :path "apu_test/apu_test.nes"
                  :protocol :blargg :expected 0 :max-frames 360 :state :pass
@@ -59,7 +146,7 @@
 (defparameter *accuracy-coin-contract*
   '(:id "accuracy-coin" :category :accuracy-coin :path "AccuracyCoin.nes"
     :protocol :accuracy-coin :expected 146 :max-frames 1200 :state :known-fail
-    :failure-text "named result item mismatch"
+    :failure-text "0/146 pass; result RAM remained zero"
     :items ((:name "item-0400" :address #x0400 :expected :pass))))
 
 (defun accuracy-coin-items ()
