@@ -23,8 +23,8 @@
     (if (plusp (apu-frame-tail-step apu))
         (case (apu-frame-tail-step apu)
           (1
-           ;; The terminal four-step clocks occur on step 3.  This tail
-           ;; cycle keeps only the post-edge IRQ visibility window.
+           (%apu-clock-quarter-frame! apu)
+           (%apu-clock-half-frame! apu)
            (unless (apu-frame-irq-inhibit-p apu)
              (setf (apu-frame-irq-pending-p apu) t))
            (setf (apu-frame-tail-step apu) 2))
