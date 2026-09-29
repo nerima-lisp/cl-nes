@@ -5,7 +5,7 @@
     (funcall pre-cycle-hook))
   (%nes-tick! nes 1)
   (let ((cartridge (bus-cartridge bus)))
-    (when (and cartridge (= (cartridge-mapper cartridge) 69))
+    (when (and cartridge (cartridge-cpu-clock-required-p cartridge))
       (cartridge-clock-cpu! cartridge 1)))
   (setf (bus-cpu-cycle-phase bus)
         (logxor (bus-cpu-cycle-phase bus) 1))

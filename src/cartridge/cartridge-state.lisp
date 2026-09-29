@@ -9,6 +9,8 @@
 (defconstant +chr-bank-4k-size+ (* 4 1024))
 (defconstant +chr-bank-size+ (* 8 1024))
 (defconstant +mapper4-a12-low-filter-cycles+ 24)
+(defparameter +mapper-definitions+
+  '((69 :cpu-clock-required-p t)))
 
 (define-hardware-state cartridge-mapper5-state
   ((prg-mode 3 nil)
@@ -91,7 +93,7 @@
   nil)
 
 (defun %make-cartridge-instance ()
-  (make-array 16 :initial-element nil))
+  (make-array 17 :initial-element nil))
 
 (%install-vector-accessor-pairs
  '((cartridge-prg-rom set-cartridge-prg-rom! 0)
@@ -109,4 +111,5 @@
    (cartridge-mapper4-state set-cartridge-mapper4-state! 12)
    (cartridge-mapper-state set-cartridge-mapper-state! 13)
    (cartridge-submapper set-cartridge-submapper! 14)
-   (cartridge-bus-conflict-p set-cartridge-bus-conflict-p! 15)))
+   (cartridge-bus-conflict-p set-cartridge-bus-conflict-p! 15)
+   (cartridge-cpu-clock-required-p set-cartridge-cpu-clock-required-p! 16)))

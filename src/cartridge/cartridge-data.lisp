@@ -99,6 +99,9 @@
                        :bus-conflict-p bus-conflict-p
                        :four-screen-p four-screen-p
                        :chr-writable-p chr-writable-p
+                       :cpu-clock-required-p
+                       (getf (cdr (assoc mapper +mapper-definitions+))
+                             :cpu-clock-required-p)
                        :prg-bank 0
                        :chr-bank 0
                        :mapper5-state mapper5-state

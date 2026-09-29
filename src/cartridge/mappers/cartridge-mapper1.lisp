@@ -24,7 +24,7 @@
 (defun %mapper1-write! (cartridge address value &optional cpu-cycle)
   (when (and cpu-cycle
              (cartridge-mapper1-last-write-cycle cartridge)
-             (= cpu-cycle (cartridge-mapper1-last-write-cycle cartridge)))
+             (= 1 (- cpu-cycle (cartridge-mapper1-last-write-cycle cartridge))))
     (return-from %mapper1-write! value))
   (setf (cartridge-mapper1-last-write-cycle cartridge) cpu-cycle)
   (cond
