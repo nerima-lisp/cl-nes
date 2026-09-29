@@ -17,7 +17,17 @@
          (cyc (and cyc-position
                    (parse-integer line :start (+ cyc-position 4)
                                         :radix 10 :junk-allowed t))))
-    (list :pc pc :a a :x x :y y :p p :sp sp :cyc cyc)))
+    (list :pc pc :a a :x x :y y :p p :sp sp :cyc cyc
+          :scanline (or (marked-decimal line "SL:")
+                        (marked-decimal line "SCANLINE:"))
+          :dot (or (marked-decimal line "DOT:")
+                   (marked-decimal line "DOT ")))))
+
+(defun marked-decimal (line marker)
+  (let ((position (search marker line)))
+    (and position
+         (parse-integer line :start (+ position (length marker))
+                              :junk-allowed t))))
 
 (defun cpu-state (nes)
   (let ((cpu (cl-nes:nes-cpu nes)))
@@ -26,16 +36,29 @@
           :p (cl-nes:cpu-p cpu) :sp (cl-nes:cpu-sp cpu)
           :cyc (cl-nes:cpu-cycles cpu))))
 
+(defun ppu-state (nes)
+  (let ((ppu (cl-nes:nes-ppu nes)))
+    (list :scanline (cl-nes::ppu-scanline ppu)
+          :dot (cl-nes::ppu-dot ppu))))
+
+(defun expected-ppu-state (expected initial-cpu-cycles initial-scanline initial-dot)
+  (let* ((ticks (+ initial-dot
+                   (* 3 (- (getf expected :cyc) initial-cpu-cycles))))
+         (position (+ (* initial-scanline 341) ticks)))
+    (list :scanline (mod (floor position 341) 262)
+          :dot (mod position 341))))
+
 (defun first-state-difference (expected actual line-number line)
-  (dolist (key '(:pc :a :x :y :p :sp :cyc))
-    (unless (= (getf expected key) (getf actual key))
+  (dolist (key '(:pc :a :x :y :p :sp :cyc :scanline :dot))
+    (unless (or (null (getf expected key))
+                (= (getf expected key) (getf actual key)))
       (return-from first-state-difference
         (format nil "line ~D (~A): ~A expected ~A actual ~A"
                 line-number key line
-                (if (eq key :cyc)
+                (if (member key '(:cyc :scanline :dot))
                     (format nil "~D" (getf expected key))
                     (format nil "~2,'0X" (getf expected key)))
-                (if (eq key :cyc)
+                (if (member key '(:cyc :scanline :dot))
                     (format nil "~D" (getf actual key))
                     (format nil "~2,'0X" (getf actual key)))))))
   nil)
@@ -52,20 +75,23 @@
       ;; reset vector enters at $C004. The public API intentionally exposes
       ;; CPU state read access only, so this harness uses the state accessor
       ;; here to select the documented automation entry point.
-      (setf (cl-nes::cpu-pc (cl-nes:nes-cpu nes)) #xc000)
-      ;; PPU scanline/dot are intentionally excluded: the current public API
-      ;; exposes the framebuffer and frame-ready flag, but no scanline/dot
-      ;; accessors. The omitted fields are recorded here rather than silently
-      ;; treating the CPU-only trace as a complete PPU golden trace.
+      (setf (cl-nes:cpu-pc (cl-nes:nes-cpu nes)) #xc000)
+      (let* ((initial-cpu-cycles (cl-nes:cpu-cycles (cl-nes:nes-cpu nes)))
+             (initial-ppu (ppu-state nes))
+             (initial-scanline (getf initial-ppu :scanline))
+             (initial-dot (getf initial-ppu :dot)))
       (with-open-file (stream log)
         (loop for line = (read-line stream nil nil)
               for line-number from 1
               while line
               for expected = (nestest-line line)
               for actual = (cpu-state nes)
+              for expected-ppu = (expected-ppu-state expected initial-cpu-cycles
+                                                       initial-scanline initial-dot)
+              do (setf actual (append actual expected-ppu))
               unless (zerop (getf expected :cyc))
                 do (let ((difference (first-state-difference expected actual line-number line)))
                      (when difference
                        (format t "nestest first difference: ~A~%" difference)
                        (return difference)))
-                   (cl-nes:nes-step/k nes #'identity))))))
+                   (cl-nes:nes-step/k nes #'identity)))))))

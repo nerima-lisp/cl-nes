@@ -141,7 +141,6 @@
               CL_NES_ACCURACY_COIN = "${accuracy-coin}/AccuracyCoin.nes";
               CL_NES_NESTEST_ROM = "${nes-test-roms}/other/nestest.nes";
               CL_NES_NESTEST_LOG = "${nes-test-roms}/other/nestest.log";
-              CL_NES_RUN_ROM_SUITE = "1";
             });
           }
           // pkgs.lib.optionalAttrs (paredit != null) {

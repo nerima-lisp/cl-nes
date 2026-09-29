@@ -109,8 +109,8 @@
 (defun cpu-step! (cpu bus &optional nmi-poll)
   (if (cpu-stopped-p cpu)
       0
-      (let* ((opcode (%fetch-byte cpu bus))
-             (_ (setf (cpu-irq-poll-delay cpu) nil))
-             (cycles (progn _ (%dispatch-cpu-opcode cpu bus opcode nmi-poll))))
-        (incf (cpu-cycles cpu) cycles)
-        cycles)))
+      (let ((opcode (%fetch-byte cpu bus)))
+        (setf (cpu-irq-poll-delay cpu) nil)
+        (let ((cycles (%dispatch-cpu-opcode cpu bus opcode nmi-poll)))
+          (incf (cpu-cycles cpu) cycles)
+          cycles))))

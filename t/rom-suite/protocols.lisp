@@ -142,6 +142,14 @@
   (or (= value 1) (= value #xff) (= value 3)
       (and (= (logand value 3) 2) (>= value 2))))
 
+(defun accuracy-result-kind (value)
+  (cond
+    ((= value 1) :pass)
+    ((= value #xff) :skipped)
+    ((= value 3) :running)
+    ((and (= (logand value 3) 2) (>= value 2)) :fail)
+    (t :unrecorded)))
+
 (defun run-accuracy-coin (path contract)
   (let ((nes (cl-nes:make-nes :cartridge (cl-nes:load-cartridge path)))
         (results nil))
@@ -155,14 +163,19 @@
               (not (member 3 results))))))
     (unless results
       (setf results (read-bus-range (cl-nes:nes-bus nes) #x0400 #x04ff)))
-    (let ((pass-count (count 1 results))
-          (fail-count (count-if (lambda (value)
-                                  (and (accuracy-result-value-p value)
-                                       (not (member value '(1 #xff 3)))))
-                                results))
-          (skip-count (count #xff results))
-          (running-count (count 3 results)))
-      (list :passed (= pass-count (getf contract :expected))
+    (let* ((items (loop for value in results
+                        for index from #x0400
+                        for kind = (accuracy-result-kind value)
+                        when (not (eq kind :unrecorded))
+                          collect (list :address index :value value :kind kind)))
+           (pass-count (count :pass items :key (lambda (item) (getf item :kind))))
+           (fail-count (count :fail items :key (lambda (item) (getf item :kind))))
+           (skip-count (count :skipped items :key (lambda (item) (getf item :kind))))
+           (running-count (count :running items :key (lambda (item) (getf item :kind))))
+           (completed-count (+ pass-count fail-count)))
+      (list :passed (and (= completed-count (getf contract :expected))
+                         (= pass-count (getf contract :expected)))
             :pass-count pass-count :total (getf contract :expected)
             :fail-count fail-count :skip-count skip-count
-            :running-count running-count :results results))))
+            :running-count running-count :completed-count completed-count
+            :items items :results results))))

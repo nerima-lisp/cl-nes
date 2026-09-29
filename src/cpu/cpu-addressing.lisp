@@ -114,11 +114,14 @@
       (progn
         (%fetch-byte cpu bus)
         cycles)
-      (multiple-value-bind (address ignored-crossed-p)
+      (multiple-value-bind (address crossed-p base)
           (%address-for-mode cpu bus mode)
-        (declare (ignore ignored-crossed-p))
+        (when crossed-p
+          (bus-read bus
+                    (logior (logand base #xFF00)
+                            (logand address #x00FF))))
         (bus-read bus address)
-        cycles)))
+        (+ cycles (if crossed-p 1 0)))))
 
 (defun %write-op! (cpu bus mode value)
   (multiple-value-bind (address ignored-crossed-p base)

@@ -14,36 +14,57 @@
   (let ((path (resolve-rom-path contract)))
     (unless (probe-file path)
       (error "ROM input missing for ~A: ~A" (rom-contract-id contract) path))
-    (handler-case
-        (case (rom-contract-protocol contract)
-          (:blargg (run-blargg-contract path contract))
-          (:screen-hash (run-screen-contract path contract))
-          (otherwise (error "Unknown ROM protocol ~S" (rom-contract-protocol contract))))
-      (error (condition)
-        (list :passed nil :error (princ-to-string condition)
-              :text "condition signaled")))))
+    (if (and (eq (rom-contract-protocol contract) :screen-hash)
+             (string-equal (rom-contract-expected contract) "UNRECORDED"))
+        (list :passed nil :unrecorded t :status :unrecorded
+              :text "expected framebuffer hash unrecorded")
+        (handler-case
+            (case (rom-contract-protocol contract)
+              (:blargg (run-blargg-contract path contract))
+              (:screen-hash (run-screen-contract path contract))
+              (otherwise (error "Unknown ROM protocol ~S"
+                                (rom-contract-protocol contract))))
+          (error (condition)
+            (list :passed nil :error (princ-to-string condition)
+                  :text "condition signaled"))))))
 
 (defun enforce-ratchet (contract result)
+  (unless (getf result :unrecorded)
+    (let ((passed (getf result :passed)))
+      (ecase (rom-contract-state contract)
+        (:pass (unless passed
+                 (error "ratchet regression: ~A~%~A"
+                        (rom-contract-id contract) (result-summary contract result))))
+        (:known-fail (when passed
+                       (error "ratchet update required: ~A unexpectedly passes~%~A"
+                              (rom-contract-id contract)
+                              (result-summary contract result)))))))
+  result)
+
+(defun enforce-accuracy-ratchet (contract result)
   (let ((passed (getf result :passed)))
-    (ecase (rom-contract-state contract)
+    (ecase (getf contract :state)
       (:pass (unless passed
-               (error "ratchet regression: ~A~%~A"
-                      (rom-contract-id contract) (result-summary contract result))))
+               (error "ratchet regression: ~A~%pass=~D completed=~D expected=~D"
+                      (getf contract :id)
+                      (getf result :pass-count)
+                      (getf result :completed-count)
+                      (getf contract :expected))))
       (:known-fail (when passed
-                     (error "ratchet update required: ~A unexpectedly passes~%~A"
-                            (rom-contract-id contract)
-                            (result-summary contract result))))))
+                     (error "ratchet update required: ~A unexpectedly passes~%pass=~D completed=~D"
+                            (getf contract :id)
+                            (getf result :pass-count)
+                            (getf result :completed-count))))))
   result)
 
 (defun run-accuracy-contract ()
   (let ((path (accuracy-coin-path)))
     (unless (and path (probe-file path))
       (error "AccuracyCoin input missing: ~A" path))
-    (let* ((result (run-accuracy-coin path *accuracy-coin-contract*))
-           (pass-count (getf result :pass-count))
-           (baseline 0))
-      (when (< pass-count baseline)
-        (error "AccuracyCoin ratchet regression: ~D < ~D" pass-count baseline))
+    (let* ((contract *accuracy-coin-contract*)
+           (result (run-accuracy-coin path contract))
+           (pass-count (getf result :pass-count)))
+      (enforce-accuracy-ratchet contract result)
       (format t "accuracy-coin pass=~D total=~D fail=~D skip=~D running=~D~%"
               pass-count (getf result :total) (getf result :fail-count)
               (getf result :skip-count) (getf result :running-count))
@@ -57,6 +78,13 @@
         (format t "~A~%" (result-summary contract result))))
     (run-accuracy-contract)
     (nreverse results)))
+
+(defun run-rom-suite-table-tests ()
+  (unless (uiop:symbol-call :cl-weave :run-all
+                            :reporter :spec
+                            :pass-with-no-tests nil)
+    (error "ROM suite table tests failed."))
+  t)
 
 (defmacro define-rom-contract-tests ()
   `(progn
@@ -92,6 +120,7 @@
 (defun rom-suite-main ()
   (handler-case
       (progn
+        (run-rom-suite-table-tests)
         (run-rom-suite)
         (let ((difference (run-nestest-trace)))
           (when (and difference (eq cl-nes/rom-suite::*nestest-state* :pass))
