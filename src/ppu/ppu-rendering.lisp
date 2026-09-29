@@ -155,7 +155,7 @@
             (logior (ash result 1)
                     (ldb (byte 1 bit) value))))))
 
-(defun %sprite-pixel (ppu sprite-index x y)
+(defun %sprite-pixel (ppu sprite-index x y &optional (mask (ppu-mask ppu)))
   (let* ((oam (ppu-oam ppu))
          (base (* sprite-index 4))
          (sprite-y (1+ (aref oam base)))
@@ -166,12 +166,12 @@
          (local-x (- x sprite-x))
          (local-y (- y sprite-y))
          (legacy-sprite-mask-p
-           (and (not (logbitp 3 (ppu-mask ppu)))
-                (logbitp 4 (ppu-mask ppu)))))
+           (and (not (logbitp 3 mask))
+                (logbitp 4 mask))))
     (when (and (<= 0 local-x) (< local-x 8)
                (<= 0 local-y) (< local-y height)
                (or (>= x 8)
-                   (logbitp 2 (ppu-mask ppu))
+                   (logbitp 2 mask)
                    (and legacy-sprite-mask-p (< x 8))))
       (let* ((pixel-x (if (logbitp 6 attributes) (- 7 local-x) local-x))
              (pattern-address (%sprite-pattern-address ppu tile attributes local-y)))
@@ -280,9 +280,10 @@
     (loop for slot below (ppu-secondary-oam-count ppu)
           for sprite = (aref (ppu-sprite-indexes ppu) slot)
           do (multiple-value-bind (color present behind)
-                 (%sprite-pixel ppu sprite x y)
+                 (%sprite-pixel ppu sprite x y (%ppu-effective-mask ppu))
                (when present
-                 (when (and (= sprite 0) background-solid (< x 255)
+                 (when (and (= sprite 0) background-solid
+                            (< x 255) (< y 239)
                             (not (logbitp 6 (ppu-status ppu))))
                    (setf (ppu-status ppu) (logior (ppu-status ppu) #x40)))
                  (return (if (and behind background-solid)
