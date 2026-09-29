@@ -101,7 +101,12 @@ cl-nes rom-test ROM.nes [--max-frames INTEGER] [--mapper4-variant mmc3|mmc6|mmc3
 ~~~
 
 `play` opens the GLFW/OpenGL window, restores battery-backed saves from the
-state directory, and writes them back on exit. `render` writes numbered PPM or
+state directory, and writes them back on exit. Without `--state-directory`,
+state is stored below the XDG data directory in `cl-nes/`. Save states are
+stored per ROM in ten slots. Press a number key (0 through 9) to select a
+slot, F5 to save it, and F7 to load it. P pauses, R resets, Z/X are B/A,
+Shift/Enter are Select/Start, and the arrow keys are the D-pad. A connected
+GLFW gamepad supplies the first two controller ports. `render` writes numbered PPM or
 PNG frames. `rom-test` runs the bounded diagnostic protocol and reports its
 status. These commands do not download or distribute ROM files; use a
 self-created, homebrew, public-domain, or otherwise legally obtained corpus.

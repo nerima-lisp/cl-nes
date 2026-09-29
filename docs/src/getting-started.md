@@ -53,7 +53,16 @@ cl-nes play game.nes
 ~~~
 
 The `play` command accepts `--state-directory PATH` for battery-backed saves
-and `--scale INTEGER` for the logical viewport scale. To render frames without
+and save states, and `--scale INTEGER` for the logical viewport scale. If the
+state directory is omitted, the frontend uses the XDG data directory under
+`cl-nes/`, with a separate content-addressed directory for each ROM.
+
+While playing, number keys `0` through `9` select a save-state slot. F5 saves
+the selected slot and F7 loads it. P pauses and R resets. Z/X map to B/A,
+Shift/Enter map to Select/Start, and the arrow keys map to the D-pad. If no
+gamepad is connected, the gamepad path contributes no input.
+
+To render frames without
 opening the interactive frontend:
 
 ~~~sh

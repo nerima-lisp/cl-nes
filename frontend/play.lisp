@@ -1,6 +1,6 @@
 (in-package #:cl-nes/frontend)
 
-(defun run-play (rom-path &key (state-directory (uiop:getcwd)) (scale 3))
+(defun run-play (rom-path &key state-directory (scale 3))
   "Run a ROM in a GLFW window and pace emulation from the SDL queue."
   (let* ((cartridge (cl-nes:load-cartridge rom-path))
          (controller-1 (cl-nes:make-controller))
@@ -9,17 +9,16 @@
                                :controller-1 controller-1
                                :controller-2 controller-2))
          (paused nil) (reset-requested nil) (previous-p nil) (previous-r nil)
+         (previous-save nil) (previous-load nil) (selected-slot 0)
          (battery-path (merge-pathnames
-                        (make-pathname :type "sav"
-                                       :name (pathname-name (pathname rom-path)))
-                        (pathname state-directory)))
+                        (make-pathname :name "battery" :type "sav")
+                        (rom-state-directory rom-path :state-directory state-directory)))
          (audio (make-audio-queue :sample-rate cl-nes:+nes-default-audio-sample-rate+
                                   :capacity 16384))
          (audio-buffer (cl-nes:make-nes-audio-buffer :size 512))
          (last-battery-save (get-internal-real-time))
          (battery-save-interval (* 3 internal-time-units-per-second)))
-    (when (and (cl-nes:cartridge-battery-backed-p cartridge)
-               (probe-file battery-path))
+    (when (and (cl-nes:cartridge-battery-backed-p cartridge) (probe-file battery-path))
       (cl-nes:cartridge-restore-battery! cartridge (restore-octets battery-path)))
     (unwind-protect
          (cl-glfw3-kit:with-glfw ()
@@ -51,13 +50,38 @@
                        :audio-continuation #'audio-continuation)
                       (cl-glfw3-kit:for-each-frame (frame window)
                         (declare (ignore frame))
-                        (let ((p (cl-glfw3-kit:key-pressed-p window :p))
-                              (r (cl-glfw3-kit:key-pressed-p window :r)))
+                          (let ((p (cl-glfw3-kit:key-pressed-p window :p))
+                              (r (cl-glfw3-kit:key-pressed-p window :r))
+                              (save (cl-glfw3-kit:key-pressed-p window (savestate-save-key)))
+                              (load (cl-glfw3-kit:key-pressed-p window (savestate-load-key))))
                           (when (and p (not previous-p))
                             (setf paused (not paused)))
                           (when (and r (not previous-r))
                             (setf reset-requested t))
-                          (setf previous-p p previous-r r))
+                          (loop for slot from 0 below +savestate-slot-count+
+                                for key = (savestate-select-key slot)
+                                when (cl-glfw3-kit:key-pressed-p window key)
+                                  do (setf selected-slot slot))
+                          (when (and save (not previous-save))
+                            (save-state-slot nes rom-path selected-slot
+                                             :state-directory state-directory)
+                            (format t "Saved state slot ~D.~%" selected-slot))
+                          (when (and load (not previous-load))
+                            (handler-case
+                                (progn
+                                  (load-state-slot nes rom-path selected-slot
+                                                    :state-directory state-directory)
+                                  (format t "Loaded state slot ~D.~%" selected-slot))
+                              (cl-nes:invalid-savestate (condition)
+                                (format *error-output*
+                                        "Could not load state slot ~D: ~A~%"
+                                        selected-slot condition))
+                              (file-error (condition)
+                                (format *error-output*
+                                        "Could not load state slot ~D: ~A~%"
+                                        selected-slot condition))))
+                          (setf previous-p p previous-r r
+                                previous-save save previous-load load))
                         (when reset-requested
                           (cl-nes:nes-reset! nes)
                           (setf reset-requested nil))

@@ -14,6 +14,12 @@
       (read-sequence octets stream)
       octets)))
 
+(defun delete-test-path (pathname)
+  (when (probe-file pathname)
+    (if (uiop:directory-pathname-p pathname)
+        (uiop:delete-directory-tree pathname :validate t)
+        (delete-file pathname))))
+
 (describe "frontend input masks"
   (it "maps keyboard keys to the NES button bits"
     (let ((pressed '(:z :x :left-shift :kp-enter :up :right)))
@@ -28,6 +34,8 @@
     (expect (gamepad-button-mask #(1 1 0 0 0 0 1 1 0 0 0 1 1 1 1))
             :to-be
             (nes-button-mask :a :b :select :start :up :down :left :right)))
+  (it "keeps an unconnected GLFW gamepad on the safe zero-mask path"
+    (expect (glfw-gamepad-mask 0) :to-be 0))
   (it "combines named NES button bits"
     (expect (nes-button-mask :a :right :start)
             :to-be
@@ -104,3 +112,77 @@
                                            :defaults pathname)))
                      :to-be t))
         (when (probe-file pathname) (delete-file pathname))))))
+
+(describe "frontend save-state slots"
+  (it "assigns number keys to slots and function keys to save/load"
+    (expect (equal (list (savestate-select-key 0)
+                         (savestate-select-key 9)
+                         (savestate-save-key)
+                         (savestate-load-key))
+                   '(:0 :9 :f5 :f7))
+            :to-be t))
+  (it "derives a stable ROM-identity directory and slot pathname"
+    (let* ((directory (make-pathname :name (format nil "cl-nes-rom-~D"
+                                                   (random most-positive-fixnum))
+                                     :defaults (uiop:temporary-directory)))
+           (rom-path (merge-pathnames "game.nes" directory))
+           (rom-octets #(1 2 3 4))
+           (state-directory (merge-pathnames "state/" directory)))
+      (unwind-protect
+           (progn
+             (atomic-save-octets rom-path rom-octets)
+             (expect (string= (rom-identity rom-path)
+                              "9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a")
+                     :to-be t)
+             (let ((slot-path (savestate-path
+                               rom-path 3 :state-directory state-directory)))
+               (expect (pathname-name slot-path) :to-equal "slot-3")
+               (expect (pathname-type slot-path) :to-equal "state")
+               (expect (equal (last (pathname-directory slot-path) 2)
+                              (list "cl-nes" (rom-identity rom-path)))
+                       :to-be t)))
+        (delete-test-path directory))))
+  (it "round-trips a real core state through a slot file"
+    (let* ((directory (make-pathname :name (format nil "cl-nes-state-~D"
+                                                   (random most-positive-fixnum))
+                                     :defaults (uiop:temporary-directory)))
+           (rom-path (merge-pathnames "game.nes" directory))
+           (state-directory (merge-pathnames "state/" directory))
+           (nes (make-nes)))
+      (unwind-protect
+           (progn
+             (atomic-save-octets rom-path #(1 2 3))
+             (let ((expected (nes-save-state nes)))
+               (save-state-slot nes rom-path 2 :state-directory state-directory)
+               (expect (not (null (probe-file (savestate-path
+                                               rom-path 2 :state-directory state-directory))))
+                       :to-be t)
+               (nes-run-frame/k nes (lambda (framebuffer)
+                                      (declare (ignore framebuffer))))
+               (load-state-slot
+                nes rom-path 2 :state-directory state-directory)
+               (expect (equalp (nes-save-state nes) expected) :to-be t)))
+        (delete-test-path directory))))
+  (it "rejects a truncated slot file as invalid save state"
+    (let* ((directory (make-pathname :name (format nil "cl-nes-broken-~D"
+                                                   (random most-positive-fixnum))
+                                     :defaults (uiop:temporary-directory)))
+           (rom-path (merge-pathnames "game.nes" directory))
+           (state-directory (merge-pathnames "state/" directory))
+           (nes (make-nes)))
+      (unwind-protect
+           (progn
+             (atomic-save-octets rom-path #(1 2 3))
+             (atomic-save-octets
+              (savestate-path
+               rom-path 0 :state-directory state-directory)
+              #(67 76 78))
+             (let ((condition
+                     (handler-case
+                         (progn
+                           (load-state-slot
+                            nes rom-path 0 :state-directory state-directory)
+                           nil)
+                       (condition (condition) condition))))
+               (expect (typep condition 'invalid-savestate) :to-be t)))
+        (delete-test-path directory)))))
