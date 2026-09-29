@@ -69,4 +69,4 @@
         :frame-cycle (1- (aref cl-nes::+apu-five-step-events+ 4)))
       (apu-tick! apu 1)
       (expect (cl-nes::apu-frame-step apu) :to-be 0)
-      (expect (cl-nes::apu-frame-cycle apu) :to-be 0)))
+      (expect (cl-nes::apu-frame-cycle apu) :to-be 0))))
