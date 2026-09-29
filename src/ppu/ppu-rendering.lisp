@@ -116,16 +116,24 @@
     (multiple-value-bind (color palette-number)
         (%ppu-background-sample ppu local-x local-y tile-x tile-y nametable-base
                                  split-p split-x split-y)
-      (if (or (not (logbitp 1 (ppu-mask ppu)))
-            (and (< x 8) (not (logbitp 2 (ppu-mask ppu)))))
+      (let* ((mask (ppu-mask ppu))
+             (legacy-mask-p (zerop (logand mask #x18)))
+             (background-enabled-p
+               (or (logbitp 3 mask)
+                   (and legacy-mask-p (logbitp 1 mask))))
+             (left-enabled-p
+               (or (logbitp 1 mask)
+                   (and legacy-mask-p (logbitp 2 mask)))))
+        (if (or (not background-enabled-p)
+                (and (< x 8) (not left-enabled-p)))
             (values backdrop nil)
-          (if (zerop color)
-              (values backdrop nil)
-              (values
-               (logand
-                (ppu-read-vram ppu (+ #x3F00 (* palette-number 4) color))
-                #x3F)
-               t)))))))
+            (if (zerop color)
+                (values backdrop nil)
+                (values
+                 (logand
+                  (ppu-read-vram ppu (+ #x3F00 (* palette-number 4) color))
+                  #x3F)
+                 t))))))))
 
 (defun %sprite-pattern-address (ppu tile attributes pixel-y)
   (let* ((height (if (logbitp 5 (ppu-control ppu)) 16 8))
@@ -156,10 +164,15 @@
          (sprite-x (aref oam (+ base 3)))
          (height (if (logbitp 5 (ppu-control ppu)) 16 8))
          (local-x (- x sprite-x))
-         (local-y (- y sprite-y)))
+         (local-y (- y sprite-y))
+         (legacy-sprite-mask-p
+           (and (not (logbitp 3 (ppu-mask ppu)))
+                (logbitp 4 (ppu-mask ppu)))))
     (when (and (<= 0 local-x) (< local-x 8)
                (<= 0 local-y) (< local-y height)
-               (or (>= x 8) (logbitp 4 (ppu-mask ppu))))
+               (or (>= x 8)
+                   (logbitp 2 (ppu-mask ppu))
+                   (and legacy-sprite-mask-p (< x 8))))
       (let* ((pixel-x (if (logbitp 6 attributes) (- 7 local-x) local-x))
              (pattern-address (%sprite-pattern-address ppu tile attributes local-y)))
         (let* ((bit (- 7 pixel-x))
@@ -179,7 +192,10 @@
 
 (defun %ppu-rendering-enabled-p (ppu)
   (let ((mask (%ppu-effective-mask ppu)))
-    (or (logbitp 3 mask) (logbitp 4 mask))))
+    (or (logbitp 3 mask)
+        (logbitp 4 mask)
+        (and (zerop (logand mask #x18))
+             (logbitp 1 mask)))))
 
 (defun %ppu-background-shift-color (ppu)
   (let ((bit (- 15 (ppu-fine-x ppu))))
@@ -191,17 +207,25 @@
 (defun %ppu-background-pixel-at-dot (ppu)
   (multiple-value-bind (color palette-number)
       (%ppu-background-shift-color ppu)
-    (if (or (not (logbitp 1 (%ppu-effective-mask ppu)))
-            (and (< (ppu-dot ppu) 9)
-                 (not (logbitp 2 (%ppu-effective-mask ppu)))))
+    (let* ((mask (%ppu-effective-mask ppu))
+           (legacy-mask-p (zerop (logand mask #x18)))
+           (background-enabled-p
+             (or (logbitp 3 mask)
+                 (and legacy-mask-p (logbitp 1 mask))))
+           (left-enabled-p
+             (or (logbitp 1 mask)
+                 (and legacy-mask-p (logbitp 2 mask)))))
+      (if (or (not background-enabled-p)
+              (and (< (ppu-dot ppu) 9)
+                   (not left-enabled-p)))
         (values (logand (ppu-read-vram ppu #x3F00) #x3F) nil)
-        (if (zerop color)
-            (values (logand (ppu-read-vram ppu #x3F00) #x3F) nil)
-            (values
-             (logand
-              (ppu-read-vram ppu (+ #x3F00 (* palette-number 4) color))
-              #x3F)
-             t)))))
+          (if (zerop color)
+              (values (logand (ppu-read-vram ppu #x3F00) #x3F) nil)
+              (values
+               (logand
+                (ppu-read-vram ppu (+ #x3F00 (* palette-number 4) color))
+                #x3F)
+               t))))))
 
 (defun %ppu-shift-background-registers! (ppu)
   (setf (ppu-background-shift-low ppu)
@@ -252,7 +276,7 @@
     count))
 
 (defun %ppu-sprite-pixel-at-dot (ppu x y background-solid)
-  (when (logbitp 3 (%ppu-effective-mask ppu))
+  (when (logbitp 4 (%ppu-effective-mask ppu))
     (loop for slot below (ppu-secondary-oam-count ppu)
           for sprite = (aref (ppu-sprite-indexes ppu) slot)
           do (multiple-value-bind (color present behind)
@@ -268,7 +292,7 @@
 (defun %ppu-render-dot! (ppu)
   (when (and (< (ppu-scanline ppu) +ppu-height+)
              (<= 1 (ppu-dot ppu) 256))
-    (let ((x (1- (ppu-dot ppu)))
+      (let ((x (1- (ppu-dot ppu)))
           (y (ppu-scanline ppu)))
       (multiple-value-bind (background solid)
           (%ppu-background-pixel-at-dot ppu)

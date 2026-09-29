@@ -28,6 +28,15 @@
    #:audio-queue-overruns
    #:atomic-save-octets
    #:restore-octets
+   #:frontend-data-directory
+   #:rom-identity
+   #:rom-state-directory
+   #:savestate-path
+   #:savestate-select-key
+   #:savestate-save-key
+   #:savestate-load-key
+   #:save-state-slot
+   #:load-state-slot
    #:make-gl-framebuffer
    #:gl-framebuffer-upload!
    #:run-play
