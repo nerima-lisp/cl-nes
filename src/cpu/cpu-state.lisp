@@ -23,4 +23,5 @@
   ;; clock.  The instruction runner consumes this one-boundary marker.
    (irq-poll-delay nil nil)
    (stopped-p nil nil))
-  :constructor %make-cpu)
+  :constructor %make-cpu
+  :predicate cpu-instance-p)
