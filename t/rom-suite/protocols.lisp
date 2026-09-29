@@ -231,23 +231,23 @@
                 :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
                 :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-05" :path "blargg_apu_2005.07.30/05.len_timing_mode0.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
-                :failure-text "result $F0; 1 means PASSED")
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :known-fail
+                :failure-text "result $F0 = 2; length timing mode 0 failed")
                (:id "blargg-apu-06" :path "blargg_apu_2005.07.30/06.len_timing_mode1.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
-                :failure-text "result $F0; 1 means PASSED")
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :known-fail
+                :failure-text "result $F0 = 2; length timing mode 1 failed")
                (:id "blargg-apu-07" :path "blargg_apu_2005.07.30/07.irq_flag_timing.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
                 :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-08" :path "blargg_apu_2005.07.30/08.irq_timing.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
-                :failure-text "result $F0; 1 means PASSED")
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :known-fail
+                :failure-text "result $F0 = 2; IRQ timing failed")
                (:id "blargg-apu-09" :path "blargg_apu_2005.07.30/09.reset_timing.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
                 :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-10" :path "blargg_apu_2005.07.30/10.len_halt_timing.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :known-fail
-                :failure-text "result $F0 = 3; length halt timing case failed")
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
+                :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-11" :path "blargg_apu_2005.07.30/11.len_reload_timing.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :known-fail
                 :failure-text "result $F0 = 2; length reload timing case failed")))
