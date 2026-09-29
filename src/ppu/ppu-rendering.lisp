@@ -1,14 +1,35 @@
 (in-package #:cl-nes)
 
+(defun %ppu-mmc5-exram-mode (ppu)
+  (let ((cartridge (ppu-cartridge ppu)))
+    (when (and cartridge (= (cartridge-mapper cartridge) 5))
+      (cartridge-mapper5-exram-mode cartridge))))
+
+(defun %ppu-mmc5-exram-tile (ppu tile-x tile-y)
+  (let ((mode (%ppu-mmc5-exram-mode ppu)))
+    (when (and mode (= mode 1))
+      (%ppu-mmc5-exram-byte ppu tile-x tile-y))))
+
+(defun %ppu-attribute-quadrant (tile-x tile-y)
+  (+ (if (>= (mod tile-x 4) 2) 1 0)
+     (if (>= (mod tile-y 4) 2) 2 0)))
+
+(defun %ppu-mmc5-fetch-column (dot)
+  (cond
+    ((<= 1 dot 256) (floor (1- dot) 8))
+    ((<= 321 dot 336) (+ 32 (floor (- dot 321) 8)))
+    (t 0)))
+
 (defun %ppu-mmc5-split-state (ppu dot)
   "Return active, split-X, and split-Y for a background fetch."
-  (when (and (< (ppu-scanline ppu) +ppu-height+)
+  (when (and (or (< (ppu-scanline ppu) +ppu-height+)
+                 (= (ppu-scanline ppu) 261))
              (ppu-cartridge ppu)
              (= (cartridge-mapper (ppu-cartridge ppu)) 5))
     (let* ((cartridge (ppu-cartridge ppu))
            (control (cartridge-mapper5-split-control cartridge))
            (mode (cartridge-mapper5-exram-mode cartridge))
-           (tile-index (floor (1- dot) 8))
+           (tile-index (%ppu-mmc5-fetch-column dot))
            (threshold (logand control #x1F))
            (left-p (zerop (logand control #x40)))
            (active-p (and (logbitp 7 control)
@@ -41,10 +62,8 @@
 (defun %ppu-background-sample
     (ppu x y tile-x tile-y nametable-base split-p split-x split-y)
   (let* ((cartridge (ppu-cartridge ppu))
-         (mode (and cartridge (= (cartridge-mapper cartridge) 5)
-                    (cartridge-mapper5-exram-mode cartridge)))
-         (exram-tile (and mode (= mode 1) (not split-p)
-                          (%ppu-mmc5-exram-byte ppu tile-x tile-y)))
+         (exram-tile (and (not split-p)
+                          (%ppu-mmc5-exram-tile ppu tile-x tile-y)))
          (effective-tile-x (if split-p split-x tile-x))
          (effective-tile-y (if split-p (floor split-y 8) tile-y))
          (tile (if split-p
@@ -70,8 +89,8 @@
                                (* (floor tile-y 4) 8)
                                (floor tile-x 4))))
                       (value (ppu-read-vram ppu attribute-address))
-                      (quadrant (+ (if (>= (mod effective-tile-x 4) 2) 1 0)
-                                   (if (>= (mod effective-tile-y 4) 2) 2 0))))
+                      (quadrant (%ppu-attribute-quadrant effective-tile-x
+                                                         effective-tile-y)))
                  (ldb (byte 2 (* quadrant 2)) value)))))
     (values color attribute)))
 
@@ -162,27 +181,16 @@
   (let ((mask (%ppu-effective-mask ppu)))
     (or (logbitp 3 mask) (logbitp 4 mask))))
 
-(defun %ppu-background-pixel-at-dot (ppu)
-  "Read the pixel selected by the dot renderer's current VRAM address.
+(defun %ppu-background-shift-color (ppu)
+  (let ((bit (- 15 (ppu-fine-x ppu))))
+    (values (logior (ldb (byte 1 bit) (ppu-background-shift-low ppu))
+                    (ash (ldb (byte 1 bit) (ppu-background-shift-high ppu)) 1))
+            (logior (ldb (byte 1 bit) (ppu-attribute-shift-low ppu))
+                    (ash (ldb (byte 1 bit) (ppu-attribute-shift-high ppu)) 1)))))
 
-The address and fine-X state are advanced by the timing code.  Keeping this
-lookup separate from the fetch schedule makes the schedule observable while
-retaining the existing cartridge nametable and CHR interfaces."
-  (multiple-value-bind (split-p split-x split-y)
-      (%ppu-mmc5-split-state ppu (ppu-dot ppu))
-    (let* ((v (ppu-vram-address ppu))
-         (coarse-x (logand v #x1F))
-         (coarse-y (logand (ash v -5) #x1F))
-         (table (logand (ash v -10) 3))
-         (fine-y (logand (ash v -12) 7))
-         (x (mod (+ (ppu-fine-x ppu) (1- (ppu-dot ppu))) 8))
-         (nametable-base (+ #x2000 (ash table 10)))
-         (color nil)
-         (palette-number nil))
-    (multiple-value-setq (color palette-number)
-      (%ppu-background-sample ppu x (+ (* coarse-y 8) fine-y)
-                              coarse-x coarse-y nametable-base
-                              split-p split-x split-y))
+(defun %ppu-background-pixel-at-dot (ppu)
+  (multiple-value-bind (color palette-number)
+      (%ppu-background-shift-color ppu)
     (if (or (not (logbitp 1 (%ppu-effective-mask ppu)))
             (and (< (ppu-dot ppu) 9)
                  (not (logbitp 2 (%ppu-effective-mask ppu)))))
@@ -193,7 +201,17 @@ retaining the existing cartridge nametable and CHR interfaces."
              (logand
               (ppu-read-vram ppu (+ #x3F00 (* palette-number 4) color))
               #x3F)
-             t))))))
+             t)))))
+
+(defun %ppu-shift-background-registers! (ppu)
+  (setf (ppu-background-shift-low ppu)
+        (logand #xFFFF (ash (ppu-background-shift-low ppu) 1))
+        (ppu-background-shift-high ppu)
+        (logand #xFFFF (ash (ppu-background-shift-high ppu) 1))
+        (ppu-attribute-shift-low ppu)
+        (logand #xFFFF (ash (ppu-attribute-shift-low ppu) 1))
+        (ppu-attribute-shift-high ppu)
+        (logand #xFFFF (ash (ppu-attribute-shift-high ppu) 1))))
 
 (defun %ppu-palette-pixel (ppu color)
   (let ((color (logand color #x3F))

@@ -59,6 +59,7 @@
     (let ((ppu (make-ppu (make-fixture-cartridge))))
       (ppu-write-register! ppu #x01 #x1A)
       (ppu-write-vram! ppu #x0000 #xFF)
+      (ppu-write-vram! ppu #x1000 #xFF)
       (ppu-write-vram! ppu #x2000 0)
       (ppu-write-vram! ppu #x3F01 #x01)
       (ppu-write-vram! ppu #x3F11 #x02)

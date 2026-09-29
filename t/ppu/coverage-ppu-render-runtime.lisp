@@ -15,7 +15,8 @@
                 (ppu-mask ppu) #x1E
                 (cl-nes::ppu-scanline ppu) 1)
           (setf (cl-nes::ppu-vram-address ppu) 0
-                (cl-nes::ppu-dot ppu) 9)
+                (cl-nes::ppu-dot ppu) 9
+                (cl-nes::ppu-background-shift-low ppu) #x8000)
           (ppu-write-vram! ppu #x1000 #x80)
           (ppu-write-vram! ppu #x0000 #x80)
           (ppu-write-vram! ppu #x2000 0)
@@ -63,7 +64,8 @@
       (setf (ppu-control ppu) #x10
             (ppu-mask ppu) #x06
             (cl-nes::ppu-vram-address ppu) 0
-            (cl-nes::ppu-dot ppu) 1)
+            (cl-nes::ppu-dot ppu) 1
+            (cl-nes::ppu-background-shift-low ppu) #x8000)
       (ppu-write-vram! ppu #x1000 #xFF)
       (ppu-write-vram! ppu #x2000 0)
       (ppu-write-vram! ppu #x3F01 #x21)
@@ -72,6 +74,7 @@
         (expect color :to-be #x21)
         (expect solid :to-be t))
       (ppu-write-vram! ppu #x1000 0)
+      (setf (cl-nes::ppu-background-shift-low ppu) 0)
       (multiple-value-bind (color solid)
           (cl-nes::%ppu-background-pixel-at-dot ppu)
         (expect color :to-be 0)
@@ -112,7 +115,8 @@
       (setf (ppu-control ppu) #x10
             (ppu-mask ppu) #x06
             (cl-nes::ppu-vram-address ppu) #x0140
-            (cl-nes::ppu-dot ppu) 1)
+            (cl-nes::ppu-dot ppu) 1
+            (cl-nes::ppu-background-shift-low ppu) #x8000)
       (ppu-write-vram! ppu #x1000 #xFF)
       (ppu-write-vram! ppu #x2050 0)
       (ppu-write-vram! ppu #x3F01 #x21)
