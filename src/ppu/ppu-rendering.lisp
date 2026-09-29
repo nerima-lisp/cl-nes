@@ -46,6 +46,8 @@
                        +ppu-height+))))))
   (values nil 0 0))
 
+(declaim (inline %ppu-mmc5-split-state))
+
 (defun %ppu-mmc5-exram-byte (ppu tile-x tile-y)
   (cartridge-read-expansion
    (ppu-cartridge ppu)
