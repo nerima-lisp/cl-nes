@@ -10,7 +10,7 @@
     # formatter, overlays.default) so none of it drifts from the other
     # nerima-lisp repositories. See PACKAGE_STANDARD.md, "flake.nix の書き方".
     cl-nix-forge = {
-      url = "github:nerima-lisp/cl-nix-forge/v0.5.0";
+      url = "github:nerima-lisp/cl-nix-forge/v0.6.1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -34,7 +34,7 @@
     # refactoring input for `paredit inspect check`, never linked into the
     # Lisp image.
     paredit-cli = {
-      url = "github:nerima-lisp/paredit-cli/v1.6.0";
+      url = "github:nerima-lisp/paredit-cli/v1.6.3";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 

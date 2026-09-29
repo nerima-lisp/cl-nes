@@ -79,7 +79,8 @@ are retained for removed APIs.
 
 The organization repository was reviewed for additional dependencies. The
 current pins are the latest release tags: cl-host-kit v0.3.1, cl-weave
-v1.3.0, and paredit-cli v1.6.0. `cl-process-kit` was not added: it is an
+v1.3.0, and paredit-cli v1.6.3. cl-nix-forge is pinned to v0.6.1.
+`cl-process-kit` was not added: it is an
 SBCL-only process toolkit for launchers and test infrastructure, unrelated to
 cartridge ROM reads, the one runtime need this core has. This keeps package
 selection purposeful rather than coupling runtime behavior to unrelated
@@ -110,12 +111,20 @@ Run coverage separately when its generated report is needed:
 sbcl --noinform --non-interactive --load run-coverage.lisp --quit
 ~~~
 
-Run the benchmark suite (warmed samples, median/min/max, GC outside the
-measured region) with:
+Run the benchmark suite (two warmup batches, ten samples, 60 frames per
+sample, median/min/max, and GC outside the measured region) with:
 
 ~~~sh
 nix run .#bench
 ~~~
+
+The benchmark reports two synthetic workloads: an NROM cartridge with
+`PPUMASK=$18` so background and sprite rendering are enabled, and an MMC3
+cartridge that performs CHR/PRG bank writes while its scanline IRQ is armed.
+Each workload reports milliseconds per frame and bytes consed per frame.
+`bench.yml` runs these diagnostics only by manual dispatch or on the weekly
+schedule; they are not a pull-request gate. `ci.yml` is the single required
+GitHub Actions job and runs `nix flake check` on `ubuntu-latest`.
 
 Focused cl-weave runs use the same launcher and optional environment
 variables:
