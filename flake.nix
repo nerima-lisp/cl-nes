@@ -134,7 +134,7 @@
               drv = ctx.package;
               entryPoint = "run-rom-suite.lisp";
               name = "cl-nes-rom-suite";
-              timeoutSeconds = testTimeoutSeconds;
+              timeoutSeconds = 600;
               killAfterSeconds = timeoutGraceSeconds;
             }).overrideAttrs (_: {
               CL_NES_TEST_ROMS = nes-test-roms;
