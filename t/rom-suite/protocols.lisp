@@ -321,7 +321,37 @@
                    :address #x03ff :expected :pass)
                   (:name "PPU Palette RAM" :category :power-on-state
                    :address #x03ff :expected :pass))
-    :items nil))
+    :items nil
+    :ratchet-pass-count 86
+    :ratchet-pass-items
+    ("ROM is not writable" "RAM Mirroring" "PC Wraparound"
+     "The Decimal Flag" "The B Flag" "Dummy read cycles" "Dummy write cycles"
+     "All NOP instructions" "Absolute Indexed" "Zero Page Indexed" "Indirect"
+     "Indirect, X" "Indirect, Y" "Relative" "$03   SLO indirect,X"
+     "$07   SLO zeropage" "$0F   SLO absolute" "$13   SLO indirect,Y"
+     "$17   SLO zeropage,X" "$1B   SLO absolute,Y" "$1F   SLO absolute,X"
+     "$23   RLA indirect,X" "$27   RLA zeropage" "$2F   RLA absolute"
+     "$33   RLA indirect,Y" "$37   RLA zeropage,X" "$3B   RLA absolute,Y"
+     "$3F   RLA absolute,X" "$43   SRE indirect,X" "$47   SRE zeropage"
+     "$4F   SRE absolute" "$53   SRE indirect,Y" "$57   SRE zeropage,X"
+     "$5B   SRE absolute,Y" "$5F   SRE absolute,X" "$63   RRA indirect,X"
+     "$67   RRA zeropage" "$6F   RRA absolute" "$73   RRA indirect,Y"
+     "$77   RRA zeropage,X" "$7B   RRA absolute,Y" "$7F   RRA absolute,X"
+     "$83   SAX indirect,X" "$87   SAX zeropage" "$8F   SAX absolute"
+     "$97   SAX zeropage,Y" "$A3   LAX indirect,X" "$A7   LAX zeropage"
+     "$AF   LAX absolute" "$B3   LAX indirect,Y" "$B7   LAX zeropage,Y"
+     "$BF   LAX absolute,Y" "$C3   DCP indirect,X" "$C7   DCP zeropage"
+     "$CF   DCP absolute" "$D3   DCP indirect,Y" "$D7   DCP zeropage,X"
+     "$DB   DCP absolute,Y" "$DF   DCP absolute,X" "$E3   ISC indirect,X"
+     "$E7   ISC zeropage" "$EF   ISC absolute" "$F3   ISC indirect,Y"
+     "$F7   ISC zeropage,X" "$FB   ISC absolute,Y" "$FF   ISC absolute,X"
+     "$BB   LAE absolute,Y" "$0B   ANC Immediate" "$2B   ANC Immediate"
+     "$4B   ASR Immediate" "$6B   ARR Immediate" "$AB   LXA Immediate"
+     "$CB   AXS Immediate" "$EB   SBC Immediate" "NMI Overlap IRQ"
+     "DMA + Open Bus" "Length Counter" "Length Table" "Frame Counter 5-step"
+     "Controller Strobing" "Controller Clocking" "Instruction Timing"
+     "Branch Dummy Reads" "JSR Edge Cases" "CHR ROM is not writable"
+     "PPU Register Mirroring")))
 
 (defparameter *accuracy-coin-item-specs*
   '((:cpu-behavior "ROM is not writable" #x0405)

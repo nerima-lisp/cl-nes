@@ -30,9 +30,11 @@
                  (setf (bus-dmc-dma-remaining bus) (1- stall))
                  ;; The sample get is performed by the DMA request.  It must
                  ;; not enter BUS-READ while OAM arbitration is active.
-                 (logand (or (%bus-read-device bus address)
-                             (bus-open-bus bus))
-                         #xFF))
+                 (let ((value (logand (or (%bus-read-device bus address)
+                                          (bus-open-bus bus))
+                                      #xFF)))
+                   (setf (bus-open-bus bus) value)
+                   value))
                (progn
                (incf (bus-dma-stall-cycles bus) stall)
                  (setf (bus-dmc-read-replay-p bus) (not write-p))
@@ -42,9 +44,11 @@
                                   (if (zerop (bus-cpu-cycle-phase bus)) 1 2))
                        do (%bus-read-device
                            bus (bus-last-cpu-access-address bus)))
-                 (logand (or (%bus-read-device bus address)
-                             (bus-open-bus bus))
-                         #xFF)))))))
+                 (let ((value (logand (or (%bus-read-device bus address)
+                                          (bus-open-bus bus))
+                                      #xFF)))
+                   (setf (bus-open-bus bus) value)
+                   value)))))))
     bus))
 
 (defun %bus-read-device (bus address)

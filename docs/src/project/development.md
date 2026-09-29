@@ -105,6 +105,21 @@ sbcl --noinform --non-interactive --load run-tests.lisp --quit
 nix flake check
 ~~~
 
+Before integrating a branch into `main`, run the ROM contract suite with both
+test-ROM and AccuracyCoin paths configured. Unit tests alone do not exercise
+the cycle-level ROM contracts or the AccuracyCoin item ratchet.
+
+~~~sh
+CL_NES_TEST_ROMS=/path/to/nes-test-roms \
+CL_NES_ACCURACY_COIN=/path/to/AccuracyCoin.nes \
+sbcl --noinform --non-interactive --load run-rom-suite.lisp --quit
+~~~
+
+The suite must finish with no unexpected contract failure, and AccuracyCoin
+must not lose any previously passing item. Update the declared contract only
+when an item is intentionally promoted or its failure is explained by a
+verified implementation change.
+
 Run coverage separately when its generated report is needed:
 
 ~~~sh

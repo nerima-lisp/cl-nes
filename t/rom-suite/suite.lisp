@@ -39,7 +39,20 @@
   result)
 
 (defun enforce-accuracy-ratchet (contract result)
-  (let ((passed (getf result :passed)))
+  (let ((passed (getf result :passed))
+        (pass-count (getf result :pass-count))
+        (ratchet-count (getf contract :ratchet-pass-count))
+        (ratchet-items (getf contract :ratchet-pass-items))
+        (items (getf result :items)))
+    (when (and ratchet-count (< pass-count ratchet-count))
+      (error "accuracy ratchet regression: ~A pass count ~D < baseline ~D"
+             (getf contract :id) pass-count ratchet-count))
+    (dolist (name ratchet-items)
+      (unless (some (lambda (item)
+                      (and (string= name (getf item :name))
+                           (eq :pass (getf item :kind))))
+                    items)
+        (error "accuracy ratchet regression: item lost: ~A" name)))
     (ecase (getf contract :state)
       (:pass (unless passed
                (error "ratchet regression: ~A~%pass=~D completed=~D expected=~D"
