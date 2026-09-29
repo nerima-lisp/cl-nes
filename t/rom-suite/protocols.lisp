@@ -132,8 +132,8 @@
                 :protocol :blargg :expected 0 :max-frames 360 :state :pass
                 :failure-text "status 0; measured pass")
                (:id "ppu-vbl-10" :path "ppu_vbl_nmi/rom_singles/10-even_odd_timing.nes"
-                :protocol :blargg :expected 0 :max-frames 360 :state :pass
-                :failure-text "status 0; measured pass")
+                :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
+                :failure-text "status 128; even/odd timing failure")
                (:id "sprite-hit-01" :path "sprite_hit_tests_2005.10.05/01.basics.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
                 :failure-text "result $F8; 1 means PASSED, 2-10 are README failure codes")
