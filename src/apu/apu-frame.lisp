@@ -31,9 +31,12 @@
     (1 (%apu-clock-quarter-frame! apu)
        (%apu-clock-half-frame! apu))
     (2 (%apu-clock-quarter-frame! apu))
-    ;; In five-step mode this slot is the idle step.  Four-step mode sets the
-    ;; frame IRQ here; its quarter/half clocks occur on the first tail clock.
+    ;; In five-step mode this slot is the idle step.  In four-step mode the
+    ;; terminal quarter/half clocks and the frame IRQ edge share this cycle;
+    ;; the tail only preserves the short IRQ visibility window.
     (3 (unless (apu-five-step-p apu)
+         (%apu-clock-quarter-frame! apu)
+         (%apu-clock-half-frame! apu)
          (unless (apu-frame-irq-inhibit-p apu)
            (setf (apu-frame-irq-pending-p apu) t
                  ;; The frame IRQ edge is observable for the following

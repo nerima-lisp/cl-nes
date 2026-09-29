@@ -64,8 +64,7 @@
        ;; $4015 reads acknowledge the frame IRQ latch.  The short
        ;; end-of-sequence visibility window is only for clocks before the
        ;; acknowledge; it must not recreate an IRQ after the read.
-       (setf (apu-frame-irq-pending-p apu) nil
-             (apu-frame-irq-repeat-count apu) 0)
+       (setf (apu-frame-irq-pending-p apu) nil)
        value))
     (otherwise nil)))
 

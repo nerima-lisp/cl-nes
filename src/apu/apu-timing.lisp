@@ -23,8 +23,8 @@
     (if (plusp (apu-frame-tail-step apu))
         (case (apu-frame-tail-step apu)
           (1
-           (%apu-clock-quarter-frame! apu)
-           (%apu-clock-half-frame! apu)
+           ;; The terminal four-step clocks occur on step 3.  This tail
+           ;; cycle keeps only the post-edge IRQ visibility window.
            (unless (apu-frame-irq-inhibit-p apu)
              (setf (apu-frame-irq-pending-p apu) t))
            (setf (apu-frame-tail-step apu) 2))
@@ -42,15 +42,7 @@
                            +apu-four-step-events+))
                (step (apu-frame-step apu)))
           (let ((event-cycle (aref events step)))
-            ;; In four-step mode the second slot is half a CPU clock wide in
-            ;; the reference timing.  A boundary reached on the even APU
-            ;; phase is already observable at the preceding integer cycle;
-            ;; the odd phase is not observable until the following cycle.
-            (when (or (>= (apu-frame-cycle apu) event-cycle)
-                      (and (not (apu-five-step-p apu))
-                           (= step 1)
-                           (= (apu-frame-cycle apu) (1- event-cycle))
-                           (zerop (apu-cycle-parity apu))))
+            (when (>= (apu-frame-cycle apu) event-cycle)
               (%apu-frame-event! apu)
               (when (= step (1- (length events)))
                 (if (apu-five-step-p apu)

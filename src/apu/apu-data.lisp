@@ -16,8 +16,8 @@
 ;; Frame-counter timestamps are expressed in CPU clocks.  The pulse/noise
 ;; timers run on every other CPU clock, while the frame sequencer spans a full
 ;; NTSC video frame in four-step mode (and five half-steps in five-step mode).
-(defparameter +apu-four-step-events+ #(7458 14914 22372 29829))
-(defparameter +apu-five-step-events+ #(7457 14914 22371 29829 37282))
+(defparameter +apu-four-step-events+ #(7457 14913 22371 29829))
+(defparameter +apu-five-step-events+ #(7457 14913 22371 29829 37281))
 
 (defparameter +apu-pulse-duty-table+
   #(#(0 1 0 0 0 0 0 0)
