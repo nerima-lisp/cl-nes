@@ -62,10 +62,6 @@
         (apu-frame-step apu) 0
         (apu-five-step-p apu) (apu-frame-reset-five-step-p apu)
         (apu-frame-irq-inhibit-p apu) (apu-frame-reset-irq-inhibit-p apu)
-        (apu-frame-irq-clear-delay apu) 0
-        ;; The 3/4-cycle reset delay already accounts for the write phase;
-        ;; retaining the write-time event offset would count that phase twice.
-        (apu-frame-event-offset apu) 0
         (apu-frame-irq-repeat-count apu) 0
         (apu-frame-tail-step apu) 0
         (apu-frame-reset-delay apu) 0)

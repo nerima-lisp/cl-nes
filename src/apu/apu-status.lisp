@@ -37,19 +37,17 @@
   (setf (apu-frame-last-five-step-p apu) (logbitp 7 value)
         (apu-frame-reset-delay apu)
         (if (zerop (apu-cycle-parity apu)) 3 4)
-        (apu-frame-event-offset apu) (if (zerop (apu-cycle-parity apu)) 1 0)
         (apu-frame-reset-five-step-p apu) (logbitp 7 value)
         (apu-frame-reset-irq-inhibit-p apu) (logbitp 6 value)
         ;; The inhibit bit takes effect at the write.  The
         ;; sequencer mode itself still changes after its
         ;; hardware reset delay.
-        (apu-frame-irq-inhibit-p apu) (logbitp 6 value)
-        (apu-frame-irq-clear-delay apu) 0)
+        (apu-frame-irq-inhibit-p apu) (logbitp 6 value))
   (when (logbitp 6 value)
     (setf (apu-frame-irq-pending-p apu) nil
           (apu-frame-irq-repeat-count apu) 0)))
 
-(defun apu-read-register (apu address &optional cpu-cycle-phase)
+(defun apu-read-register (apu address)
   (case (logand address #xFFFF)
     (#x4015
      (let ((value (logior (if (plusp (apu-pulse-length-counter (apu-pulse-1 apu))) 1 0)
@@ -66,11 +64,7 @@
        ;; $4015 reads acknowledge the frame IRQ latch.  The short
        ;; end-of-sequence visibility window is only for clocks before the
        ;; acknowledge; it must not recreate an IRQ after the read.
-       (if (and cpu-cycle-phase (apu-frame-irq-pending-p apu))
-           (setf (apu-frame-irq-clear-delay apu)
-                 (if (zerop cpu-cycle-phase) 2 1))
-           (unless cpu-cycle-phase
-             (setf (apu-frame-irq-pending-p apu) nil)))
+       (setf (apu-frame-irq-pending-p apu) nil)
        value))
     (otherwise nil)))
 
