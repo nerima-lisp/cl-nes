@@ -285,6 +285,10 @@
                  (%sprite-pixel ppu sprite x y (%ppu-effective-mask ppu))
                (when present
                  (when (and (= sprite 0) background-solid
+                            (logbitp 3 (%ppu-effective-mask ppu))
+                            (or (>= x 8)
+                                (and (logbitp 1 (%ppu-effective-mask ppu))
+                                     (logbitp 2 (%ppu-effective-mask ppu))))
                             (< x 255) (< y 239)
                             (not (logbitp 6 (ppu-status ppu))))
                    (setf (ppu-status ppu) (logior (ppu-status ppu) #x40)))
