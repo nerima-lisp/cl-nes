@@ -12,13 +12,17 @@
           (apu-triangle-enabled-p triangle) (logbitp 2 value)
           (apu-noise-enabled-p noise) (logbitp 3 value))
     (unless (apu-pulse-enabled-p pulse-1)
-      (setf (apu-pulse-length-counter pulse-1) 0))
+      (setf (apu-pulse-length-counter pulse-1) 0
+            (apu-pulse-length-reload-p pulse-1) nil))
     (unless (apu-pulse-enabled-p pulse-2)
-      (setf (apu-pulse-length-counter pulse-2) 0))
+      (setf (apu-pulse-length-counter pulse-2) 0
+            (apu-pulse-length-reload-p pulse-2) nil))
     (unless (apu-triangle-enabled-p triangle)
-      (setf (apu-triangle-length-counter triangle) 0))
+      (setf (apu-triangle-length-counter triangle) 0
+            (apu-triangle-length-reload-p triangle) nil))
     (unless (apu-noise-enabled-p noise)
-      (setf (apu-noise-length-counter noise) 0))
+      (setf (apu-noise-length-counter noise) 0
+            (apu-noise-length-reload-p noise) nil))
     (setf (apu-dmc-enabled-p dmc) (logbitp 4 value))
     (if (apu-dmc-enabled-p dmc)
         (when (zerop (apu-dmc-bytes-remaining dmc))

@@ -55,4 +55,21 @@
       (setf (cl-nes::apu-pulse-sweep-reload-p pulse) t
             (cl-nes::apu-pulse-sweep-divider pulse) 0)
       (cl-nes::%apu-clock-sweep! pulse nil)
-      (expect (cl-nes::apu-pulse-sweep-divider pulse) :to-be 2))))
+      (expect (cl-nes::apu-pulse-sweep-divider pulse) :to-be 2)))
+
+  (it "reloads a length counter after a coincident half-frame clock"
+    (with-fixture-apu (apu pulse nil triangle noise)
+      (setf (cl-nes::apu-pulse-enabled-p pulse) t
+            (cl-nes::apu-triangle-enabled-p triangle) t
+            (cl-nes::apu-noise-enabled-p noise) t)
+      (apu-write-register! apu #x4003 #xA0)
+      (apu-write-register! apu #x400B #xA0)
+      (apu-write-register! apu #x400F #xA0)
+      (cl-nes::%apu-clock-half-frame! apu)
+      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 48)
+      (expect (cl-nes::apu-triangle-length-counter triangle) :to-be 48)
+      (expect (cl-nes::apu-noise-length-counter noise) :to-be 48)
+      (cl-nes::%apu-clock-half-frame! apu)
+      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 47)
+      (expect (cl-nes::apu-triangle-length-counter triangle) :to-be 47)
+      (expect (cl-nes::apu-noise-length-counter noise) :to-be 47))))

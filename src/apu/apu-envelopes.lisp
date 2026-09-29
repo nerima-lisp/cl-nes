@@ -27,14 +27,20 @@
   (when (not halt-p)
     (typecase channel
       (apu-pulse
-       (when (plusp (apu-pulse-length-counter channel))
-         (decf (apu-pulse-length-counter channel))))
+       (if (apu-pulse-length-reload-p channel)
+           (setf (apu-pulse-length-reload-p channel) nil)
+           (when (plusp (apu-pulse-length-counter channel))
+             (decf (apu-pulse-length-counter channel)))))
       (apu-triangle
-       (when (plusp (apu-triangle-length-counter channel))
-         (decf (apu-triangle-length-counter channel))))
+       (if (apu-triangle-length-reload-p channel)
+           (setf (apu-triangle-length-reload-p channel) nil)
+           (when (plusp (apu-triangle-length-counter channel))
+             (decf (apu-triangle-length-counter channel)))))
       (apu-noise
-       (when (plusp (apu-noise-length-counter channel))
-         (decf (apu-noise-length-counter channel)))))))
+       (if (apu-noise-length-reload-p channel)
+           (setf (apu-noise-length-reload-p channel) nil)
+           (when (plusp (apu-noise-length-counter channel))
+             (decf (apu-noise-length-counter channel))))))))
 
 (defun %apu-pulse-sweep-target (pulse first-p)
   (let* ((timer (apu-pulse-timer-period pulse))

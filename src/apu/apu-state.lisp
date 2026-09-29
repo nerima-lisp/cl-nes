@@ -15,6 +15,7 @@
   (timer 0 :type fixnum)
   (timer-period 0 :type fixnum)
   (length-counter 0 :type fixnum)
+  (length-reload-p nil)
   (envelope (%make-apu-envelope))
   (sweep-enabled-p nil)
   (sweep-period 0 :type fixnum)
@@ -28,6 +29,7 @@
   (timer 0 :type fixnum)
   (timer-period 0 :type fixnum)
   (length-counter 0 :type fixnum)
+  (length-reload-p nil)
   (linear-counter 0 :type fixnum)
   (linear-reload-value 0 :type fixnum)
   (linear-reload-p nil)
@@ -40,6 +42,7 @@
   (timer 0 :type fixnum)
   (timer-period 4 :type fixnum)
   (length-counter 0 :type fixnum)
+  (length-reload-p nil)
   (shift-register #x1 :type fixnum)
   (envelope (%make-apu-envelope)))
 
