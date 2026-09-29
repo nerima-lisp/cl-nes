@@ -93,10 +93,17 @@
 (defun bus-write! (bus address value)
   (let ((address (logand address #xFFFF))
         (value (logand value #xFF))
+        (ppu-ticks 3)
         (previous-address (bus-last-cpu-access-address bus)))
     (setf (bus-last-cpu-access-kind bus) :write
           (bus-last-cpu-access-address bus) address)
     (setf (bus-open-bus bus) value)
+    (when (and (bus-cpu-access-active-p bus)
+               (< address #x4000)
+               (= (logand address 7) 0)
+               (not (logbitp 7 value)))
+      (ppu-tick! (bus-ppu bus) 2)
+      (setf ppu-ticks 1))
     (cond
       ((< address #x2000)
        (setf (aref (bus-ram bus) (mod address #x800)) value))
@@ -123,7 +130,7 @@
           (+ (cpu-cycles (nes-cpu (bus-cpu-access-nes bus)))
              (bus-cpu-access-count bus)))))
       (t nil))
-    (%bus-cpu-access! bus)
+    (%bus-cpu-access! bus ppu-ticks)
     value))
 
 (defun %bus-cpu-access! (bus &optional (ppu-ticks 3))
