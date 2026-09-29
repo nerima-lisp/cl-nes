@@ -2,8 +2,10 @@
 
 (defstruct (rom-contract (:constructor make-rom-contract
                               (id category path protocol expected max-frames state
-                               failure-text &optional mapper4-variant suite)))
-  id category path protocol expected max-frames state failure-text mapper4-variant suite)
+                               failure-text &optional mapper4-variant suite
+                               result-address running-value)))
+  id category path protocol expected max-frames state failure-text mapper4-variant suite
+  result-address running-value)
 
 (defparameter *rom-root-environment* "CL_NES_TEST_ROMS")
 (defparameter *accuracy-coin-environment* "CL_NES_ACCURACY_COIN")
@@ -133,75 +135,107 @@
                 :protocol :blargg :expected 0 :max-frames 360 :state :pass
                 :failure-text "status 0; measured pass")
                (:id "sprite-hit-01" :path "sprite_hit_tests_2005.10.05/01.basics.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED, 2-10 are README failure codes")
                (:id "sprite-hit-02" :path "sprite_hit_tests_2005.10.05/02.alignment.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-03" :path "sprite_hit_tests_2005.10.05/03.corners.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-04" :path "sprite_hit_tests_2005.10.05/04.flip.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-05" :path "sprite_hit_tests_2005.10.05/05.left_clip.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-06" :path "sprite_hit_tests_2005.10.05/06.right_edge.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-07" :path "sprite_hit_tests_2005.10.05/07.screen_bottom.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-08" :path "sprite_hit_tests_2005.10.05/08.double_height.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-09" :path "sprite_hit_tests_2005.10.05/09.timing_basics.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-10" :path "sprite_hit_tests_2005.10.05/10.timing_order.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-11" :path "sprite_hit_tests_2005.10.05/11.edge_timing.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
+                :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-overflow-1" :path "sprite_overflow_tests/1.Basics.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-overflow-2" :path "sprite_overflow_tests/2.Details.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-overflow-3" :path "sprite_overflow_tests/3.Timing.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-overflow-4" :path "sprite_overflow_tests/4.Obscure.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
+                :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-overflow-5" :path "sprite_overflow_tests/5.Emulator.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
                (:id "ppu-open-bus" :path "ppu_open_bus/ppu_open_bus.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 0 :result-address #x6000 :running-value #x80 :max-frames 360 :state :pass
+                :failure-text "status $6000; 0 means PASSED")
                (:id "ppu-read-buffer" :path "ppu_read_buffer/test_ppu_read_buffer.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")
+                :protocol :ram-result :expected 0 :result-address #x6000 :running-value #x80 :max-frames 360 :state :pass
+                :failure-text "status $6000; 0 means PASSED")
                (:id "oam-read" :path "oam_read/oam_read.nes"
-                :protocol :screen-hash :expected "UNRECORDED" :max-frames 360 :state :known-fail
-                :failure-text "observed hash B87D5DC5")))
+                :protocol :ram-result :expected 0 :result-address #x6000 :running-value #x80 :max-frames 360 :state :pass
+                :failure-text "status $6000; 0 means PASSED")))
     (:suite "apu" :category :apu
-     :subroms ((:id "apu-test" :path "apu_test/apu_test.nes"
+               :subroms ((:id "apu-test" :path "apu_test/apu_test.nes"
                  :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
                  :failure-text "status 128; #19 one-byte buffer timing; #31 rate 14 timing")
-               (:id "apu-test-07-dmc-basics" :path "apu_test/rom_singles/7-dmc_basics.nes"
-                 :protocol :blargg :expected 0 :max-frames 120 :state :pass
-                 :failure-text "status 0; 7-dmc_basics..Passed")
-               (:id "apu-test-08-dmc-rates" :path "apu_test/rom_singles/8-dmc_rates.nes"
-                 :protocol :blargg :expected 0 :max-frames 120 :state :known-fail
-                 :failure-text "status 128; Rate 14's period is too long")
+               (:id "apu-dmc-basics" :path "apu_test/rom_singles/7-dmc_basics.nes"
+                :protocol :ram-result :expected 0 :result-address #x6000
+                :running-value #x80 :max-frames 360 :state :pass
+                :failure-text "status 0; DMC test failure code is described in apu_test/readme.txt")
+               (:id "apu-dmc-rates" :path "apu_test/rom_singles/8-dmc_rates.nes"
+                :protocol :ram-result :expected 0 :result-address #x6000
+                :running-value #x80 :max-frames 360 :state :pass
+                :failure-text "status 0; rate failure code is described in apu_test/source/8-dmc_rates.s")
                (:id "blargg-apu" :path "blargg_apu_2005.07.30/01.len_ctr.nes"
-                 :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                 :failure-text "status 0 but signature mismatch")))
+                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                 :failure-text "result $F8; 1 means PASSED")
+               (:id "blargg-apu-02" :path "blargg_apu_2005.07.30/02.len_table.nes"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
+               (:id "blargg-apu-03" :path "blargg_apu_2005.07.30/03.irq_flag.nes"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
+               (:id "blargg-apu-04" :path "blargg_apu_2005.07.30/04.clock_jitter.nes"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
+               (:id "blargg-apu-05" :path "blargg_apu_2005.07.30/05.len_timing_mode0.nes"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
+               (:id "blargg-apu-06" :path "blargg_apu_2005.07.30/06.len_timing_mode1.nes"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
+               (:id "blargg-apu-07" :path "blargg_apu_2005.07.30/07.irq_flag_timing.nes"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
+               (:id "blargg-apu-08" :path "blargg_apu_2005.07.30/08.irq_timing.nes"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
+               (:id "blargg-apu-09" :path "blargg_apu_2005.07.30/09.reset_timing.nes"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
+               (:id "blargg-apu-10" :path "blargg_apu_2005.07.30/10.len_halt_timing.nes"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")
+               (:id "blargg-apu-11" :path "blargg_apu_2005.07.30/11.len_reload_timing.nes"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED")))
     (:suite "dma" :category :dma
      :subroms ((:id "dmc-dma" :path "dmc_dma_during_read4/dma_2007_read.nes"
                  :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
@@ -227,31 +261,31 @@
                 :failure-text "status 0; 6-MMC3_alt Passed"
                 :mapper4-variant :mmc3-alt)
                (:id "mmc1-a12" :path "MMC1_A12/mmc1_a12.nes"
-                :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                :failure-text "status 159; screen-only ROM has no Blargg result protocol")
+                :protocol :text-progress :expected "MMC1 WRAM DISABLE SCANLINE" :max-frames 60 :state :known-fail
+                :failure-text "screen progress protocol; no fixed result code")
                (:id "mmc3-irq-tests-clocking" :path "mmc3_irq_tests/1.Clocking.nes"
-                :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                :failure-text "screen/beep ROM has no Blargg result protocol"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :pass
+                :failure-text "result $F8; 1 means PASSED"
                 :mapper4-variant :mmc3)
                (:id "mmc3-irq-tests-details" :path "mmc3_irq_tests/2.Details.nes"
-                :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                :failure-text "screen/beep ROM has no Blargg result protocol"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :pass
+                :failure-text "result $F8; 1 means PASSED"
                 :mapper4-variant :mmc3)
                (:id "mmc3-irq-tests-a12" :path "mmc3_irq_tests/3.A12_clocking.nes"
-                :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                :failure-text "screen/beep ROM has no Blargg result protocol"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED"
                 :mapper4-variant :mmc3)
                (:id "mmc3-irq-tests-scanline" :path "mmc3_irq_tests/4.Scanline_timing.nes"
-                :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                :failure-text "screen/beep ROM has no Blargg result protocol"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED"
                 :mapper4-variant :mmc3)
                (:id "mmc3-irq-tests-rev-a" :path "mmc3_irq_tests/5.MMC3_rev_A.nes"
-                :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                :failure-text "screen/beep ROM has no Blargg result protocol"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :failure-text "result $F8; 1 means PASSED"
                 :mapper4-variant :mmc3)
                (:id "mmc3-irq-tests-rev-b" :path "mmc3_irq_tests/6.MMC3_rev_B.nes"
-                :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                :failure-text "screen/beep ROM has no Blargg result protocol"
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :pass
+                :failure-text "result $F8; 1 means PASSED"
                 :mapper4-variant :mmc3)))))
 
 (defparameter *accuracy-coin-contract*
@@ -440,7 +474,9 @@
                                    (getf subrom :max-frames)
                                    (getf subrom :state)
                                    (getf subrom :failure-text)
-                                   (getf subrom :mapper4-variant)))))
+                                   (getf subrom :mapper4-variant)
+                                   (getf subrom :result-address)
+                                   (getf subrom :running-value)))))
 
 (defun rom-contract-table ()
   (loop for suite in *rom-contract-data*
@@ -452,7 +488,9 @@
                               (getf subrom :protocol) (getf subrom :expected)
                               (getf subrom :max-frames) (getf subrom :state)
                               (getf subrom :failure-text)
-                              (getf subrom :mapper4-variant) suite-name))))
+                              (getf subrom :mapper4-variant) suite-name
+                              (getf subrom :result-address)
+                              (getf subrom :running-value)))))
 
 (defun env-path (name)
   (uiop:getenv name))
@@ -473,6 +511,21 @@
   (run-blargg-protocol path (rom-contract-max-frames contract)
                        :mapper4-variant
                        (rom-contract-mapper4-variant contract)))
+
+(defun run-ram-result-contract (path contract)
+  (run-ram-result-protocol path (rom-contract-max-frames contract)
+                           (rom-contract-result-address contract)
+                           (rom-contract-expected contract)
+                           :mapper4-variant
+                           (rom-contract-mapper4-variant contract)
+                           :running-value
+                           (rom-contract-running-value contract)))
+
+(defun run-text-progress-contract (path contract)
+  (run-text-progress-protocol path (rom-contract-max-frames contract)
+                              (rom-contract-expected contract)
+                              :mapper4-variant
+                              (rom-contract-mapper4-variant contract)))
 
 (defun run-screen-contract (path contract)
   (run-screen-protocol path (rom-contract-max-frames contract)

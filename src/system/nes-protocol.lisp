@@ -12,6 +12,31 @@
                                bytes)
                        'string)))
 
+(defun protocol-nametable-text (ppu &key (start #x2000) (columns 32)
+                                       (rows 30) (tile-map #'code-char))
+  "Read a nametable region and decode its tile numbers with TILE-MAP.
+
+TILE-MAP receives one tile number and must return a character or NIL.  This
+keeps screen protocols independent of the ROM's font tile numbering while
+allowing tests to supply the mapping established by that ROM's source."
+  (with-output-to-string (text)
+    (dotimes (row rows)
+      (dotimes (column columns)
+        (let ((character (funcall tile-map
+                                  (ppu-read-vram ppu (+ start column
+                                                        (* row columns))))))
+          (write-char (or character #\.) text)))
+      (unless (= row (1- rows))
+        (terpri text)))))
+
+(defun protocol-ram-result-p (actual expected)
+  "Return true when a ROM result byte ACTUAL equals EXPECTED."
+  (= actual expected))
+
+(defun protocol-text-result-p (text expected)
+  "Return true when TEXT contains the expected ROM result marker."
+  (not (null (search (string-upcase expected) (string-upcase text)))))
+
 (defun protocol-framebuffer-hash (framebuffer)
   (let ((hash 2166136261))
     (loop for byte across framebuffer
@@ -87,6 +112,54 @@ remains a single implementation."
             :status status
             :signature signature-ok
             :hash (protocol-framebuffer-hash (ppu-framebuffer (nes-ppu nes)))))))
+
+(defun run-ram-result-protocol (path max-frames result-address expected
+                                &key mapper4-variant running-value)
+  "Run PATH and judge the byte at RESULT-ADDRESS against EXPECTED.
+
+This is the protocol used by the older screen/beep ROMs.  Their result byte
+is the source of truth; screen text and beep count are redundant diagnostics.
+RUNNING-VALUE, when supplied, stops the frame loop once the ROM leaves that
+value."
+  (let* ((load-args (if mapper4-variant
+                        (list :mapper4-variant mapper4-variant)
+                        nil))
+         (nes (make-nes :cartridge (apply #'load-cartridge path load-args)))
+         (frames (protocol-run-frames-until
+                  nes max-frames
+                  (lambda (frame)
+                    (declare (ignore frame))
+                    (and running-value
+                         (/= (bus-read (nes-bus nes) result-address)
+                             running-value)))))
+         (bus (nes-bus nes))
+         (result (bus-read bus result-address))
+         (text (protocol-ascii-result (protocol-bus-range bus #x6004 #x60ff))))
+    (list :passed (protocol-ram-result-p result expected)
+          :frames frames :result result :result-address result-address
+          :expected expected :text text
+          :hash (protocol-framebuffer-hash (ppu-framebuffer (nes-ppu nes))))))
+
+(defun run-text-progress-protocol (path max-frames expected &key mapper4-variant)
+  "Run a legacy ROM whose textual result is exposed at the Blargg text port."
+  (let* ((load-args (if mapper4-variant
+                        (list :mapper4-variant mapper4-variant)
+                        nil))
+         (nes (make-nes :cartridge (apply #'load-cartridge path load-args)))
+         (frames (protocol-run-frames-until
+                  nes max-frames
+                  (lambda (frame)
+                    (declare (ignore frame))
+                    (protocol-text-result-p
+                     (protocol-ascii-result
+                      (protocol-bus-range (nes-bus nes) #x6004 #x60ff))
+                     expected)))))
+    (let ((text (protocol-ascii-result
+                 (protocol-bus-range (nes-bus nes) #x6004 #x60ff))))
+      (list :passed (protocol-text-result-p text expected)
+            :frames frames :text text
+            :hash (protocol-framebuffer-hash
+                   (ppu-framebuffer (nes-ppu nes)))))))
 
 (defun run-screen-protocol (path max-frames expected-hash)
   (let ((nes (make-nes :cartridge (load-cartridge path))))

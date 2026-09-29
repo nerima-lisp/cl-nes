@@ -6,6 +6,8 @@
                 #:protocol-bus-range
                 #:protocol-run-frames-until
                 #:run-blargg-protocol
+                #:run-ram-result-protocol
+                #:run-text-progress-protocol
                 #:run-screen-protocol)
   (:import-from #:cl-weave
                 #:describe-each

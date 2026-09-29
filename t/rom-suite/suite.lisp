@@ -17,6 +17,8 @@
     (handler-case
         (case (rom-contract-protocol contract)
           (:blargg (run-blargg-contract path contract))
+          (:ram-result (run-ram-result-contract path contract))
+          (:text-progress (run-text-progress-contract path contract))
           (:screen-hash (run-screen-contract path contract))
           (otherwise (error "Unknown ROM protocol ~S"
                             (rom-contract-protocol contract))))
@@ -88,21 +90,26 @@
      (describe-each
       ,*rom-contract-test-data*
       "ROM contract ~A"
-      (id category path protocol expected max-frames state failure-text mapper)
+      (id category path protocol expected max-frames state failure-text mapper
+       result-address running-value)
       (it "has a declarative protocol and bounded execution"
           (unless (and (stringp id) (keywordp category) (stringp path)
                        (or (numberp expected) (stringp expected))
                        (stringp failure-text)
                        (or (null mapper) (keywordp mapper))
-                       (member protocol '(:blargg :screen-hash :accuracy-coin))
+                       (member protocol '(:blargg :ram-result :text-progress
+                                          :screen-hash :accuracy-coin))
                        (plusp max-frames)
+                       (or (null result-address) (integerp result-address))
+                       (or (null running-value) (integerp running-value))
                        (member state '(:pass :known-fail)))
             (error "invalid ROM contract"))))
      (cl-weave:describe "ROM suite table"
        (it-each
         ,*rom-contract-test-data*
         "table row ~A"
-        (id category path protocol expected max-frames state failure-text mapper)
+        (id category path protocol expected max-frames state failure-text mapper
+         result-address running-value)
         (unless (and (stringp id) (stringp path))
           (error "invalid table row"))))))
 

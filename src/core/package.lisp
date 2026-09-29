@@ -140,8 +140,13 @@
    ;; ROM protocols
    #:protocol-bus-range
    #:protocol-ascii-result
+   #:protocol-nametable-text
+   #:protocol-ram-result-p
+   #:protocol-text-result-p
    #:protocol-framebuffer-hash
    #:protocol-run-frames-until
    #:run-blargg-protocol
+   #:run-ram-result-protocol
+   #:run-text-progress-protocol
    #:run-accuracy-coin-protocol
    #:run-screen-protocol))

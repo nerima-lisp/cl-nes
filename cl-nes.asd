@@ -145,7 +145,8 @@
    (:module "system"
     :depends-on ("core" "cartridge" "apu" "cpu" "ppu")
     :components
-    ((:file "properties-controller") (:file "properties-memory")
+     ((:file "properties-controller") (:file "properties-memory")
+     (:file "protocol-contracts")
      (:file "bus-contracts") (:file "bus-routing-transitions")
      (:file "cartridge-cpu-cycle-contracts")
      (:file "bus-memory-transitions") (:file "edge-condition-reports")
