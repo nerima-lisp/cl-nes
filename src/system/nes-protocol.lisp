@@ -19,11 +19,35 @@
                                 (* (logxor hash byte) 16777619))))
     (format nil "~8,'0X" hash)))
 
-(defun protocol-run-frames-until (nes max-frames predicate)
-  (loop for frame from 1 to max-frames
-        do (nes-run-frame/k nes #'identity)
-           (when (funcall predicate frame)
-             (return frame))))
+(defun protocol-run-frames-until (nes max-frames predicate &key input-continuation)
+  (or (loop for frame from 1 to max-frames
+            do (nes-run-frame/k nes #'identity
+                                :input-continuation input-continuation)
+               (when (funcall predicate frame)
+                 (return frame)))
+      max-frames))
+
+(defun run-accuracy-coin-protocol (path max-frames)
+  "Run AccuracyCoin and return its result RAM after pressing Start.
+
+The ROM's automated mode is selected from its main menu with the NES Start
+button.  The returned plist contains :RESULTS for $0400-$04FF and
+:SHARED-DRAW for $03FF, plus the number of frames executed."
+  (let* ((nes (make-nes :cartridge (load-cartridge path)))
+         (bus (nes-bus nes))
+         (frame-counter 0)
+         (frames (protocol-run-frames-until
+                  nes max-frames
+                  (constantly nil)
+                  :input-continuation
+                  (lambda (current-nes)
+                    (incf frame-counter)
+                    (controller-set-buttons!
+                     (bus-controller-1 (nes-bus current-nes))
+                     (if (<= frame-counter 180) +button-start+ 0))))))
+    (list :frames frames
+          :results (protocol-bus-range bus #x0400 #x04ff)
+          :shared-draw (bus-read bus #x03ff))))
 
 (defun run-blargg-protocol (path max-frames &key mapper4-variant)
   "Run PATH using the Blargg $6000 status/signature protocol.

@@ -32,6 +32,72 @@
                (:id "cpu-dummy-writes" :path "cpu_dummy_writes/cpu_dummy_writes_oam.nes"
                  :protocol :blargg :expected 0 :max-frames 360 :state :pass
                  :failure-text "status 0")))
+    (:suite "cpu-subroms" :category :cpu
+     :subroms
+     ((:id "instr-test-v5-01-basics" :path "instr_test-v5/rom_singles/01-basics.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; 01-basics..Passed")
+      (:id "instr-test-v5-02-implied" :path "instr_test-v5/rom_singles/02-implied.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; 02-implied..Passed")
+      (:id "instr-test-v5-03-immediate" :path "instr_test-v5/rom_singles/03-immediate.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; 03-immediate..Passed")
+      (:id "instr-test-v5-04-zero-page" :path "instr_test-v5/rom_singles/04-zero_page.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; 04-zero_page..Passed")
+      (:id "instr-test-v5-05-zp-xy" :path "instr_test-v5/rom_singles/05-zp_xy.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+      (:id "instr-test-v5-06-absolute" :path "instr_test-v5/rom_singles/06-absolute.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; 06-absolute..Passed")
+      (:id "instr-test-v5-07-abs-xy" :path "instr_test-v5/rom_singles/07-abs_xy.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+      (:id "instr-test-v5-08-ind-x" :path "instr_test-v5/rom_singles/08-ind_x.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+      (:id "instr-test-v5-09-ind-y" :path "instr_test-v5/rom_singles/09-ind_y.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+      (:id "instr-test-v5-10-branches" :path "instr_test-v5/rom_singles/10-branches.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; 10-branches..Passed")
+      (:id "instr-test-v5-11-stack" :path "instr_test-v5/rom_singles/11-stack.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+      (:id "instr-test-v5-12-jmp-jsr" :path "instr_test-v5/rom_singles/12-jmp_jsr.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; 12-jmp_jsr..Passed")
+      (:id "instr-test-v5-13-rts" :path "instr_test-v5/rom_singles/13-rts.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; 13-rts..Passed")
+      (:id "instr-test-v5-14-rti" :path "instr_test-v5/rom_singles/14-rti.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; 14-rti..Passed")
+      (:id "instr-test-v5-15-brk" :path "instr_test-v5/rom_singles/15-brk.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; 15-brk..Passed")
+      (:id "instr-test-v5-16-special" :path "instr_test-v5/rom_singles/16-special.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; 16-special..Passed")
+      (:id "instr-misc-01-abs-x-wrap" :path "instr_misc/rom_singles/01-abs_x_wrap.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; Passed")
+      (:id "instr-misc-02-branch-wrap" :path "instr_misc/rom_singles/02-branch_wrap.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; Passed")
+      (:id "instr-misc-03-dummy-reads" :path "instr_misc/rom_singles/03-dummy_reads.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; Passed")
+      (:id "instr-misc-04-dummy-reads-apu" :path "instr_misc/rom_singles/04-dummy_reads_apu.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+      (:id "instr-timing-01" :path "instr_timing/rom_singles/1-instr_timing.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+      (:id "instr-timing-02-branch" :path "instr_timing/rom_singles/2-branch_timing.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+      (:id "cpu-interrupts-v2-01-cli" :path "cpu_interrupts_v2/rom_singles/1-cli_latency.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; Passed")
+      (:id "cpu-interrupts-v2-02-nmi-brk" :path "cpu_interrupts_v2/rom_singles/2-nmi_and_brk.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+      (:id "cpu-interrupts-v2-03-nmi-irq" :path "cpu_interrupts_v2/rom_singles/3-nmi_and_irq.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+      (:id "cpu-interrupts-v2-04-irq-dma" :path "cpu_interrupts_v2/rom_singles/4-irq_and_dma.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+      (:id "cpu-interrupts-v2-05-branch" :path "cpu_interrupts_v2/rom_singles/5-branch_delays_irq.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+      (:id "cpu-exec-space-apu" :path "cpu_exec_space/test_cpu_exec_space_apu.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 2")
+      (:id "cpu-exec-space-ppuio" :path "cpu_exec_space/test_cpu_exec_space_ppuio.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; Passed")
+      (:id "cpu-dummy-reads-subrom" :path "cpu_dummy_reads/cpu_dummy_reads.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 0; signature mismatch")
+      (:id "cpu-reset-ram" :path "cpu_reset/ram_after_reset.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+      (:id "cpu-reset-registers" :path "cpu_reset/registers.nes"
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")))
     (:suite "ppu" :category :ppu
      :subroms ((:id "ppu-vbl-nmi" :path "ppu_vbl_nmi/ppu_vbl_nmi.nes"
                  :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
@@ -185,13 +251,175 @@
 (defparameter *accuracy-coin-contract*
   '(:id "accuracy-coin" :category :accuracy-coin :path "AccuracyCoin.nes"
     :protocol :accuracy-coin :expected 146 :max-frames 1200 :state :known-fail
-    :failure-text "0/146 pass; result RAM remained zero"
-    :items ((:name "item-0400" :address #x0400 :expected :pass))))
+    :failure-text "named result item mismatch"
+    :accepted-values (#x01 #x05 #x09 #x0D #x11 #x39 #x41)
+    :shared-draw ((:name "PPU Reset Flag" :category :power-on-state
+                   :address #x03ff :expected :pass)
+                  (:name "CPU RAM" :category :power-on-state
+                   :address #x03ff :expected :pass)
+                  (:name "CPU Registers" :category :power-on-state
+                   :address #x03ff :expected :pass)
+                  (:name "PPU RAM" :category :power-on-state
+                   :address #x03ff :expected :pass)
+                  (:name "PPU Palette RAM" :category :power-on-state
+                   :address #x03ff :expected :pass))
+    :items nil))
+
+(defparameter *accuracy-coin-item-specs*
+  '((:cpu-behavior "ROM is not writable" #x0405)
+    (:cpu-behavior "RAM Mirroring" #x0403)
+    (:cpu-behavior "PC Wraparound" #x044d)
+    (:cpu-behavior "The Decimal Flag" #x0474)
+    (:cpu-behavior "The B Flag" #x0475)
+    (:cpu-behavior "Dummy read cycles" #x0406)
+    (:cpu-behavior "Dummy write cycles" #x0407)
+    (:cpu-behavior "Open Bus" #x0408)
+    (:cpu-behavior "All NOP instructions" #x047d)
+    (:cpu-instructions "Absolute Indexed" #x046e)
+    (:cpu-instructions "Zero Page Indexed" #x046f)
+    (:cpu-instructions "Indirect" #x0470)
+    (:cpu-instructions "Indirect, X" #x0471)
+    (:cpu-instructions "Indirect, Y" #x0472)
+    (:cpu-instructions "Relative" #x0473)
+    (:unofficial-slo "$03   SLO indirect,X" #x0409)
+    (:unofficial-slo "$07   SLO zeropage" #x040a)
+    (:unofficial-slo "$0F   SLO absolute" #x040b)
+    (:unofficial-slo "$13   SLO indirect,Y" #x040c)
+    (:unofficial-slo "$17   SLO zeropage,X" #x040d)
+    (:unofficial-slo "$1B   SLO absolute,Y" #x040e)
+    (:unofficial-slo "$1F   SLO absolute,X" #x040f)
+    (:unofficial-rla "$23   RLA indirect,X" #x0419)
+    (:unofficial-rla "$27   RLA zeropage" #x041a)
+    (:unofficial-rla "$2F   RLA absolute" #x041b)
+    (:unofficial-rla "$33   RLA indirect,Y" #x041c)
+    (:unofficial-rla "$37   RLA zeropage,X" #x041d)
+    (:unofficial-rla "$3B   RLA absolute,Y" #x041e)
+    (:unofficial-rla "$3F   RLA absolute,X" #x041f)
+    (:unofficial-sre "$43   SRE indirect,X" #x0420)
+    (:unofficial-sre "$47   SRE zeropage" #x047f)
+    (:unofficial-sre "$4F   SRE absolute" #x0422)
+    (:unofficial-sre "$53   SRE indirect,Y" #x0423)
+    (:unofficial-sre "$57   SRE zeropage,X" #x0424)
+    (:unofficial-sre "$5B   SRE absolute,Y" #x0425)
+    (:unofficial-sre "$5F   SRE absolute,X" #x0426)
+    (:unofficial-rra "$63   RRA indirect,X" #x0427)
+    (:unofficial-rra "$67   RRA zeropage" #x0428)
+    (:unofficial-rra "$6F   RRA absolute" #x0429)
+    (:unofficial-rra "$73   RRA indirect,Y" #x042a)
+    (:unofficial-rra "$77   RRA zeropage,X" #x042b)
+    (:unofficial-rra "$7B   RRA absolute,Y" #x042c)
+    (:unofficial-rra "$7F   RRA absolute,X" #x042d)
+    (:unofficial-ax "$83   SAX indirect,X" #x042e)
+    (:unofficial-ax "$87   SAX zeropage" #x042f)
+    (:unofficial-ax "$8F   SAX absolute" #x0430)
+    (:unofficial-ax "$97   SAX zeropage,Y" #x0431)
+    (:unofficial-ax "$A3   LAX indirect,X" #x0432)
+    (:unofficial-ax "$A7   LAX zeropage" #x0433)
+    (:unofficial-ax "$AF   LAX absolute" #x0434)
+    (:unofficial-ax "$B3   LAX indirect,Y" #x0435)
+    (:unofficial-ax "$B7   LAX zeropage,Y" #x0436)
+    (:unofficial-ax "$BF   LAX absolute,Y" #x0437)
+    (:unofficial-dcp "$C3   DCP indirect,X" #x0438)
+    (:unofficial-dcp "$C7   DCP zeropage" #x0439)
+    (:unofficial-dcp "$CF   DCP absolute" #x043a)
+    (:unofficial-dcp "$D3   DCP indirect,Y" #x043b)
+    (:unofficial-dcp "$D7   DCP zeropage,X" #x043c)
+    (:unofficial-dcp "$DB   DCP absolute,Y" #x043d)
+    (:unofficial-dcp "$DF   DCP absolute,X" #x043e)
+    (:unofficial-isc "$E3   ISC indirect,X" #x043f)
+    (:unofficial-isc "$E7   ISC zeropage" #x0440)
+    (:unofficial-isc "$EF   ISC absolute" #x0441)
+    (:unofficial-isc "$F3   ISC indirect,Y" #x0442)
+    (:unofficial-isc "$F7   ISC zeropage,X" #x0443)
+    (:unofficial-isc "$FB   ISC absolute,Y" #x0444)
+    (:unofficial-isc "$FF   ISC absolute,X" #x0445)
+    (:unofficial-sh "$93   SHA indirect,Y" #x0446)
+    (:unofficial-sh "$9F   SHA absolute,Y" #x0447)
+    (:unofficial-sh "$9B   SHS absolute,Y" #x0448)
+    (:unofficial-sh "$9C   SHY absolute,X" #x0449)
+    (:unofficial-sh "$9E   SHX absolute,Y" #x044a)
+    (:unofficial-sh "$BB   LAE absolute,Y" #x044b)
+    (:unofficial-immediate "$0B   ANC Immediate" #x0410)
+    (:unofficial-immediate "$2B   ANC Immediate" #x0411)
+    (:unofficial-immediate "$4B   ASR Immediate" #x0412)
+    (:unofficial-immediate "$6B   ARR Immediate" #x0413)
+    (:unofficial-immediate "$8B   ANE Immediate" #x0414)
+    (:unofficial-immediate "$AB   LXA Immediate" #x0415)
+    (:unofficial-immediate "$CB   AXS Immediate" #x0416)
+    (:unofficial-immediate "$EB   SBC Immediate" #x0417)
+    (:cpu-interrupts "Interrupt flag latency" #x0461)
+    (:cpu-interrupts "NMI Overlap BRK" #x0462)
+    (:cpu-interrupts "NMI Overlap IRQ" #x0463)
+    (:dma "DMA + Open Bus" #x046c)
+    (:dma "DMA + $2002 Read" #x0488)
+    (:dma "DMA + $2007 Read" #x044c)
+    (:dma "DMA + $2007 Write" #x044f)
+    (:dma "DMA + $4015 Read" #x045d)
+    (:dma "DMA + $4016 Read" #x045e)
+    (:dma "DMC DMA Bus Conflicts" #x046b)
+    (:dma "DMC DMA + OAM DMA" #x0477)
+    (:dma "Explicit DMA Abort" #x0479)
+    (:dma "Implicit DMA Abort" #x0478)
+    (:apu "Length Counter" #x0465)
+    (:apu "Length Table" #x0466)
+    (:apu "Frame Counter IRQ" #x0467)
+    (:apu "Frame Counter 4-step" #x0468)
+    (:apu "Frame Counter 5-step" #x0469)
+    (:apu "Delta Modulation Channel" #x046a)
+    (:apu "APU Register Activation" #x045c)
+    (:apu "Controller Strobing" #x045f)
+    (:apu "Controller Clocking" #x047a)
+    (:cpu-behavior-2 "Instruction Timing" #x0460)
+    (:cpu-behavior-2 "Implied Dummy Reads" #x046d)
+    (:cpu-behavior-2 "Branch Dummy Reads" #x048b)
+    (:cpu-behavior-2 "JSR Edge Cases" #x047c)
+    (:cpu-behavior-2 "Internal Data Bus" #x0490)
+    (:ppu "CHR ROM is not writable" #x0485)
+    (:ppu "PPU Register Mirroring" #x0404)
+    (:ppu "PPU Register Open Bus" #x044e)
+    (:ppu "PPU Read Buffer" #x0476)
+    (:ppu "Palette RAM Quirks" #x047e)
+    (:ppu-vblank "VBlank beginning" #x0450)
+    (:ppu-vblank "VBlank end" #x0451)
+    (:ppu-vblank "NMI Control" #x0452)
+    (:ppu-vblank "NMI Timing" #x0453)
+    (:ppu-vblank "NMI Suppression" #x0454)
+    (:ppu-vblank "NMI at VBlank end" #x0455)
+    (:ppu-vblank "NMI disabled at VBlank" #x0456)
+    (:sprite "Sprite overflow behavior" #x0459)
+    (:sprite "Sprite 0 Hit behavior" #x0457)
+    (:sprite "$2002 flag timing" #x048d)
+    (:sprite "Suddenly Resize Sprite" #x0489)
+    (:sprite "Misaligned OAM DMA" #x0494)
+    (:sprite "Arbitrary Sprite zero" #x0458)
+    (:sprite "Misaligned OAM behavior" #x045a)
+    (:sprite "OAM Corruption" #x047b)
+    (:ppu-misc "t Register Quirks" #x0482)
+    (:ppu-misc "Address $2004 behavior" #x045b)
+    (:ppu-misc "INC $4014" #x0480)
+    (:ppu-misc "Rendering Flag Behavior" #x0486)
+    (:ppu-misc "$2007 read w/ rendering" #x048a)
+    (:ppu-misc "$2004 Stress Test" #x048c)
+    (:ppu-misc "$2007 Stress Test" #x048e)
+    (:advanced-bg "Attributes As Tiles" #x0481)
+    (:advanced-bg "Stale BG Shift Registers" #x0483)
+    (:advanced-bg "BG Serial In" #x0487)
+    (:advanced-bg "ALE + Read" #x0491)
+    (:advanced-bg "Hybrid Addresses" #x0492)
+    (:advanced-sprite "Sprites On Scanline 0" #x0484)
+    (:advanced-sprite "Stale Sprite Shift Regs" #x048f)
+    (:advanced-sprite "Frozen OAM2 Increment" #x0493)
+    (:advanced-sprite "Misaligned OAM2 Address" #x0495)))
 
 (defun accuracy-coin-items ()
-  (loop for address from #x0400 below (+ #x0400 146)
-        collect (list :name (format nil "item-~4,'0X" address)
-                      :address address :expected :pass)))
+  (append
+   (list (list :name "reserved Unimplemented" :address #x0400
+               :expected :reserved :category :reserved)
+         (list :name "reserved CPU Instruction" :address #x0401
+               :expected :reserved :category :reserved))
+   (loop for (category name address) in *accuracy-coin-item-specs*
+         collect (list :name name :address address :expected :pass
+                       :category category))))
 
 (setf (getf *accuracy-coin-contract* :items) (accuracy-coin-items))
 
@@ -253,39 +481,55 @@
     (t :fail)))
 
 (defun run-accuracy-coin (path contract)
-  (let ((nes (cl-nes:make-nes :cartridge (cl-nes:load-cartridge path)))
-        (results nil))
-    (protocol-run-frames-until
-     nes (getf contract :max-frames)
-     (lambda (frame)
-       (declare (ignore frame))
-       (let ((bus (cl-nes:nes-bus nes)))
-         (setf results (protocol-bus-range bus #x0400 #x04ff))
-         (and results
-              (every (lambda (item)
-                       (not (= 3 (cl-nes:bus-read bus (getf item :address)))))
-                     (getf contract :items))))))
-    (unless results
-      (setf results (protocol-bus-range (cl-nes:nes-bus nes) #x0400 #x04ff)))
+  (let* ((protocol-result
+           (cl-nes:run-accuracy-coin-protocol path (getf contract :max-frames)))
+         (results (getf protocol-result :results))
+         (shared-draw (getf protocol-result :shared-draw)))
     (let* ((items (loop for item in (getf contract :items)
                         for address = (getf item :address)
                         for value = (if (= address #x03FF)
-                                        (cl-nes:bus-read (cl-nes:nes-bus nes)
-                                                         address)
+                                        shared-draw
                                         (nth (- address #x0400) results))
-                        for kind = (accuracy-result-kind value)
+                        for kind = (if (eq (getf item :expected) :reserved)
+                                       :reserved
+                                       (accuracy-result-kind value))
                         collect (list :name (getf item :name)
                                       :address address :value value :kind kind
-                                      :expected (getf item :expected))))
+                                      :expected (getf item :expected)
+                                      :category (getf item :category))))
+           (shared-draw-items
+             (loop for item in (getf contract :shared-draw)
+                   for value = shared-draw
+                   collect (list :name (getf item :name)
+                                 :address (getf item :address) :value value
+                                 :kind (accuracy-result-kind value)
+                                 :expected (getf item :expected)
+                                 :category (getf item :category))))
            (pass-count (count :pass items :key (lambda (item) (getf item :kind))))
            (fail-count (count :fail items :key (lambda (item) (getf item :kind))))
            (skip-count (count :skipped items :key (lambda (item) (getf item :kind))))
            (running-count (count :running items :key (lambda (item) (getf item :kind))))
-           (completed-count (+ pass-count fail-count)))
+           (completed-count (+ pass-count fail-count))
+           (category-pass-counts
+             (loop with categories = nil
+                   for item in items
+                   for category = (getf item :category)
+                   when category
+                     do (let ((entry (assoc category categories)))
+                          (if entry
+                              (when (eq (getf item :kind) :pass)
+                                (incf (cdr entry)))
+                              (push (cons category
+                                           (if (eq (getf item :kind) :pass) 1 0))
+                                    categories)))
+                   finally (return (nreverse categories)))))
       (list :passed (every (lambda (item)
                              (eq (getf item :kind) (getf item :expected)))
                            items)
             :pass-count pass-count :total (getf contract :expected)
             :fail-count fail-count :skip-count skip-count
             :running-count running-count :completed-count completed-count
-            :items items :results results))))
+            :category-pass-counts category-pass-counts
+            :frames (getf protocol-result :frames)
+            :items items :shared-draw-items shared-draw-items
+            :results results))))

@@ -143,4 +143,5 @@
    #:protocol-framebuffer-hash
    #:protocol-run-frames-until
    #:run-blargg-protocol
+   #:run-accuracy-coin-protocol
    #:run-screen-protocol))

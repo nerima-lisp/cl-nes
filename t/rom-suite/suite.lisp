@@ -63,6 +63,8 @@
       (format t "accuracy-coin pass=~D total=~D fail=~D skip=~D running=~D~%"
               pass-count (getf result :total) (getf result :fail-count)
               (getf result :skip-count) (getf result :running-count))
+      (format t "accuracy-coin categories=~S~%"
+              (getf result :category-pass-counts))
       result)))
 
 (defun run-rom-suite ()
