@@ -13,7 +13,8 @@
    (:module "cartridge"
     :depends-on ("core")
     :components
-    ((:file "cartridge-state")
+     ((:file "cartridge-state")
+     (:file "cartridge-battery")
      (:file "cartridge-state-constructors")
      (:file "cartridge-state-forwarders")
      (:file "cartridge-validation")
@@ -27,7 +28,8 @@
                    (:file "cartridge-mapper4-control")
                    (:file "cartridge-mapper5")
                    (:file "cartridge-mapper5-expansion")
-                   (:file "cartridge-mapper9-10")))
+                   (:file "cartridge-mapper9-10")
+                   (:file "cartridge-mapper69-79")))
      (:file "cartridge-memory")
      (:file "cartridge-memory-accessors")
      (:file "cartridge-memory-bus")))
@@ -94,6 +96,7 @@
      (:file "coverage-cartridge-discrete-banking-contracts")
      (:file "coverage-cartridge-vrc2-action53-contracts")
      (:file "coverage-cartridge-prg-ram-contracts")
+     (:file "cartridge-p4-contracts")
      (:file "public-api-cartridge-core")
      (:file "public-api-mmc5-banking-registers")
      (:file "public-api-mmc5-control-registers")

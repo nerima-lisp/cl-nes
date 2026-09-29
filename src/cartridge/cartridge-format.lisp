@@ -10,15 +10,17 @@
 (defun %ines-error (format-control &rest arguments)
   (error 'invalid-rom :reason (apply #'format nil format-control arguments)))
 
-(defun %nes2-rom-bank-count (low-byte msb-nibble kind)
-  (when (= msb-nibble #x0F)
-    (%ines-error "NES 2.0 exponent-encoded ~A ROM size is unsupported" kind))
-  (logior low-byte (ash msb-nibble 8)))
+(defun %nes2-rom-size (low-byte msb-nibble unit kind)
+  (if (= msb-nibble #x0F)
+      (let ((exponent (ldb (byte 6 2) low-byte))
+            (multiplier (ldb (byte 2 0) low-byte)))
+        (* (1+ (* 2 multiplier)) (ash 1 exponent)))
+      (* (logior low-byte (ash msb-nibble 8)) unit)))
 
 (defun %nes2-ram-size (shift)
   (if (zerop shift) 0 (ash 64 shift)))
 
-(defun load-cartridge (source &key (mapper4-variant :mmc3))
+(defun load-cartridge (source &key (mapper4-variant nil mapper4-variant-p))
   (let ((octets (cond
                   ((or (stringp source) (pathnamep source))
                    (read-file-octets source))
@@ -31,14 +33,15 @@
            (nes2-p (= (logand flags7 #x0C) #x08))
            (byte8 (aref octets 8))
            (byte9 (aref octets 9))
-           (prg-banks (if nes2-p
-                          (%nes2-rom-bank-count
-                           (aref octets 4) (ldb (byte 4 0) byte9) "PRG")
-                          (aref octets 4)))
-           (chr-banks (if nes2-p
-                          (%nes2-rom-bank-count
-                           (aref octets 5) (ldb (byte 4 4) byte9) "CHR")
-                          (aref octets 5)))
+           (submapper (if nes2-p (ldb (byte 4 4) byte8) 0))
+           (prg-size (if nes2-p
+                         (%nes2-rom-size (aref octets 4) (ldb (byte 4 0) byte9)
+                                         +prg-bank-size+ "PRG")
+                         (* (aref octets 4) +prg-bank-size+)))
+           (chr-size (if nes2-p
+                         (%nes2-rom-size (aref octets 5) (ldb (byte 4 4) byte9)
+                                         +chr-bank-size+ "CHR")
+                         (* (aref octets 5) +chr-bank-size+)))
            (mapper (logior (ash (logand flags6 #xF0) -4)
                            (logand flags7 #xF0)
                            (if nes2-p
@@ -55,8 +58,12 @@
                                  (ldb (byte 4 4) (aref octets 10))))
                              (* (if (zerop byte8) 1 byte8)
                                 +prg-ram-bank-size+)))
-           (prg-size (* prg-banks +prg-bank-size+))
-           (chr-size (* chr-banks +chr-bank-size+))
+           (prg-banks (floor prg-size +prg-bank-size+))
+           (chr-banks (floor chr-size +chr-bank-size+))
+           (effective-mapper4-variant
+             (if mapper4-variant-p
+                 mapper4-variant
+                 (case submapper (1 :mmc6) (2 :mmc3-alt) (otherwise :mmc3))))
            (offset (+ +ines-header-size+
                       (if trainer-p +ines-trainer-size+ 0)))
            (required (+ offset prg-size chr-size)))
@@ -71,9 +78,12 @@
        :chr-rom (unless (zerop chr-banks)
                   (subseq octets (+ offset prg-size) required))
        :mapper mapper
+       :submapper submapper
+       :bus-conflict-p (and (member mapper '(2 3 7 11))
+                            (zerop submapper))
        :mirroring mirroring
        :battery-backed-p battery-backed-p
        :four-screen-p four-screen-p
        :chr-writable-p (zerop chr-banks)
        :prg-ram-size prg-ram-size
-       :mapper4-variant mapper4-variant))))
+       :mapper4-variant effective-mapper4-variant))))

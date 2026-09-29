@@ -8,7 +8,7 @@ hardware compatibility.
 The parser accepts iNES 1.0 and the supported subset of NES 2.0 headers. The
 supported mapper numbers are:
 
-0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28, 34, 66, 71, and 87.
+0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28, 34, 66, 69, 71, 79, and 87.
 
 PRG-ROM and CHR-ROM are banked according to the mapper. A cartridge with no
 CHR-ROM receives writable CHR-RAM. PRG-RAM, battery-backed state, four-screen
@@ -18,7 +18,9 @@ support them.
 Mapper 9 (MMC2) and mapper 10 (MMC4) support CHR bank switching through PPU
 address latches, along with their mapper-controlled PRG and nametable behavior.
 
-Mapper 66 selects 32 KiB PRG and 8 KiB CHR banks. Mapper 71 uses a UxROM-like
+Mapper 66 selects 32 KiB PRG and 8 KiB CHR banks. Mapper 69 implements FME-7
+banking and CPU-cycle IRQ counting without the Sunsoft 5B audio extension.
+Mapper 79 selects 32 KiB PRG and 8 KiB CHR banks. Mapper 71 uses a UxROM-like
 layout with a switchable lower 16 KiB PRG bank and a fixed upper 16 KiB bank.
 Mapper 87 selects its CHR bank through writes in the `$6000-$7FFF` range and
 does not expose PRG-RAM through that range.
@@ -51,10 +53,12 @@ path; it is not a claim that every timing edge is cycle exact.
 
 ## Mapper 4
 
-Mapper 4 defaults to the MMC3 IRQ reload behavior. Some ROMs need the
+Mapper 4 defaults to the MMC3 IRQ reload behavior. NES 2.0 submapper 1 selects
+MMC6 behavior and submapper 2 selects the alternate MMC3 behavior. Some ROMs need the
 zero-counter reload suppression behavior shared by MMC6-compatible revisions;
 select it explicitly with mapper4-variant :mmc6 or :mmc3-alt. The header does
-not provide enough information to choose between these revisions.
+not select the alternate behavior when an explicit mapper4-variant argument is
+provided.
 
 ## CPU and PPU
 

@@ -1,7 +1,7 @@
 (in-package #:cl-nes)
 
 (defun %ensure-supported-mapper! (mapper)
-  (unless (member mapper '(0 1 2 3 4 5 7 9 10 11 22 28 34 66 71 87))
+  (unless (member mapper '(0 1 2 3 4 5 7 9 10 11 22 28 34 66 69 71 79 87))
     (error 'unsupported-mapper :number mapper)))
 
 (defun %ensure-valid-mapper4-variant! (mapper4-variant)
@@ -89,6 +89,8 @@
     ((= mapper 7) (%ensure-axrom-prg-layout! prg))
     ((member mapper '(11 34 66 87)) (%ensure-32k-banked-prg-layout! prg))
     ((= mapper 71) (%ensure-uxrom-prg-layout! prg))
+    ((= mapper 69) (%ensure-valid-prg-layout! 4 prg))
+    ((= mapper 79) (%ensure-32k-banked-prg-layout! prg))
     ((= mapper 22) (%ensure-vrc2-prg-layout! prg))
     ((member mapper '(4 5)) (%ensure-mmc3/mmc5-prg-layout! prg))
     ((= mapper 9) (%ensure-mmc2-prg-layout! prg))
@@ -98,7 +100,7 @@
   (unless (case mapper
             (22 (and (plusp (length chr))
                      (zerop (mod (length chr) +chr-bank-1k-size+))))
-            ((1 3 11 28 66 87) (and (>= (length chr) +chr-bank-size+)
+            ((1 3 11 28 66 69 79 87) (and (>= (length chr) +chr-bank-size+)
                                     (zerop (mod (length chr) +chr-bank-size+))))
             ((4 5) (and (plusp (length chr))
                         (zerop (mod (length chr) +chr-bank-1k-size+))))

@@ -14,12 +14,13 @@ constructors, accessors, state operations, and constants.
 | cartridge-prg-rom, cartridge-chr-rom | Return the cartridge ROM vectors. |
 | cartridge-prg-size, cartridge-chr-size | Return the PRG-ROM and CHR storage sizes in bytes. |
 | cartridge-prg-ram | Return PRG-RAM. |
-| cartridge-mapper, cartridge-mapper4-variant | Return mapper metadata. |
+| cartridge-mapper, cartridge-submapper, cartridge-mapper4-variant | Return mapper metadata. |
 | cartridge-mirroring | Return the nametable mirroring mode. |
 | cartridge-battery-backed-p, cartridge-four-screen-p | Return header flags. |
 | cartridge-chr-writable-p | Report whether CHR writes are enabled. |
 | cartridge-read-prg, cartridge-write-prg! | Read or write mapper PRG space. |
 | cartridge-read-prg-ram, cartridge-write-prg-ram! | Read or write PRG-RAM. |
+| cartridge-save-battery, cartridge-restore-battery! | Copy or restore battery-backed PRG-RAM. |
 | cartridge-read-chr, cartridge-write-chr! | Read or write CHR space. |
 
 make-cartridge accepts prg-rom, chr-rom, mapper, mirroring, battery-backed-p,

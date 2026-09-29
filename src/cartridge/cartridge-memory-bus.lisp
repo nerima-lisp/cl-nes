@@ -42,6 +42,9 @@
 (defun cartridge-cpu-write! (cartridge address value)
   (when cartridge
     (cond
+      ((and (= (cartridge-mapper cartridge) 79)
+            (= address #x4100))
+       (cartridge-write-prg! cartridge address value))
       ((and (<= #x5000 address #x5FFF)
             (= (cartridge-mapper cartridge) 5))
        (cartridge-write-expansion! cartridge address value))

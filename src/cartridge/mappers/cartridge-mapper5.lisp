@@ -106,4 +106,6 @@
                 (cartridge-mapper4-irq-pending-p cartridge))
            (and (= (cartridge-mapper cartridge) 5)
                 (cartridge-mapper5-state-irq-pending-p
-                 (cartridge-mapper5-state cartridge))))))
+                 (cartridge-mapper5-state cartridge)))
+           (and (= (cartridge-mapper cartridge) 69)
+                (cartridge-mapper69-irq-pending-p cartridge)))))

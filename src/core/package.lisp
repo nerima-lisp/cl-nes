@@ -11,7 +11,10 @@
    #:invalid-rom-reason
    #:unsupported-mapper
    #:unsupported-mapper-number
-
+   #:cartridge-battery-error
+   #:cartridge-battery-error-reason
+   #:cartridge-battery-error-expected-size
+   #:cartridge-battery-error-actual-size
    ;; Cartridges
    #:cartridge
    #:make-cartridge
@@ -23,6 +26,7 @@
    #:cartridge-chr-size
    #:cartridge-prg-ram
    #:cartridge-mapper
+   #:cartridge-submapper
    #:cartridge-mapper4-variant
    #:cartridge-mirroring
    #:cartridge-battery-backed-p
@@ -32,8 +36,11 @@
    #:cartridge-write-prg!
    #:cartridge-read-prg-ram
    #:cartridge-write-prg-ram!
+   #:cartridge-save-battery
+   #:cartridge-restore-battery!
    #:cartridge-read-chr
    #:cartridge-write-chr!
+   #:cartridge-clock-cpu!
 
    ;; Controllers
    #:+button-a+

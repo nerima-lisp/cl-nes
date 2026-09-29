@@ -8,6 +8,7 @@
 
 (defun make-cartridge (&key prg-rom chr-rom (mapper 0) (mirroring :horizontal)
                             battery-backed-p four-screen-p
+                            (submapper 0) bus-conflict-p
                             (chr-writable-p (null chr-rom))
                             (prg-ram-size +prg-ram-bank-size+)
                             (mapper4-variant :mmc3))
@@ -94,6 +95,8 @@
                        :mirroring mirroring
                        :initial-mirroring mirroring
                        :battery-backed-p battery-backed-p
+                       :submapper submapper
+                       :bus-conflict-p bus-conflict-p
                        :four-screen-p four-screen-p
                        :chr-writable-p chr-writable-p
                        :prg-bank 0

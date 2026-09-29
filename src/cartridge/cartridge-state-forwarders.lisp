@@ -41,6 +41,24 @@
 (%define-mapper-forwarder cartridge-mapper-outer-bank
                           mapper-state-core-mapper-outer-bank
                           set-mapper-state-core-mapper-outer-bank!)
+(%define-mapper-forwarder cartridge-mapper69-command
+                          mapper-state-core-mapper69-command
+                          set-mapper-state-core-mapper69-command!)
+(%define-mapper-forwarder cartridge-mapper69-registers
+                          mapper-state-core-mapper69-registers
+                          set-mapper-state-core-mapper69-registers!)
+(%define-mapper-forwarder cartridge-mapper69-irq-counter
+                          mapper-state-core-mapper69-irq-counter
+                          set-mapper-state-core-mapper69-irq-counter!)
+(%define-mapper-forwarder cartridge-mapper69-irq-enabled-p
+                          mapper-state-core-mapper69-irq-enabled-p
+                          set-mapper-state-core-mapper69-irq-enabled-p!)
+(%define-mapper-forwarder cartridge-mapper69-irq-pending-p
+                          mapper-state-core-mapper69-irq-pending-p
+                          set-mapper-state-core-mapper69-irq-pending-p!)
+(%define-mapper-forwarder cartridge-mapper1-last-write-cycle
+                          mapper-state-core-mapper1-last-write-cycle
+                          set-mapper-state-core-mapper1-last-write-cycle!)
 
 (%define-mapper4-forwarder cartridge-mapper4-bank-select
                            cartridge-mapper4-state-mapper4-bank-select

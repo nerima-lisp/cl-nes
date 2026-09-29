@@ -21,7 +21,11 @@
     (otherwise
      (set-cartridge-prg-bank! cartridge value))))
 
-(defun %mapper1-write! (cartridge address value)
+(defun %mapper1-write! (cartridge address value &optional cpu-cycle)
+  (when (and cpu-cycle
+             (= cpu-cycle (cartridge-mapper1-last-write-cycle cartridge)))
+    (return-from %mapper1-write! value))
+  (setf (cartridge-mapper1-last-write-cycle cartridge) cpu-cycle)
   (cond
     ((logbitp 7 value)
      (setf (cartridge-mapper-shift cartridge) #x10)

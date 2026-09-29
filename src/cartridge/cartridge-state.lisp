@@ -47,7 +47,14 @@
                                  :initial-element 0) vector)
    (mapper-register-select 0 nil)
    (mapper-mode 0 nil)
-   (mapper-outer-bank #xFF nil))
+   (mapper-outer-bank #xFF nil)
+   (mapper69-command 0 nil)
+   (mapper69-registers (make-array 16 :element-type '(unsigned-byte 8)
+                                   :initial-element 0) vector)
+   (mapper69-irq-counter 0 nil)
+   (mapper69-irq-enabled-p nil nil)
+   (mapper69-irq-pending-p nil nil)
+   (mapper1-last-write-cycle nil nil))
   :constructor %make-mapper-state-core-instance
   :reset %reset-mapper-state-core!)
 
@@ -84,7 +91,7 @@
   nil)
 
 (defun %make-cartridge-instance ()
-  (make-array 14 :initial-element nil))
+  (make-array 16 :initial-element nil))
 
 (%install-vector-accessor-pairs
  '((cartridge-prg-rom set-cartridge-prg-rom! 0)
@@ -100,4 +107,6 @@
    (cartridge-chr-bank set-cartridge-chr-bank! 10)
    (cartridge-mapper5-state set-cartridge-mapper5-state! 11)
    (cartridge-mapper4-state set-cartridge-mapper4-state! 12)
-   (cartridge-mapper-state set-cartridge-mapper-state! 13)))
+   (cartridge-mapper-state set-cartridge-mapper-state! 13)
+   (cartridge-submapper set-cartridge-submapper! 14)
+   (cartridge-bus-conflict-p set-cartridge-bus-conflict-p! 15)))
