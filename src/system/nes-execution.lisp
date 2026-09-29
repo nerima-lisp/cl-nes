@@ -3,9 +3,9 @@
 (defvar *nes-step-context* nil)
 
 (defun %nes-poll-irq-before-clock! (nes)
-  (setf (nes-irq-seen-before-last-p nes) (nes-irq-seen-p nes))
-  (when (%nes-irq-pending-p nes)
-    (setf (nes-irq-seen-p nes) t)))
+  (let ((irq-pending-p (%nes-irq-pending-p nes)))
+    (setf (nes-irq-seen-before-last-p nes) irq-pending-p
+          (nes-irq-seen-p nes) irq-pending-p)))
 
 (defun %nes-poll-irq-before-cycle! ()
   (%nes-poll-irq-before-clock! *nes-step-context*))
