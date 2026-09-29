@@ -42,6 +42,8 @@
                           mapper-state-core-mapper69-irq-enabled-p)
 (%define-mapper-forwarder cartridge-mapper69-irq-pending-p
                           mapper-state-core-mapper69-irq-pending-p)
+(%define-mapper-forwarder cartridge-mapper1-ppu-a12-high-p
+                          mapper-state-core-mapper1-ppu-a12-high-p)
 (%define-mapper-forwarder cartridge-mapper1-last-write-cycle
                           mapper-state-core-mapper1-last-write-cycle)
 

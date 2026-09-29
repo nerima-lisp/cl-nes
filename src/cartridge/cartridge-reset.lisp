@@ -36,6 +36,7 @@
           (cartridge-mapper69-irq-counter cartridge) 0
           (cartridge-mapper69-irq-enabled-p cartridge) nil
           (cartridge-mapper69-irq-pending-p cartridge) nil
+          (cartridge-mapper1-ppu-a12-high-p cartridge) nil
           (cartridge-mapper1-last-write-cycle cartridge) nil
           (cartridge-mapper4-bank-select cartridge) 0
           (cartridge-mapper4-prg-ram-enabled-p cartridge) t

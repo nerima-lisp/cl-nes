@@ -51,6 +51,7 @@
                                           (mapper69-irq-counter 0)
                                           (mapper69-irq-enabled-p nil)
                                           (mapper69-irq-pending-p nil)
+                                          (mapper1-ppu-a12-high-p nil)
                                           (mapper1-last-write-cycle nil))
   (let ((state (%make-mapper-state-core-instance)))
     (setf (mapper-state-core-mapper-shift state) mapper-shift
@@ -67,6 +68,7 @@
           (mapper-state-core-mapper69-irq-counter state) mapper69-irq-counter
           (mapper-state-core-mapper69-irq-enabled-p state) mapper69-irq-enabled-p
           (mapper-state-core-mapper69-irq-pending-p state) mapper69-irq-pending-p
+          (mapper-state-core-mapper1-ppu-a12-high-p state) mapper1-ppu-a12-high-p
           (mapper-state-core-mapper1-last-write-cycle state) mapper1-last-write-cycle)
     state))
 

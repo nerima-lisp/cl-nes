@@ -69,7 +69,13 @@
              (mod offset +prg-bank-size+))))))
 
 (defun %mapper1-prg-ram-enabled-p (cartridge)
-  (not (logbitp 4 (cartridge-prg-bank cartridge))))
+  (if (logbitp 4 (cartridge-mapper-chr-bank-1 cartridge))
+      (not (cartridge-mapper1-ppu-a12-high-p cartridge))
+      (not (logbitp 4 (cartridge-prg-bank cartridge)))))
+
+(defun %mapper1-clock-ppu-a12! (cartridge high-p)
+  (setf (cartridge-mapper1-ppu-a12-high-p cartridge) high-p)
+  cartridge)
 
 (defun %mapper1-chr-offset (cartridge address)
   (let ((chr (cartridge-chr-rom cartridge))

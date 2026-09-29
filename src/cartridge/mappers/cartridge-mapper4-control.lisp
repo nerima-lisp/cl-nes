@@ -20,7 +20,10 @@
         (setf (cartridge-mapper4-irq-pending-p cartridge) t)))))
 
 (defun cartridge-clock-ppu-a12! (cartridge high-p &optional (low-cycles 1))
-  (when (and cartridge (= (cartridge-mapper cartridge) 4))
+  (when cartridge
+    (when (= (cartridge-mapper cartridge) 1)
+      (%mapper1-clock-ppu-a12! cartridge high-p))
+    (when (= (cartridge-mapper cartridge) 4)
     (if high-p
         (when (and (not (cartridge-mapper4-ppu-a12-high-p cartridge))
                    (>= (cartridge-mapper4-ppu-a12-low-cycles cartridge)
@@ -31,7 +34,7 @@
                  (max 0 low-cycles))))
     (setf (cartridge-mapper4-ppu-a12-high-p cartridge) high-p)
     (when high-p
-      (setf (cartridge-mapper4-ppu-a12-low-cycles cartridge) 0)))
+      (setf (cartridge-mapper4-ppu-a12-low-cycles cartridge) 0))))
   cartridge)
 
 (defun %mapper4-write! (cartridge address value)

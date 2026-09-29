@@ -56,6 +56,7 @@
    (mapper69-irq-counter 0 nil)
    (mapper69-irq-enabled-p nil nil)
    (mapper69-irq-pending-p nil nil)
+   (mapper1-ppu-a12-high-p nil nil)
    (mapper1-last-write-cycle nil nil))
   :constructor %make-mapper-state-core-instance
   :reset %reset-mapper-state-core!)
