@@ -108,6 +108,21 @@
       ((= address #x5206) (%mapper5-read-multiplier-high cartridge))
       (t (%mapper5-read-exram cartridge address)))))
 
+(defun cartridge-mmc5-read-chr-bank (cartridge bank address)
+  "Read ADDRESS from a 4 KiB MMC5 CHR BANK."
+  (when (and (= (cartridge-mapper cartridge) 5)
+             (<= 0 address #x1FFF))
+    (cartridge-clock-ppu-latch! cartridge address)
+    (let* ((offset (+ (* bank +chr-bank-4k-size+)
+                      (mod address +chr-bank-4k-size+)))
+           (rom (cartridge-chr-rom cartridge)))
+      (aref rom (mod offset (length rom))))))
+
+(defun cartridge-mmc5-read-split-chr (cartridge address)
+  "Read the 4 KiB CHR window selected by MMC5 $5202."
+  (cartridge-mmc5-read-chr-bank
+   cartridge (cartridge-mapper5-split-bank cartridge) address))
+
 (defun cartridge-write-expansion! (cartridge address value)
   (when (= (cartridge-mapper cartridge) 5)
     (%mapper5-write-expansion! cartridge address value))

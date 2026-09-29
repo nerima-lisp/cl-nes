@@ -1,5 +1,80 @@
 (in-package #:cl-nes)
 
+(defun %ppu-mmc5-split-state (ppu dot)
+  "Return active, split-X, and split-Y for a background fetch."
+  (when (and (< (ppu-scanline ppu) +ppu-height+)
+             (ppu-cartridge ppu)
+             (= (cartridge-mapper (ppu-cartridge ppu)) 5))
+    (let* ((cartridge (ppu-cartridge ppu))
+           (control (cartridge-mapper5-split-control cartridge))
+           (mode (cartridge-mapper5-exram-mode cartridge))
+           (tile-index (floor (1- dot) 8))
+           (threshold (logand control #x1F))
+           (left-p (zerop (logand control #x40)))
+           (active-p (and (logbitp 7 control)
+                          (<= mode 1)
+                          (if left-p
+                              (< tile-index threshold)
+                              (>= tile-index threshold)))))
+      (when active-p
+        (return-from %ppu-mmc5-split-state
+          (values t
+                  (if left-p tile-index (- tile-index threshold))
+                  (mod (+ (ppu-scanline ppu)
+                          (cartridge-mapper5-split-scroll cartridge))
+                       +ppu-height+))))))
+  (values nil 0 0))
+
+(defun %ppu-mmc5-exram-byte (ppu tile-x tile-y)
+  (cartridge-read-expansion
+   (ppu-cartridge ppu)
+   (+ #x5C00 (mod (+ (* (mod tile-y 30) 32) (mod tile-x 32)) #x400))))
+
+(defun %ppu-mmc5-background-chr (ppu address split-p exram-byte)
+  (let ((cartridge (ppu-cartridge ppu)))
+    (cond
+      (split-p (cartridge-mmc5-read-split-chr cartridge address))
+      (exram-byte
+       (cartridge-mmc5-read-chr-bank cartridge (logand exram-byte #x3F) address))
+      (t (ppu-read-vram ppu address)))))
+
+(defun %ppu-background-sample
+    (ppu x y tile-x tile-y nametable-base split-p split-x split-y)
+  (let* ((cartridge (ppu-cartridge ppu))
+         (mode (and cartridge (= (cartridge-mapper cartridge) 5)
+                    (cartridge-mapper5-exram-mode cartridge)))
+         (exram-tile (and mode (= mode 1) (not split-p)
+                          (%ppu-mmc5-exram-byte ppu tile-x tile-y)))
+         (effective-tile-x (if split-p split-x tile-x))
+         (effective-tile-y (if split-p (floor split-y 8) tile-y))
+         (tile (if split-p
+                   (%ppu-mmc5-exram-byte ppu effective-tile-x effective-tile-y)
+                   (ppu-read-vram ppu (+ nametable-base (* tile-y 32) tile-x))))
+         (row (if split-p (mod split-y 8) (mod y 8)))
+         (pattern-base (if (logbitp 4 (ppu-control ppu)) #x1000 0))
+         (address (+ pattern-base (* tile 16) row))
+         (low (%ppu-mmc5-background-chr ppu address split-p exram-tile))
+         (high (%ppu-mmc5-background-chr ppu (+ address 8) split-p exram-tile))
+         (bit (- 7 (mod x 8)))
+         (color (logior (ldb (byte 1 bit) low)
+                        (ash (ldb (byte 1 bit) high) 1)))
+         (attribute
+           (if exram-tile
+               (ldb (byte 2 6) exram-tile)
+               (let* ((attribute-address
+                        (if split-p
+                            (+ #x2000 #x3C0
+                               (* (floor effective-tile-y 4) 8)
+                               (floor effective-tile-x 4))
+                            (+ nametable-base #x3C0
+                               (* (floor tile-y 4) 8)
+                               (floor tile-x 4))))
+                      (value (ppu-read-vram ppu attribute-address))
+                      (quadrant (+ (if (>= (mod effective-tile-x 4) 2) 1 0)
+                                   (if (>= (mod effective-tile-y 4) 2) 2 0))))
+                 (ldb (byte 2 (* quadrant 2)) value)))))
+    (values color attribute)))
+
 (defun %background-pixel (ppu x y)
   (let* ((base-table (logand (ppu-control ppu) 3))
          (base-x (mod base-table 2))
@@ -16,29 +91,19 @@
          (tile-x (floor local-x 8))
          (tile-y (floor local-y 8))
          (nametable-base (+ #x2000 (* table #x400)))
-         (tile-address (+ nametable-base (* tile-y 32) tile-x))
-         (tile (ppu-read-vram ppu tile-address))
-         (pattern-base (if (logbitp 4 (ppu-control ppu)) #x1000 0))
-         (row (mod local-y 8))
-         (low (ppu-read-vram ppu (+ pattern-base (* tile 16) row)))
-         (high (ppu-read-vram ppu (+ pattern-base (* tile 16) row 8)))
-         (bit (- 7 (mod local-x 8)))
-         (color (logior (ldb (byte 1 bit) low)
-                        (ash (ldb (byte 1 bit) high) 1)))
+         (split-state (multiple-value-list (%ppu-mmc5-split-state ppu (1+ x))))
+         (split-p (first split-state))
+         (split-x (second split-state))
+         (split-y (third split-state))
          (backdrop (logand (ppu-read-vram ppu #x3F00) #x3F)))
-    (if (or (not (logbitp 1 (ppu-mask ppu)))
+    (multiple-value-bind (color palette-number)
+        (%ppu-background-sample ppu local-x local-y tile-x tile-y nametable-base
+                                 split-p split-x split-y)
+      (if (or (not (logbitp 1 (ppu-mask ppu)))
             (and (< x 8) (not (logbitp 2 (ppu-mask ppu)))))
-        (values backdrop nil)
-        (if (zerop color)
             (values backdrop nil)
-            (let* ((attribute-address
-                     (+ nametable-base #x3C0
-                        (* (floor tile-y 4) 8)
-                        (floor tile-x 4)))
-                   (attribute (ppu-read-vram ppu attribute-address))
-                   (quadrant (+ (if (>= (mod tile-x 4) 2) 1 0)
-                                (if (>= (mod tile-y 4) 2) 2 0)))
-                   (palette-number (ldb (byte 2 (* quadrant 2)) attribute)))
+          (if (zerop color)
+              (values backdrop nil)
               (values
                (logand
                 (ppu-read-vram ppu (+ #x3F00 (* palette-number 4) color))
@@ -111,33 +176,29 @@ retaining the existing cartridge nametable and CHR interfaces."
          (table (logand (ash v -10) 3))
          (fine-y (logand (ash v -12) 7))
          (x (mod (+ (ppu-fine-x ppu) (1- (ppu-dot ppu))) 8))
-         (tile-address (+ #x2000 (ash table 10) (ash coarse-y 5) coarse-x))
-         (tile (ppu-read-vram ppu tile-address))
-         (pattern-base (if (logbitp 4 (ppu-control ppu)) #x1000 0))
-         (pattern-address (+ pattern-base (* tile 16) fine-y))
-         (low (ppu-read-vram ppu pattern-address))
-         (high (ppu-read-vram ppu (+ pattern-address 8)))
-         (bit (- 7 x))
-         (color (logior (ldb (byte 1 bit) low)
-                        (ash (ldb (byte 1 bit) high) 1))))
+         (nametable-base (+ #x2000 (ash table 10)))
+         (split-state (multiple-value-list
+                       (%ppu-mmc5-split-state ppu (ppu-dot ppu))))
+         (split-p (first split-state))
+         (split-x (second split-state))
+         (split-y (third split-state))
+         (color nil)
+         (palette-number nil))
+    (multiple-value-setq (color palette-number)
+      (%ppu-background-sample ppu x (+ (* coarse-y 8) fine-y)
+                              coarse-x coarse-y nametable-base
+                              split-p split-x split-y))
     (if (or (not (logbitp 1 (%ppu-effective-mask ppu)))
             (and (< (ppu-dot ppu) 9)
                  (not (logbitp 2 (%ppu-effective-mask ppu)))))
         (values (logand (ppu-read-vram ppu #x3F00) #x3F) nil)
         (if (zerop color)
             (values (logand (ppu-read-vram ppu #x3F00) #x3F) nil)
-            (let* ((attribute-address
-                     (+ #x2000 (ash table 10) #x3C0
-                        (* (floor coarse-y 4) 8) (floor coarse-x 4)))
-                   (attribute (ppu-read-vram ppu attribute-address))
-                   (quadrant (+ (if (>= (mod coarse-x 4) 2) 1 0)
-                                (if (>= (mod coarse-y 4) 2) 2 0)))
-                   (palette-number (ldb (byte 2 (* quadrant 2)) attribute)))
-              (values
-               (logand
-                (ppu-read-vram ppu (+ #x3F00 (* palette-number 4) color))
-                #x3F)
-               t))))))
+            (values
+             (logand
+              (ppu-read-vram ppu (+ #x3F00 (* palette-number 4) color))
+              #x3F)
+             t)))))
 
 (defun %ppu-palette-pixel (ppu color)
   (let ((color (logand color #x3F))
