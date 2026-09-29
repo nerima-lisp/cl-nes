@@ -144,6 +144,7 @@
     ((:file "properties-controller") (:file "properties-memory")
      (:file "bus-contracts") (:file "bus-routing-transitions")
      (:file "bus-memory-transitions") (:file "edge-condition-reports")
+     (:file "allocation-complexity")
      (:file "edge-controller-boundaries") (:file "edge-loader-input-boundaries")
      (:file "edge-loader-metadata-boundaries") (:file "nes-transitions")
      (:file "coverage-nes-timing") (:file "coverage-nes-bus-runtime")

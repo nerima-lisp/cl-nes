@@ -56,11 +56,9 @@
     (setf (bus-last-cpu-access-kind bus) :read
           (bus-last-cpu-access-address bus) address)
     (let ((value (%bus-read-device bus address)))
-    (setf value (logand (or value (bus-open-bus bus)) #xFF)
-          (bus-open-bus bus) value)
-    (let ((hook (bus-cpu-access-hook bus)))
-      (when hook
-        (funcall hook)))
+      (setf value (logand (or value (bus-open-bus bus)) #xFF)
+            (bus-open-bus bus) value)
+      (%bus-cpu-access! bus)
       value)))
 
 (defun %perform-oam-dma! (bus page)
@@ -108,7 +106,17 @@
       ((bus-cartridge bus)
        (cartridge-cpu-write! (bus-cartridge bus) address value))
       (t nil))
-    (let ((hook (bus-cpu-access-hook bus)))
-      (when hook
-        (funcall hook)))
+    (%bus-cpu-access! bus)
     value))
+
+(defun %bus-cpu-access! (bus)
+  (if (bus-cpu-access-active-p bus)
+      (progn
+        (incf (bus-cpu-access-count bus))
+        (%nes-clock-cpu-cycle! (bus-cpu-access-nes bus)
+                               bus
+                               (bus-cpu-access-cycle-hook bus)
+                               (bus-cpu-access-pre-cycle-hook bus)))
+      (let ((hook (bus-cpu-access-hook bus)))
+        (when hook
+          (funcall hook)))))

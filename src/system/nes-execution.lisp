@@ -1,13 +1,30 @@
 (in-package #:cl-nes)
 
-(defun %nes-run-instruction! (nes &optional nmi-poll cycle-hook pre-cycle-hook)
-  (with-nes-cpu-operation (nes cycle-hook pre-cycle-hook)
-    (cpu-step! (nes-cpu nes) (nes-bus nes) nmi-poll)))
+(defvar *nes-step-context* nil)
 
-(defun %nes-run-interrupt! (nes type &optional brk-p nmi-poll cycle-hook
+(defun %nes-poll-irq-before-clock! (nes)
+  (setf (nes-irq-seen-before-last-p nes) (nes-irq-seen-p nes))
+  (when (%nes-irq-pending-p nes)
+    (setf (nes-irq-seen-p nes) t)))
+
+(defun %nes-poll-irq-before-cycle! ()
+  (%nes-poll-irq-before-clock! *nes-step-context*))
+
+(defun %nes-poll-nmi-event! ()
+  (let ((nes *nes-step-context*))
+    (when (%nes-poll-nmi-during-operation! nes)
+      (setf (nes-nmi-hijacked-p nes) t)
+      t)))
+
+(defun %nes-run-instruction! (nes &optional cycle-hook pre-cycle-hook)
+  (with-nes-cpu-operation (nes cycle-hook pre-cycle-hook)
+    (cpu-step! (nes-cpu nes) (nes-bus nes) #'%nes-poll-nmi-event!)))
+
+(defun %nes-run-interrupt! (nes type &optional brk-p cycle-hook
                                           pre-cycle-hook)
   (with-nes-cpu-operation (nes cycle-hook pre-cycle-hook)
-    (cpu-interrupt! (nes-cpu nes) (nes-bus nes) type brk-p nmi-poll)))
+    (cpu-interrupt! (nes-cpu nes) (nes-bus nes) type brk-p
+                    #'%nes-poll-nmi-event!)))
 
 (defun %nes-irq-eligible-p (cpu irq-disabled-at-start)
   (if (plusp (cpu-irq-delay cpu))
@@ -61,40 +78,34 @@ continuation's result."
          (irq-seen-p (%nes-irq-pending-p nes))
          (irq-seen-before-last-p irq-seen-p)
          (nmi-hijacked-p nil))
-    (labels ((poll-irq-before-clock ()
-               (setf irq-seen-before-last-p irq-seen-p)
-               (when (%nes-irq-pending-p nes)
-                 (setf irq-seen-p t)))
-             (poll-nmi-event ()
-               (when (%nes-poll-nmi-during-operation! nes)
-                 (setf nmi-hijacked-p t)
-                 t)))
+    (setf (nes-irq-seen-p nes) irq-seen-p
+          (nes-irq-seen-before-last-p nes) irq-seen-before-last-p
+          (nes-nmi-hijacked-p nes) nmi-hijacked-p)
+    (let ((*nes-step-context* nes))
       (let ((cycles
               (%nes-run-instruction!
-               nes #'poll-nmi-event cycle-hook #'poll-irq-before-clock)))
+               nes cycle-hook #'%nes-poll-irq-before-cycle!)))
         (let ((dma-cycles (bus-take-dma-stall-cycles! (nes-bus nes))))
           (when (plusp dma-cycles)
             (incf cycles
                   (%nes-run-dma-stalls! nes dma-cycles
-                                         #'poll-irq-before-clock
                                          cycle-hook)))
           ;; NMI is sampled before maskable IRQ, matching the 6502 priority.
           (let ((nmi-taken-p
-                  (or nmi-hijacked-p
+                  (or (nes-nmi-hijacked-p nes)
                       (ppu-take-nmi! (nes-ppu nes)))))
-            (when (and nmi-taken-p (not nmi-hijacked-p))
+            (when (and nmi-taken-p (not (nes-nmi-hijacked-p nes)))
               (incf cycles (%nes-run-interrupt!
-                            nes :nmi nil nil cycle-hook nil)))
+                            nes :nmi nil cycle-hook nil)))
             (when (and (not nmi-taken-p)
                        (zerop dma-cycles)
                        (or (not (cpu-irq-poll-delay cpu))
-                           irq-seen-before-last-p)
+                           (nes-irq-seen-before-last-p nes))
                        (%nes-irq-eligible-p cpu irq-disabled-at-start)
-                       irq-seen-p)
+                       (nes-irq-seen-p nes))
               (let ((interrupt-cycles
                       (%nes-run-interrupt!
-                       nes :irq t #'poll-nmi-event
-                       cycle-hook #'poll-irq-before-clock)))
+                       nes :irq t cycle-hook #'%nes-poll-irq-before-cycle!)))
                 (when interrupt-cycles
                   (incf cycles interrupt-cycles)))))
           ;; CLI/SEI/PLP delay IRQ recognition for the following instruction.

@@ -20,4 +20,9 @@
   (cpu-cycle-phase 0 :type fixnum)
   ;; NES installs this only while executing a CPU operation. Device-internal
   ;; reads (for example DMC and OAM DMA) deliberately run with it disabled.
-  (cpu-access-hook nil))
+  (cpu-access-hook nil)
+  (cpu-access-active-p nil)
+  (cpu-access-nes nil)
+  (cpu-access-cycle-hook nil)
+  (cpu-access-pre-cycle-hook nil)
+  (cpu-access-count 0 :type fixnum))

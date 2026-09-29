@@ -6,4 +6,7 @@
   cpu
   bus
   ppu
-  apu)
+  apu
+  (irq-seen-p nil)
+  (irq-seen-before-last-p nil)
+  (nmi-hijacked-p nil))
