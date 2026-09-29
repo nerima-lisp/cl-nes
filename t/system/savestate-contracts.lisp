@@ -32,6 +32,39 @@
         (expect (cpu-cycles (nes-cpu left))
                 :to-be (cpu-cycles (nes-cpu right))))))
 
+  (it "continues with identical audio sample buffers after restore"
+    (let* ((left (make-nes :cartridge (make-fixture-cartridge :program '(#xEA))))
+           (right (make-nes :cartridge (make-fixture-cartridge :program '(#xEA))))
+           (state (progn
+                    (nes-run-frame/k left (lambda (framebuffer)
+                                            (declare (ignore framebuffer))
+                                            nil))
+                    (nes-save-state left)))
+           (left-samples nil)
+           (right-samples nil))
+      (nes-load-state right state)
+      (flet ((collect (target)
+               (lambda (buffer)
+                 (declare (ignore buffer))
+                 (setf (symbol-value target)
+                       (append (symbol-value target)
+                               (coerce (nes-audio-buffer-samples buffer)
+                                       'list))))))
+        (let ((left-target (gensym))
+              (right-target (gensym)))
+          (progv (list left-target right-target) (list nil nil)
+            (nes-run-frames/k
+             left 1 (lambda (framebuffer) (declare (ignore framebuffer)) nil)
+             :audio-buffer (make-nes-audio-buffer :size 64)
+             :audio-continuation (collect left-target))
+            (nes-run-frames/k
+             right 1 (lambda (framebuffer) (declare (ignore framebuffer)) nil)
+             :audio-buffer (make-nes-audio-buffer :size 64)
+             :audio-continuation (collect right-target))
+            (setf left-samples (symbol-value left-target)
+                  right-samples (symbol-value right-target)))))
+      (expect (equalp left-samples right-samples) :to-be t))))
+
   (it "signals a dedicated condition for malformed headers and truncation"
     (let* ((nes (make-nes))
            (state (nes-save-state nes))
@@ -58,7 +91,7 @@
                             (symbol-package name))))
              (octets (funcall save state)))
         (funcall load state octets)
-        (expect (equalp (funcall save state) octets) :to-be t)))))
+        (expect (equalp (funcall save state) octets) :to-be t))))
 
   (it "round-trips mapper state for the supported mapper fixtures"
     (dolist (spec '((0 2 8) (1 4 8) (4 8 8) (5 8 8)))
