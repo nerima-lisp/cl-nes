@@ -93,7 +93,6 @@ continuation's result."
               (incf cycles (%nes-run-interrupt!
                             nes :nmi nil cycle-hook nil)))
             (when (and (not nmi-taken-p)
-                       (zerop dma-cycles)
                        (%nes-irq-eligible-p cpu irq-disabled-at-start)
                        (if (and (= cycles 2)
                                 (not (cpu-irq-poll-delay cpu)))
