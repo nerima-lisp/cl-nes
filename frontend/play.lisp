@@ -14,8 +14,8 @@
                                        :name (pathname-name (pathname rom-path)))
                         (pathname state-directory)))
          (audio (make-audio-queue :sample-rate cl-nes:+nes-default-audio-sample-rate+
-                                  :capacity 8192))
-         (audio-buffer (cl-nes:make-nes-audio-buffer :size 2048))
+                                  :capacity 16384))
+         (audio-buffer (cl-nes:make-nes-audio-buffer :size 512))
          (last-battery-save (get-internal-real-time))
          (battery-save-interval (* 3 internal-time-units-per-second)))
     (when (and (cl-nes:cartridge-battery-backed-p cartridge)
@@ -45,6 +45,10 @@
                              (audio-continuation (buffer)
                                (audio-queue-push!
                                 audio (cl-nes:nes-audio-buffer-samples buffer))))
+                      (cl-nes:nes-run-frames/k
+                       nes 8 #'frame-continuation
+                       :audio-buffer audio-buffer
+                       :audio-continuation #'audio-continuation)
                       (cl-glfw3-kit:for-each-frame (frame window)
                         (declare (ignore frame))
                         (let ((p (cl-glfw3-kit:key-pressed-p window :p))

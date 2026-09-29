@@ -1,12 +1,16 @@
 (in-package #:cl-nes/frontend)
 
-(defstruct (audio-queue (:constructor %make-audio-queue (sample-rate octets)))
-  sample-rate device opened-p (queued-bytes 0) octets)
+(defstruct (audio-queue (:constructor %make-audio-queue
+                                      (sample-rate octets capacity)))
+  sample-rate device opened-p (queued-bytes 0) octets capacity
+  (underruns 0) (overruns 0) (started-p nil)
+  (underrun-p nil) (overrun-p nil))
 
 (defun make-audio-queue (&key (sample-rate cl-nes:+nes-default-audio-sample-rate+)
                               (capacity 8192))
   (%make-audio-queue sample-rate
-                     (make-array capacity :element-type '(unsigned-byte 8))))
+                     (make-array capacity :element-type '(unsigned-byte 8))
+                     capacity))
 
 #+sbcl
 (progn
@@ -68,6 +72,25 @@
   (setf (audio-queue-opened-p queue) nil)
   queue)
 
+(defun %audio-queue-record-size! (queue size)
+  (setf (audio-queue-queued-bytes queue) size)
+  (when (audio-queue-started-p queue)
+    (if (zerop size)
+        (unless (audio-queue-underrun-p queue)
+          (incf (audio-queue-underruns queue))
+          (setf (audio-queue-underrun-p queue) t))
+        (setf (audio-queue-underrun-p queue) nil))
+    (if (> size (audio-queue-capacity queue))
+        (unless (audio-queue-overrun-p queue)
+          (incf (audio-queue-overruns queue))
+          (setf (audio-queue-overrun-p queue) t))
+        (setf (audio-queue-overrun-p queue) nil)))
+  size)
+
+(defun %audio-sample->s16 (sample)
+  (let ((limited (max -1.0d0 (min 1.0d0 (coerce sample 'double-float)))))
+    (round (* limited 32767d0))))
+
 (defun audio-queue-push! (queue samples)
   "Queue signed 16-bit little-endian SAMPLES and return queued byte count."
   (unless (audio-queue-opened-p queue) (error "Audio queue is not open."))
@@ -77,25 +100,23 @@
       (error "Audio queue capacity is too small for ~D samples."
              (length samples)))
     (loop for sample across samples for i from 0 by 2
-          for value = (max -32768
-                       (min 32767
-                            (round (* (coerce sample 'double-float)
-                                      32767d0))))
+          for value = (%audio-sample->s16 sample)
           do (setf (aref octets i) (ldb (byte 8 0) value)
                    (aref octets (1+ i)) (ldb (byte 8 8) value)))
     (sb-sys:with-pinned-objects (octets)
       (unless (zerop (%sdl-queue-audio (audio-queue-device queue)
                                        (sb-sys:vector-sap octets)
-                                       (length octets)))
+                                       (* 2 (length samples))))
         (error "SDL audio queue failed.")))
-    (setf (audio-queue-queued-bytes queue)
-          (%sdl-queued-audio-size (audio-queue-device queue))))
+    (%audio-queue-record-size!
+     queue (%sdl-queued-audio-size (audio-queue-device queue)))
+    (setf (audio-queue-started-p queue) t))
   (audio-queue-queued-bytes queue))
 
 (defun audio-queue-size (queue)
   #+sbcl (if (audio-queue-opened-p queue)
-             (setf (audio-queue-queued-bytes queue)
-                   (%sdl-queued-audio-size (audio-queue-device queue)))
+             (%audio-queue-record-size!
+              queue (%sdl-queued-audio-size (audio-queue-device queue)))
              0)
   #-sbcl 0)
 
@@ -103,7 +124,7 @@
                                       (target-low target-high base-delay)))
   target-low target-high base-delay (integral 0d0) (delay 0d0))
 
-(defun make-rate-controller (&key (target-low 2048) (target-high 8192)
+(defun make-rate-controller (&key (target-low 8192) (target-high 16384)
                                   (base-delay 0.0d0))
   (%make-rate-controller target-low target-high base-delay))
 

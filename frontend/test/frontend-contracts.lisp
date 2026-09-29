@@ -47,6 +47,12 @@
         (rate-controller-update! controller 1000000))
       (expect (rate-controller-delay controller) :to-be 0.05d0))))
 
+(describe "frontend audio conversion"
+  (it "saturates samples before converting them to signed 16-bit PCM"
+    (expect (cl-nes/frontend::%audio-sample->s16 2.0f0) :to-be 32767)
+    (expect (cl-nes/frontend::%audio-sample->s16 -2.0f0) :to-be -32767)
+    (expect (cl-nes/frontend::%audio-sample->s16 0.5f0) :to-be 16384)))
+
 (describe "frontend CLI"
   (it "returns zero for help and parses the play options"
     (let ((stdout (make-string-output-stream)))

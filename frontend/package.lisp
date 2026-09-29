@@ -24,6 +24,8 @@
    #:audio-queue-close!
    #:audio-queue-push!
    #:audio-queue-size
+   #:audio-queue-underruns
+   #:audio-queue-overruns
    #:atomic-save-octets
    #:restore-octets
    #:make-gl-framebuffer
