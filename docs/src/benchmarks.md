@@ -12,17 +12,16 @@ replacing the per-operation bus hook closure and the per-step local callbacks
 with bus state slots and named callbacks, the integrated benchmark measured
 24,777.600 bytes per frame (median, 23,963.733 minimum, 24,985.600 maximum).
 
-The remaining frame allocation is in the existing PPU renderer's per-frame
-scratch arrays. The PPU renderer is owned by a separate stream and is not
-changed by this phase.
+The PPU renderer now renders through the dot pipeline. Its background and
+sprite visibility state lives in the existing pipeline registers and does not
+allocate the legacy per-frame scratch arrays.
 
 The allocation gate follows `nerima-lisp/.github/PERFORMANCE_STANDARD.md`:
 it compares the minimum bytes consed by the rendering-enabled loop with the
 same CPU/frame loop with rendering disabled, after a full GC and ten samples.
-Until the PPU stream removes the legacy renderer, the gate explicitly permits
-the known two `256x240` bit-array payloads (15,360 bytes/frame) plus a bounded
-runtime overhead allowance. This is a known exception, not an absolute
-allocation threshold.
+The gate has no PPU scratch allowance. Any remaining allocation must therefore
+be accounted for by the shared baseline rather than an exception for the old
+renderer.
 
 ## Rendering-enabled workload
 

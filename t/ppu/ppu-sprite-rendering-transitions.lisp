@@ -35,21 +35,26 @@
         (expect color :to-be #x21)
         (expect present :to-be t)
         (expect behind :to-be nil))
-      (let* ((width 256)
-             (height 240)
-             (occupied (make-array (* width height)
-                                   :element-type 'bit
-                                   :initial-element 0))
-             (opaque (make-array (* width height)
-                                 :element-type 'bit
-                                 :initial-element 0))
-             (index (+ 8 (* 1 width))))
-        (setf (aref opaque index) 1)
-        (cl-nes::%draw-sprite-pixel! sprite-ppu 0 8 1 opaque occupied)
-        (expect (aref occupied index) :to-be 1)
-        (expect (logand (ppu-status sprite-ppu) #x40) :to-be #x40)
-        (cl-nes::%draw-sprite-pixel! sprite-ppu 0 8 1 opaque occupied)
-        (expect (aref occupied index) :to-be 1))))
+      (setf (ppu-mask sprite-ppu) #x18
+            (cl-nes::ppu-secondary-oam-count sprite-ppu) 1
+            (aref (cl-nes::ppu-sprite-indexes sprite-ppu) 0) 0)
+      (expect (cl-nes::%ppu-sprite-pixel-at-dot sprite-ppu 8 1 t)
+              :to-be #x21)
+      (expect (logand (ppu-status sprite-ppu) #x40) :to-be #x40)))
+  (it "fetches the flipped lower tile of an 8x16 sprite"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (ppu-control ppu) #x20
+            (cl-nes::ppu-scanline ppu) 1
+            (cl-nes::ppu-dot ppu) 257
+            (cl-nes::ppu-secondary-oam-count ppu) 1)
+      (setf (aref (cl-nes::ppu-secondary-oam ppu) 0) 0
+            (aref (cl-nes::ppu-secondary-oam ppu) 1) 3
+            (aref (cl-nes::ppu-secondary-oam ppu) 2) #x80)
+      (ppu-write-vram! ppu #x1037 #xA5)
+      (ppu-write-vram! ppu #x103F #x5A)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be #xA5)
+      (expect (aref (cl-nes::ppu-sprite-shift-high ppu) 0) :to-be #x5A)))
   (it "sets sprite zero hit on the dot where opaque pixels overlap"
     (let ((ppu (make-ppu (make-fixture-cartridge))))
       (ppu-write-register! ppu #x01 #x1A)

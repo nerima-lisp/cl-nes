@@ -13,7 +13,6 @@
                       decay-deadlines decay-next-expiry rendering-mask
                       rendering-mask-pending rendering-mask-delay
                       rendering-mask-valid-p framebuffer
-                      background-opaque occupied
                       background-shift-low background-shift-high
                       attribute-shift-low attribute-shift-high
                       next-tile next-attribute next-pattern-low next-pattern-high
@@ -59,12 +58,6 @@
                            :element-type '(unsigned-byte 16)
                            :initial-element 0)
                :type vector)
-  (background-opaque (make-array (* +ppu-width+ +ppu-height+)
-                                 :element-type 'bit :initial-element 0)
-                     :type vector)
-  (occupied (make-array (* +ppu-width+ +ppu-height+)
-                       :element-type 'bit :initial-element 0)
-            :type vector)
   (background-shift-low 0 :type (unsigned-byte 16))
   (background-shift-high 0 :type (unsigned-byte 16))
   (attribute-shift-low 0 :type (unsigned-byte 16))

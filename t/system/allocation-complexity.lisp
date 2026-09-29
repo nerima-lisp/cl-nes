@@ -43,14 +43,13 @@ CL-WEAVE's BENCHMARK-SCALING-WITHIN-P without changing the test contract."
 
 #+sbcl
 (defun %assert-rendered-frame-allocation-gate-p
-    (&key (frame-count 60) (ppu-scratch-exception 32768))
+    (&key (frame-count 60) (ppu-scratch-exception 0))
   (let* ((baseline (%minimum-bytes-consed frame-count 0))
          (rendered (%minimum-bytes-consed frame-count #x18)))
     (format t "allocation gate: baseline ~D rendered ~D allowance ~D~%"
             baseline rendered ppu-scratch-exception)
-    ;; The baseline follows PERFORMANCE_STANDARD.md.  Until the PPU stream
-    ;; removes the legacy renderer's two 256x240 bit arrays, permit their
-    ;; measured 15,360-byte payload plus array/runtime overhead.
+    ;; The baseline follows PERFORMANCE_STANDARD.md.  The dot renderer keeps
+    ;; its state in the PPU pipeline and allocates no legacy frame scratch.
     (expect (<= rendered
                 (+ baseline (* frame-count ppu-scratch-exception)))
             :to-be t)

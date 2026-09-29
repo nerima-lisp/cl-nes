@@ -1,7 +1,7 @@
 (in-package #:cl-nes/test)
 
 (describe "Coverage: PPU render runtime paths"
-  (it "renders enabled backgrounds and sprites"
+  (it "renders background and sprites through the dot pipeline"
     (let ((cartridge (make-fixture-cartridge)))
       (with-fixture-ppu (ppu cartridge)
         (let ((oam (cl-nes::ppu-oam ppu))
@@ -11,31 +11,24 @@
                 (aref oam 1) 0
                 (aref oam 2) #x20
                 (aref oam 3) 8)
-          (ppu-write-register! ppu 1 #x0E)
-          (ppu-write-vram! ppu #x0000 #x80)
-          (ppu-write-vram! ppu #x0001 #x80)
+          (setf (ppu-control ppu) #x10
+                (ppu-mask ppu) #x1E)
+          (setf (cl-nes::ppu-vram-address ppu) 0
+                (cl-nes::ppu-dot ppu) 9)
+          (ppu-write-vram! ppu #x1000 #x80)
           (ppu-write-vram! ppu #x2000 0)
           (ppu-write-vram! ppu #x3F01 #x21)
           (ppu-write-vram! ppu #x3F11 #x22)
-          (let ((background-opaque (cl-nes::%render-background! ppu)))
-            (expect (aref framebuffer 0) :to-be #x21)
-            (expect (aref background-opaque 0) :to-be 1)
-            (let ((occupied
-                    (make-array (* cl-nes::+ppu-width+ cl-nes::+ppu-height+)
-                                :element-type 'bit
-                                :initial-element 0)))
-              (cl-nes::%draw-sprite-pixel!
-               ppu 0 8 1 background-opaque occupied)
-              (expect (aref framebuffer (+ 8 cl-nes::+ppu-width+))
-                      :to-be #x21)
-              (expect (aref occupied (+ 8 cl-nes::+ppu-width+)) :to-be 1)
-              (expect (logand (ppu-status ppu) #x40) :to-be #x40))
-            (cl-nes::%render-sprites! ppu background-opaque)
-            (setf (ppu-status ppu) (logand (ppu-status ppu) #xDF))
-            (dotimes (sprite 9)
-              (setf (aref oam (* sprite 4)) 0))
-            (cl-nes::%render-sprites! ppu background-opaque)
-            (expect (logand (ppu-status ppu) #x20) :to-be #x20))))))
+          (cl-nes::%ppu-evaluate-sprites! ppu 1)
+          (cl-nes::%ppu-render-dot! ppu)
+          (expect (aref framebuffer (+ 8 cl-nes::+ppu-width+))
+                  :to-be #x21)
+          (expect (logand (ppu-status ppu) #x40) :to-be #x40)
+          (setf (ppu-status ppu) (logand (ppu-status ppu) #xDF))
+          (dotimes (sprite 9)
+            (setf (aref oam (* sprite 4)) 0))
+          (cl-nes::%ppu-evaluate-sprites! ppu 0)
+          (expect (logand (ppu-status ppu) #x20) :to-be #x20))))))
 
   (it "selects background and sprite A12 fetch phases"
     (let ((ppu (make-ppu)))
@@ -111,11 +104,8 @@
 
   (it "covers sprite height and background quadrant branches"
     (with-fixture-ppu (ppu (make-fixture-cartridge))
-      (setf (ppu-mask ppu) 0)
-      (cl-nes::%render-background! ppu)
       (setf (ppu-mask ppu) #x08
             (ppu-control ppu) #x20)
-      (cl-nes::%render-sprites! ppu (cl-nes::ppu-background-opaque ppu))
       (cl-nes::%ppu-evaluate-sprites! ppu 0)
       (setf (ppu-control ppu) #x10
             (ppu-mask ppu) #x06

@@ -1,7 +1,7 @@
 (in-package #:cl-nes/test)
 
 (describe "Coverage: PPU sprite visibility contracts"
-  (it "covers sprite pixel visibility and occupancy"
+  (it "covers sprite pixel visibility through the dot pipeline"
     (with-fixture-ppu (sprite-ppu (make-fixture-cartridge))
       (ppu-write-register! sprite-ppu 1 #x10)
       (ppu-write-vram! sprite-ppu #x0000 #x80)
@@ -45,14 +45,8 @@
         (expect behind :to-be nil))
       (setf (aref (ppu-oam sprite-ppu) 3) 8
             (ppu-mask sprite-ppu) #x10)
-      (let ((background-opaque
-              (make-array (* cl-nes::+ppu-width+ cl-nes::+ppu-height+)
-                          :element-type 'bit
-                          :initial-element 0))
-            (occupied
-              (make-array (* cl-nes::+ppu-width+ cl-nes::+ppu-height+)
-                          :element-type 'bit
-                          :initial-element 0)))
-        (cl-nes::%draw-sprite-pixel!
-         sprite-ppu 1 0 1 background-opaque occupied)
-        (expect (aref occupied cl-nes::+ppu-width+) :to-be 1)))))
+      (setf (ppu-mask sprite-ppu) #x18
+            (cl-nes::ppu-secondary-oam-count sprite-ppu) 1
+            (aref (cl-nes::ppu-sprite-indexes sprite-ppu) 0) 0)
+      (expect (cl-nes::%ppu-sprite-pixel-at-dot sprite-ppu 0 1 nil)
+              :to-be #x21))))

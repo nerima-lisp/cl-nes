@@ -17,6 +17,16 @@
       (expect (logand (ppu-status ppu) (logior #x80 #x20))
               :to-be expected-status)
       (expect (ppu-frame-ready-p ppu) :to-be frame-ready)))
+  (it "reproduces the n/m sprite overflow evaluation bug"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (ppu-mask ppu) #x08
+            (cl-nes::ppu-scanline ppu) 1)
+      (dotimes (sprite 8)
+        (setf (aref (ppu-oam ppu) (* sprite 4)) 0))
+      (setf (aref (ppu-oam ppu) (* 8 4)) 100
+            (aref (ppu-oam ppu) (+ (* 8 4) 1)) 1)
+      (cl-nes::%ppu-evaluate-sprites! ppu 1)
+      (expect (logand (ppu-status ppu) #x20) :to-be #x20)))
   (it "suppresses the vblank NMI when status is read at the race dot"
     (let ((ppu (make-ppu (make-fixture-cartridge))))
       (setf (cl-nes::ppu-scanline ppu) 241

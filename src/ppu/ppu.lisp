@@ -46,8 +46,6 @@ console reset for callers that want to preserve cartridge-backed state."
   (fill (ppu-sprite-x-counter ppu) 0)
   (fill (ppu-sprite-attributes ppu) 0)
   (fill (ppu-sprite-indexes ppu) 0)
-  (fill (ppu-background-opaque ppu) 0)
-  (fill (ppu-occupied ppu) 0)
   (fill (ppu-framebuffer ppu) 0)
   ppu)
 

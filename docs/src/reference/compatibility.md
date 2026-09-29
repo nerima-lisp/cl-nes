@@ -88,8 +88,10 @@ interrupt entry, reset, and page-crossing cycle behavior. The PPU implements
 CHR-ROM/CHR-RAM access, nametable and palette memory, scrolling, attributes,
 sprites, sprite-zero hit, vblank/NMI state, and a 256x240 framebuffer.
 
-PPU and mapper timing is intentionally coarse in some compatibility-sensitive
-paths. nes-step/k is therefore an instruction-oriented headless API, not a
+PPU rendering follows the dot pipeline for background fetches, sprite
+evaluation, sprite-zero hits, and framebuffer composition. PPU and mapper
+timing is still intentionally coarse in some compatibility-sensitive paths.
+nes-step/k is therefore an instruction-oriented headless API, not a
 cycle-exact hardware trace.
 
 ## APU and controllers
