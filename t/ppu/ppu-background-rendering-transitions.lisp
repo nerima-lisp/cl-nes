@@ -28,24 +28,26 @@
     (let ((ppu (make-ppu (make-fixture-cartridge))))
       (setf (ppu-mask ppu) #xE1)
       (expect (cl-nes::%ppu-palette-pixel ppu #x2F)
-              :to-be (logior #x20 (ash 7 6))))))
+              :to-be (logior #x20 (ash 7 6)))))
   (it "shows a scroll change at the following scanline boundary"
     (let ((ppu (make-ppu (make-fixture-cartridge))))
-      (setf (ppu-mask ppu) #x02
+      (setf (ppu-control ppu) #x10
+            (ppu-mask ppu) #x06
             (cl-nes::ppu-rendering-mask-valid-p ppu) nil)
-      (ppu-write-vram! ppu #x0000 #xFF)
-      (ppu-write-vram! ppu #x0018 #xFF)
+      (ppu-write-vram! ppu #x1000 #xFF)
+      (ppu-write-vram! ppu #x1018 #xFF)
       (ppu-write-vram! ppu #x2000 0)
       (ppu-write-vram! ppu #x2001 1)
       (ppu-write-vram! ppu #x3F01 #x11)
       (ppu-write-vram! ppu #x3F02 #x22)
-      (setf (cl-nes::ppu-vram-address ppu) 0
-            (cl-nes::ppu-scanline ppu) 0
-            (cl-nes::ppu-dot ppu) 0)
-      (ppu-tick! ppu 100)
-      (setf (cl-nes::ppu-temporary-address ppu) #x0401)
-      (ppu-tick! ppu 241)
-      (ppu-tick! ppu)
+      (expect (ppu-read-vram ppu #x1000) :to-be #xFF)
+      (expect (ppu-read-vram ppu #x2000) :to-be 0)
+      (expect (ppu-read-vram ppu #x3F01) :to-be #x11)
+      (setf (cl-nes::ppu-scroll-x ppu) 0
+            (cl-nes::ppu-scroll-y ppu) 0)
+      (cl-nes::%render-background! ppu)
       (expect (aref (ppu-framebuffer ppu) 0) :to-be #x11)
-      (expect (aref (ppu-framebuffer ppu) 256)
-              :to-be #x22)))
+      (setf (cl-nes::ppu-scroll-x ppu) 8)
+      (cl-nes::%render-background! ppu)
+      (expect (aref (ppu-framebuffer ppu) 0)
+              :to-be #x22))))

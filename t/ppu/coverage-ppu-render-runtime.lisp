@@ -55,4 +55,89 @@
       (setf (cl-nes::ppu-dot ppu) 270)
       (expect (cl-nes::%ppu-a12-high-p ppu) :to-be nil)
       (setf (ppu-control ppu) 0)
-      (expect (cl-nes::%ppu-a12-high-p ppu) :to-be nil))))
+      (expect (cl-nes::%ppu-a12-high-p ppu) :to-be nil)))
+
+  (it "covers dot renderer visibility and render-mode branches"
+    (with-fixture-ppu (ppu (make-fixture-cartridge))
+      (setf (ppu-mask ppu) #x08)
+      (expect (cl-nes::%ppu-rendering-enabled-p ppu) :to-be t)
+      (setf (ppu-mask ppu) #x10)
+      (expect (cl-nes::%ppu-rendering-enabled-p ppu) :to-be t)
+      (setf (ppu-mask ppu) 0)
+      (expect (cl-nes::%ppu-rendering-enabled-p ppu) :to-be nil)
+      (setf (ppu-control ppu) #x10
+            (ppu-mask ppu) #x06
+            (cl-nes::ppu-vram-address ppu) 0
+            (cl-nes::ppu-dot ppu) 1)
+      (ppu-write-vram! ppu #x1000 #xFF)
+      (ppu-write-vram! ppu #x2000 0)
+      (ppu-write-vram! ppu #x3F01 #x21)
+      (multiple-value-bind (color solid)
+          (cl-nes::%ppu-background-pixel-at-dot ppu)
+        (expect color :to-be #x21)
+        (expect solid :to-be t))
+      (ppu-write-vram! ppu #x1000 0)
+      (multiple-value-bind (color solid)
+          (cl-nes::%ppu-background-pixel-at-dot ppu)
+        (expect color :to-be 0)
+        (expect solid :to-be nil))))
+
+  (it "covers pipeline fetch and address-copy variants"
+    (with-fixture-ppu (ppu (make-fixture-cartridge))
+      (setf (cl-nes::ppu-scanline ppu) 0
+            (cl-nes::ppu-dot ppu) 5
+            (ppu-control ppu) 0)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (setf (ppu-control ppu) #x10
+            (cl-nes::ppu-dot ppu) 7)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (setf (cl-nes::ppu-next-attribute ppu) 3
+            (cl-nes::ppu-dot ppu) 0)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (setf (cl-nes::ppu-vram-address ppu) #x03E0
+            (cl-nes::ppu-dot ppu) 256)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (setf (cl-nes::ppu-scanline ppu) 261
+            (cl-nes::ppu-dot ppu) 280
+            (cl-nes::ppu-temporary-address ppu) #x7BE0)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (setf (cl-nes::ppu-scanline ppu) 0
+            (cl-nes::ppu-dot ppu) 65
+            (ppu-control ppu) #x08)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (setf (cl-nes::ppu-secondary-oam-count ppu) 1
+            (cl-nes::ppu-dot ppu) 257)
+      (cl-nes::%ppu-clock-pipeline! ppu)))
+
+  (it "covers sprite height and background quadrant branches"
+    (with-fixture-ppu (ppu (make-fixture-cartridge))
+      (setf (ppu-mask ppu) 0)
+      (cl-nes::%render-background! ppu)
+      (setf (ppu-mask ppu) #x08
+            (ppu-control ppu) #x20)
+      (cl-nes::%render-sprites! ppu (cl-nes::ppu-background-opaque ppu))
+      (cl-nes::%ppu-evaluate-sprites! ppu 0)
+      (setf (ppu-control ppu) #x10
+            (ppu-mask ppu) #x06
+            (cl-nes::ppu-vram-address ppu) #x0140
+            (cl-nes::ppu-dot ppu) 1)
+      (ppu-write-vram! ppu #x1000 #xFF)
+      (ppu-write-vram! ppu #x2050 0)
+      (ppu-write-vram! ppu #x3F01 #x21)
+      (multiple-value-bind (color solid)
+          (cl-nes::%ppu-background-pixel-at-dot ppu)
+        (expect color :to-be #x21)
+        (expect solid :to-be t))
+      (setf (ppu-mask ppu) #x1C
+            (ppu-control ppu) 0
+            (ppu-status ppu) #x40
+            (cl-nes::ppu-secondary-oam-count ppu) 1
+            (aref (cl-nes::ppu-sprite-indexes ppu) 0) 0
+            (aref (ppu-oam ppu) 0) 0
+            (aref (ppu-oam ppu) 1) 0
+            (aref (ppu-oam ppu) 2) 0
+            (aref (ppu-oam ppu) 3) 0)
+      (ppu-write-vram! ppu #x0000 #x80)
+      (ppu-write-vram! ppu #x3F11 #x21)
+      (expect (cl-nes::%ppu-sprite-pixel-at-dot ppu 0 1 t)
+              :to-be #x21))))

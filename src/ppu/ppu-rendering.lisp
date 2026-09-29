@@ -47,9 +47,8 @@
 
 (defun %render-background! (ppu)
   (let ((framebuffer (ppu-framebuffer ppu))
-        (opaque (make-array (* +ppu-width+ +ppu-height+)
-                            :element-type 'bit
-                            :initial-element 0)))
+        (opaque (ppu-background-opaque ppu)))
+    (fill opaque 0)
     (if (logbitp 1 (ppu-mask ppu))
         (loop for y below +ppu-height+ do
           (loop for x below +ppu-width+ do
@@ -131,10 +130,9 @@
 
 (defun %render-sprites! (ppu background-opaque)
   (when (logbitp 3 (ppu-mask ppu))
-    (let ((occupied (make-array (* +ppu-width+ +ppu-height+)
-                                :element-type 'bit
-                                :initial-element 0))
+    (let ((occupied (ppu-occupied ppu))
           (height (if (logbitp 5 (ppu-control ppu)) 16 8)))
+      (fill occupied 0)
       (loop for y below +ppu-height+
             when (> (%sprite-count-on-scanline ppu y) 8)
               do (setf (ppu-status ppu) (logior (ppu-status ppu) #x20))
