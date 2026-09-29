@@ -9,7 +9,7 @@
 (defconstant +chr-bank-4k-size+ (* 4 1024))
 (defconstant +chr-bank-size+ (* 8 1024))
 (defconstant +mapper4-a12-low-filter-cycles+ 24)
-(defparameter +mapper-definitions+
+(define-constant +mapper-definitions+
   '((69 :cpu-clock-required-p t)))
 
 (define-hardware-state cartridge-mapper5-state

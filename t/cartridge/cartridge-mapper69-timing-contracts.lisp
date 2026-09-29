@@ -7,6 +7,7 @@
                        :prg-banks 8
                        :chr-banks 8))
            (nes (make-nes :cartridge cartridge)))
+      (expect (cl-nes::cartridge-cpu-clock-required-p cartridge) :to-be t)
       (setf (cl-nes::cartridge-mapper69-irq-counter cartridge) 2
             (cl-nes::cartridge-mapper69-irq-enabled-p cartridge) t)
       (cl-nes::%nes-clock-cpu-cycle! nes (nes-bus nes) nil nil)

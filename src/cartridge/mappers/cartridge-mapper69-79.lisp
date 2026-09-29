@@ -74,8 +74,7 @@
   value))
 
 (defun cartridge-clock-cpu! (cartridge cycles)
-  (when (and cartridge (= (cartridge-mapper cartridge) 69)
-             (cartridge-mapper69-irq-enabled-p cartridge))
+  (when (and cartridge (cartridge-mapper69-irq-enabled-p cartridge))
     (let ((counter (cartridge-mapper69-irq-counter cartridge)))
       (if (> cycles counter)
           (progn

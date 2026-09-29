@@ -107,8 +107,7 @@
                              (initial-mirroring :horizontal)
                              (mapper5-state (%make-cartridge-mapper5-state))
                              (mapper4-state (%make-cartridge-mapper4-state))
-                             (mapper-state (%make-cartridge-mapper-state))
-                             (cpu-clock-required-p nil))
+                             (mapper-state (%make-cartridge-mapper-state)))
   (let ((cartridge (%make-cartridge-instance)))
     (set-cartridge-prg-rom! cartridge prg-rom)
     (set-cartridge-chr-rom! cartridge chr-rom)
@@ -127,5 +126,8 @@
     (set-cartridge-mapper5-state! cartridge mapper5-state)
     (set-cartridge-mapper4-state! cartridge mapper4-state)
     (set-cartridge-mapper-state! cartridge mapper-state)
-    (set-cartridge-cpu-clock-required-p! cartridge cpu-clock-required-p)
+    (set-cartridge-cpu-clock-required-p!
+     cartridge
+     (getf (cdr (assoc mapper +mapper-definitions+))
+           :cpu-clock-required-p))
     cartridge))

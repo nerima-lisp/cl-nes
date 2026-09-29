@@ -13,9 +13,18 @@
             (aref (cartridge-prg-rom cartridge) #x7FFD) #x80)
       (let* ((nes (make-nes :cartridge cartridge))
              (cpu (nes-cpu nes)))
-        (expect (nes-step/k nes #'identity) :to-be 6)
-        (expect (cl-nes::cartridge-mapper-shift cartridge) :to-be #x08)
-        (expect (cpu-pc cpu) :to-be #x8003))))
+      (expect (nes-step/k nes #'identity) :to-be 6)
+      (expect (cl-nes::cartridge-mapper-shift cartridge) :to-be #x08)
+      (expect (cpu-pc cpu) :to-be #x8003))))
+
+  (it "accepts an MMC1 write to the same address in the next instruction"
+    (let ((cartridge (make-patterned-cartridge
+                      :mapper 1
+                      :prg-banks 4
+                      :chr-banks 8)))
+      (cl-nes::cartridge-cpu-write! cartridge #x8000 0 10)
+      (cl-nes::cartridge-cpu-write! cartridge #x8000 0 12)
+      (expect (cl-nes::cartridge-mapper-shift cartridge) :to-be #x04)))
 
   (it "gives an explicit MMC3 variant precedence over the NES 2.0 submapper"
     (let ((image (make-ines-image :prg-banks 2

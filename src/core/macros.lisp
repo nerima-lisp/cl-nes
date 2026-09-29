@@ -1,5 +1,12 @@
 (in-package #:cl-nes)
 
+(defmacro define-constant (name value &optional documentation)
+  `(defconstant ,name
+     (if (boundp ',name)
+         (symbol-value ',name)
+         ,value)
+     ,@(when documentation (list documentation))))
+
 (defmacro define-hardware-state
     (name slots &key constructor reset reset-preserve console-reset
                               console-preserve console-reset-values)
