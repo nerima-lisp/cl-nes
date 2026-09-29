@@ -10,6 +10,28 @@
       (nes-load-state nes first)
       (expect (equalp (nes-save-state nes) first) :to-be t)))
 
+  (it "continues with identical CPU and framebuffer results after restore"
+    (dolist (frames '(0 1 2))
+      (let ((left (make-nes :cartridge (make-fixture-cartridge :program '(#xEA))))
+            (right (make-nes :cartridge (make-fixture-cartridge :program '(#xEA)))))
+        (dotimes (index frames)
+          (declare (ignore index))
+          (nes-run-frame/k left (lambda (framebuffer)
+                                  (declare (ignore framebuffer))
+                                  nil)))
+        (nes-load-state right (nes-save-state left))
+        (nes-run-frame/k left (lambda (framebuffer)
+                                (declare (ignore framebuffer))
+                                nil))
+        (nes-run-frame/k right (lambda (framebuffer)
+                                 (declare (ignore framebuffer))
+                                 nil))
+        (expect (equalp (ppu-framebuffer (nes-ppu left))
+                        (ppu-framebuffer (nes-ppu right)))
+                :to-be t)
+        (expect (cpu-cycles (nes-cpu left))
+                :to-be (cpu-cycles (nes-cpu right))))))
+
   (it "signals a dedicated condition for malformed headers and truncation"
     (let* ((nes (make-nes))
            (state (nes-save-state nes))
