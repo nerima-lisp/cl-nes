@@ -26,10 +26,26 @@ console reset for callers that want to preserve cartridge-backed state."
         (ppu-odd-frame-p ppu) nil
         (ppu-nmi-pending-p ppu) nil
         (ppu-nmi-delay-p ppu) nil
+        (ppu-background-shift-low ppu) 0
+        (ppu-background-shift-high ppu) 0
+        (ppu-attribute-shift-low ppu) 0
+        (ppu-attribute-shift-high ppu) 0
+        (ppu-next-tile ppu) 0
+        (ppu-next-attribute ppu) 0
+        (ppu-next-pattern-low ppu) 0
+        (ppu-next-pattern-high ppu) 0
+        (ppu-secondary-oam-count ppu) 0
+        (ppu-sprite-evaluation-index ppu) 0
         (ppu-decay-value ppu) 0
         (ppu-decay-clock ppu) 0
         (ppu-decay-next-expiry ppu) most-positive-fixnum)
   (fill (ppu-decay-deadlines ppu) most-positive-fixnum)
+  (fill (ppu-secondary-oam ppu) #xFF)
+  (fill (ppu-sprite-shift-low ppu) 0)
+  (fill (ppu-sprite-shift-high ppu) 0)
+  (fill (ppu-sprite-x-counter ppu) 0)
+  (fill (ppu-sprite-attributes ppu) 0)
+  (fill (ppu-sprite-indexes ppu) 0)
   (fill (ppu-framebuffer ppu) 0)
   ppu)
 

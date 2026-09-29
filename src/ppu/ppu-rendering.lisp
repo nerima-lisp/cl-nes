@@ -150,3 +150,97 @@
           (loop for y from start-y below end-y do
             (loop for x from start-x below end-x do
               (%draw-sprite-pixel! ppu sprite x y background-opaque occupied))))))))
+
+(defun %ppu-rendering-enabled-p (ppu)
+  (let ((mask (%ppu-effective-mask ppu)))
+    (or (logbitp 3 mask) (logbitp 4 mask))))
+
+(defun %ppu-background-pixel-at-dot (ppu)
+  "Read the pixel selected by the dot renderer's current VRAM address.
+
+The address and fine-X state are advanced by the timing code.  Keeping this
+lookup separate from the fetch schedule makes the schedule observable while
+retaining the existing cartridge nametable and CHR interfaces."
+  (let* ((v (ppu-vram-address ppu))
+         (coarse-x (logand v #x1F))
+         (coarse-y (logand (ash v -5) #x1F))
+         (table (logand (ash v -10) 3))
+         (fine-y (logand (ash v -12) 7))
+         (x (mod (+ (ppu-fine-x ppu) (1- (ppu-dot ppu))) 8))
+         (tile-address (+ #x2000 (ash table 10) (ash coarse-y 5) coarse-x))
+         (tile (ppu-read-vram ppu tile-address))
+         (pattern-base (if (logbitp 4 (ppu-control ppu)) #x1000 0))
+         (pattern-address (+ pattern-base (* tile 16) fine-y))
+         (low (ppu-read-vram ppu pattern-address))
+         (high (ppu-read-vram ppu (+ pattern-address 8)))
+         (bit (- 7 x))
+         (color (logior (ldb (byte 1 bit) low)
+                        (ash (ldb (byte 1 bit) high) 1))))
+    (if (or (not (logbitp 1 (%ppu-effective-mask ppu)))
+            (and (< (ppu-dot ppu) 9)
+                 (not (logbitp 2 (%ppu-effective-mask ppu)))))
+        (values (logand (ppu-read-vram ppu #x3F00) #x3F) nil)
+        (if (zerop color)
+            (values (logand (ppu-read-vram ppu #x3F00) #x3F) nil)
+            (let* ((attribute-address
+                     (+ #x2000 (ash table 10) #x3C0
+                        (* (floor coarse-y 4) 8) (floor coarse-x 4)))
+                   (attribute (ppu-read-vram ppu attribute-address))
+                   (quadrant (+ (if (>= (mod coarse-x 4) 2) 1 0)
+                                (if (>= (mod coarse-y 4) 2) 2 0)))
+                   (palette-number (ldb (byte 2 (* quadrant 2)) attribute)))
+              (values
+               (logand
+                (ppu-read-vram ppu (+ #x3F00 (* palette-number 4) color))
+                #x3F)
+               t))))))
+
+(defun %ppu-palette-pixel (ppu color)
+  (let ((color (logand color #x3F))
+        (mask (%ppu-effective-mask ppu)))
+    (when (logbitp 0 mask)
+      (setf color (logand color #x30)))
+    (logior color (ash (ldb (byte 3 5) mask) 6))))
+
+(defun %ppu-evaluate-sprites! (ppu scanline)
+  (let ((height (if (logbitp 5 (ppu-control ppu)) 16 8))
+        (count 0))
+    (fill (ppu-secondary-oam ppu) #xFF)
+    (loop for sprite below 64
+          for base = (* sprite 4)
+          for top = (1+ (aref (ppu-oam ppu) base))
+          when (and (<= top scanline) (< scanline (+ top height)))
+            do (if (< count 8)
+                   (progn
+                     (replace (ppu-secondary-oam ppu) (ppu-oam ppu)
+                              :start1 (* count 4) :start2 base :end2 (+ base 4))
+                     (setf (aref (ppu-sprite-indexes ppu) count) sprite)
+                     (incf count))
+                   (setf (ppu-status ppu) (logior (ppu-status ppu) #x20))))
+    (setf (ppu-secondary-oam-count ppu) count)
+    count))
+
+(defun %ppu-sprite-pixel-at-dot (ppu x y background-solid)
+  (when (logbitp 3 (%ppu-effective-mask ppu))
+    (loop for slot below (ppu-secondary-oam-count ppu)
+          for sprite = (aref (ppu-sprite-indexes ppu) slot)
+          do (multiple-value-bind (color present behind)
+                 (%sprite-pixel ppu sprite x y)
+               (when present
+                 (when (and (= sprite 0) background-solid (< x 255)
+                            (not (logbitp 6 (ppu-status ppu))))
+                   (setf (ppu-status ppu) (logior (ppu-status ppu) #x40)))
+                 (return (if (and behind background-solid)
+                             nil
+                             color)))))))
+
+(defun %ppu-render-dot! (ppu)
+  (when (and (< (ppu-scanline ppu) +ppu-height+)
+             (<= 1 (ppu-dot ppu) 256))
+    (let ((x (1- (ppu-dot ppu)))
+          (y (ppu-scanline ppu)))
+      (multiple-value-bind (background solid)
+          (%ppu-background-pixel-at-dot ppu)
+        (let ((sprite (%ppu-sprite-pixel-at-dot ppu x y solid)))
+          (setf (aref (ppu-framebuffer ppu) (+ x (* y +ppu-width+)))
+                (%ppu-palette-pixel ppu (or sprite background))))))))

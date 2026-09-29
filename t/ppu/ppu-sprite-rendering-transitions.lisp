@@ -49,4 +49,18 @@
         (expect (aref occupied index) :to-be 1)
         (expect (logand (ppu-status sprite-ppu) #x40) :to-be #x40)
         (cl-nes::%draw-sprite-pixel! sprite-ppu 0 8 1 opaque occupied)
-        (expect (aref occupied index) :to-be 1)))))
+        (expect (aref occupied index) :to-be 1))))
+  (it "sets sprite zero hit on the dot where opaque pixels overlap"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (ppu-write-register! ppu #x01 #x1A)
+      (ppu-write-vram! ppu #x0000 #xFF)
+      (ppu-write-vram! ppu #x2000 0)
+      (ppu-write-vram! ppu #x3F01 #x01)
+      (ppu-write-vram! ppu #x3F11 #x02)
+      (setf (aref (ppu-oam ppu) 0) 0
+            (aref (ppu-oam ppu) 1) 0
+            (aref (ppu-oam ppu) 2) 0
+            (aref (ppu-oam ppu) 3) 65
+            (cl-nes::ppu-scanline ppu) 1)
+      (ppu-tick! ppu 66)
+      (expect (logand (ppu-status ppu) #x40) :to-be #x40))))

@@ -12,7 +12,13 @@
                       odd-frame-p nmi-pending-p nmi-delay-p decay-value decay-clock
                       decay-deadlines decay-next-expiry rendering-mask
                       rendering-mask-pending rendering-mask-delay
-                      rendering-mask-valid-p framebuffer)))
+                      rendering-mask-valid-p framebuffer
+                      background-shift-low background-shift-high
+                      attribute-shift-low attribute-shift-high
+                      next-tile next-attribute next-pattern-low next-pattern-high
+                      secondary-oam secondary-oam-count sprite-evaluation-index
+                      sprite-shift-low sprite-shift-high sprite-x-counter
+                      sprite-attributes sprite-indexes)))
   (cartridge nil)
   (control 0 :type (unsigned-byte 8))
   (mask 0 :type (unsigned-byte 8))
@@ -49,9 +55,37 @@
   (decay-deadlines (make-array 8 :initial-element 0) :type vector)
   (decay-next-expiry most-positive-fixnum :type fixnum)
   (framebuffer (make-array (* +ppu-width+ +ppu-height+)
-                           :element-type '(unsigned-byte 8)
+                           :element-type '(unsigned-byte 16)
                            :initial-element 0)
-               :type vector))
+               :type vector)
+  (background-shift-low 0 :type (unsigned-byte 16))
+  (background-shift-high 0 :type (unsigned-byte 16))
+  (attribute-shift-low 0 :type (unsigned-byte 16))
+  (attribute-shift-high 0 :type (unsigned-byte 16))
+  (next-tile 0 :type (unsigned-byte 8))
+  (next-attribute 0 :type (unsigned-byte 8))
+  (next-pattern-low 0 :type (unsigned-byte 8))
+  (next-pattern-high 0 :type (unsigned-byte 8))
+  (secondary-oam (make-array 32 :element-type '(unsigned-byte 8)
+                             :initial-element #xFF)
+                 :type vector)
+  (secondary-oam-count 0 :type fixnum)
+  (sprite-evaluation-index 0 :type fixnum)
+  (sprite-shift-low (make-array 8 :element-type '(unsigned-byte 8)
+                                :initial-element 0)
+                    :type vector)
+  (sprite-shift-high (make-array 8 :element-type '(unsigned-byte 8)
+                                 :initial-element 0)
+                     :type vector)
+  (sprite-x-counter (make-array 8 :element-type '(unsigned-byte 8)
+                                :initial-element 0)
+                    :type vector)
+  (sprite-attributes (make-array 8 :element-type '(unsigned-byte 8)
+                                 :initial-element 0)
+                     :type vector)
+  (sprite-indexes (make-array 8 :element-type '(unsigned-byte 8)
+                              :initial-element 0)
+                  :type vector))
 
 (defconstant +ppu-decay-period+ 1000000)
 
