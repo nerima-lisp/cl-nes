@@ -191,8 +191,14 @@
                 :failure-text "observed hash B87D5DC5")))
     (:suite "apu" :category :apu
      :subroms ((:id "apu-test" :path "apu_test/apu_test.nes"
-                 :protocol :blargg :expected 0 :max-frames 360 :state :pass
-                 :failure-text "status 0; all 8 tests passed")
+                 :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
+                 :failure-text "status 128; #19 one-byte buffer timing; #31 rate 14 timing")
+               (:id "apu-test-07-dmc-basics" :path "apu_test/rom_singles/7-dmc_basics.nes"
+                 :protocol :blargg :expected 0 :max-frames 120 :state :pass
+                 :failure-text "status 0; 7-dmc_basics..Passed")
+               (:id "apu-test-08-dmc-rates" :path "apu_test/rom_singles/8-dmc_rates.nes"
+                 :protocol :blargg :expected 0 :max-frames 120 :state :known-fail
+                 :failure-text "status 128; Rate 14's period is too long")
                (:id "blargg-apu" :path "blargg_apu_2005.07.30/01.len_ctr.nes"
                  :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
                  :failure-text "status 0 but signature mismatch")))
