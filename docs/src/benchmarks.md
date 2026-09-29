@@ -47,3 +47,10 @@ The success criteria are a zero exit status, two warmup batches, ten measured
 samples of 60 frames each, and both the NROM and MMC3 workloads completing with
 median/minimum/maximum time and allocation results. Wall-clock measurements
 are for comparison only; the allocation trend is the primary benchmark goal.
+
+## Frontend startup
+
+On aarch64-darwin, the built `cl-nes --version` executable completed in 0.06 s
+real time (`/usr/bin/time -p`, one cold process invocation), below the 100 ms
+startup target. This measurement includes image startup and argument handling,
+but does not open a window or audio device.
