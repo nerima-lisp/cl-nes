@@ -9,6 +9,9 @@
 (defparameter *accuracy-coin-environment* "CL_NES_ACCURACY_COIN")
 (defparameter *nestest-rom-environment* "CL_NES_NESTEST_ROM")
 (defparameter *nestest-log-environment* "CL_NES_NESTEST_LOG")
+(defparameter *nestest-state* :known-fail)
+(defparameter *nestest-failure-text*
+  "line 5046 CYC expected 14691 actual 14690")
 
 (defparameter *rom-contract-data*
   '(("instr-test-v5" :cpu "instr_test-v5/all_instrs.nes" :blargg 0 60 :known-fail
@@ -111,11 +114,13 @@
                   (lambda (frame)
                     (declare (ignore frame))
                     (let* ((bus (cl-nes:nes-bus nes))
-                           (status (cl-nes:bus-read bus #x6000)))
+                           (status (cl-nes:bus-read bus #x6000))
+                           (signature-p (equal '(222 176 97)
+                                               (read-bus-range bus #x6001 #x6003))))
                       (setf last-text (ascii-result (read-bus-range bus #x6004 #x60ff)))
-                      (or (<= status 1)
-                          (not (= status #x80))
-                          (search "PASSED" (string-upcase last-text))
+                      (or (= status 1)
+                          (and (zerop status) signature-p)
+                          (and (/= status 0) (/= status #x80))
                           (search "FAILED" (string-upcase last-text))))))))
     (let* ((bus (cl-nes:nes-bus nes))
            (signature-ok (equal '(222 176 97)

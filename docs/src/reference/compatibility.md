@@ -42,6 +42,11 @@ budget; the table's failure text preserves the first diagnostic observed. The
 full AccuracyCoin run remains a bounded manual run because the current core
 does not complete all 146 result cells within the CI budget.
 
+The nestest CPU trace is ratcheted as `:known-fail`; the current first
+reported difference is CYC 14691 expected versus 14690 actual at log line
+5046. PPU scanline/dot fields remain explicitly excluded because the public
+core API does not expose them.
+
 External validation artifacts are kept outside the checkout. Their records
 include the source revision, per-file SHA-256, and available license or
 permission metadata; ROM binaries are not part of the repository.

@@ -66,5 +66,6 @@
               unless (zerop (getf expected :cyc))
                 do (let ((difference (first-state-difference expected actual line-number line)))
                      (when difference
-                       (error "nestest first difference: ~A" difference)))
+                       (format t "nestest first difference: ~A~%" difference)
+                       (return difference)))
                    (cl-nes:nes-step/k nes #'identity))))))

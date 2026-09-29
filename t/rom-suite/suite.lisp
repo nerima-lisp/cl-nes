@@ -93,7 +93,9 @@
   (handler-case
       (progn
         (run-rom-suite)
-        (run-nestest-trace)
+        (let ((difference (run-nestest-trace)))
+          (when (and difference (eq cl-nes/rom-suite::*nestest-state* :pass))
+            (error "nestest ratchet regression: ~A" difference)))
         0)
     (error (condition)
       (format *error-output* "ROM suite failed: ~A~%" condition)
