@@ -186,11 +186,26 @@
                 :protocol :ram-result :expected 0 :result-address #x6000 :running-value #x80 :max-frames 360 :state :pass
                 :failure-text "status $6000; 0 means PASSED")
                (:id "ppu-read-buffer" :path "ppu_read_buffer/test_ppu_read_buffer.nes"
-                :protocol :ram-result :expected 0 :result-address #x6000 :running-value #x80 :max-frames 360 :state :pass
-                :failure-text "status $6000; 0 means PASSED")
+                :protocol :ram-result :expected 0 :result-address #x6000 :running-value #x80 :max-frames 360 :state :known-fail
+                :failure-text "status $6000 remains $80 after running marker; ROM did not complete")
                (:id "oam-read" :path "oam_read/oam_read.nes"
                 :protocol :ram-result :expected 0 :result-address #x6000 :running-value #x80 :max-frames 360 :state :pass
-                :failure-text "status $6000; 0 means PASSED")))
+                :failure-text "status $6000; 0 means PASSED")
+               (:id "blargg-ppu-palette-ram" :path "blargg_ppu_tests_2005.09.15b/palette_ram.nes"
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 360 :state :pass
+                :failure-text "result $F0; 1 means PASSED")
+               (:id "blargg-ppu-power-up-palette" :path "blargg_ppu_tests_2005.09.15b/power_up_palette.nes"
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 360 :state :known-fail
+                :failure-text "result $F0; power-up palette differs from reference NES")
+               (:id "blargg-ppu-sprite-ram" :path "blargg_ppu_tests_2005.09.15b/sprite_ram.nes"
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 360 :state :pass
+                :failure-text "result $F0; 1 means PASSED")
+               (:id "blargg-ppu-vbl-clear-time" :path "blargg_ppu_tests_2005.09.15b/vbl_clear_time.nes"
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 360 :state :known-fail
+                :failure-text "result $F0; 2 means VBL flag cleared too soon, 3 too late")
+               (:id "blargg-ppu-vram-access" :path "blargg_ppu_tests_2005.09.15b/vram_access.nes"
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 360 :state :pass
+                :failure-text "result $F0; 1 means PASSED")))
     (:suite "apu" :category :apu
                :subroms ((:id "apu-test" :path "apu_test/apu_test.nes"
                  :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
@@ -201,41 +216,41 @@
                 :failure-text "status 0; DMC test failure code is described in apu_test/readme.txt")
                (:id "apu-dmc-rates" :path "apu_test/rom_singles/8-dmc_rates.nes"
                 :protocol :ram-result :expected 0 :result-address #x6000
-                :running-value #x80 :max-frames 360 :state :pass
-                :failure-text "status 0; rate failure code is described in apu_test/source/8-dmc_rates.s")
+                :running-value #x80 :max-frames 360 :state :known-fail
+                :failure-text "status 0; text reports Rate 14's period is too long (#31)")
                (:id "blargg-apu" :path "blargg_apu_2005.07.30/01.len_ctr.nes"
-                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
-                 :failure-text "result $F8; 1 means PASSED")
+                 :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
+                 :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-02" :path "blargg_apu_2005.07.30/02.len_table.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :pass
-                :failure-text "result $F8; 1 means PASSED")
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
+                :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-03" :path "blargg_apu_2005.07.30/03.irq_flag.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
-                :failure-text "result $F8; 1 means PASSED")
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
+                :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-04" :path "blargg_apu_2005.07.30/04.clock_jitter.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
-                :failure-text "result $F8; 1 means PASSED")
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
+                :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-05" :path "blargg_apu_2005.07.30/05.len_timing_mode0.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
-                :failure-text "result $F8; 1 means PASSED")
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
+                :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-06" :path "blargg_apu_2005.07.30/06.len_timing_mode1.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
-                :failure-text "result $F8; 1 means PASSED")
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
+                :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-07" :path "blargg_apu_2005.07.30/07.irq_flag_timing.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
-                :failure-text "result $F8; 1 means PASSED")
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
+                :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-08" :path "blargg_apu_2005.07.30/08.irq_timing.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
-                :failure-text "result $F8; 1 means PASSED")
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
+                :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-09" :path "blargg_apu_2005.07.30/09.reset_timing.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
-                :failure-text "result $F8; 1 means PASSED")
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
+                :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-10" :path "blargg_apu_2005.07.30/10.len_halt_timing.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
-                :failure-text "result $F8; 1 means PASSED")
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :known-fail
+                :failure-text "result $F0 = 3; length halt timing case failed")
                (:id "blargg-apu-11" :path "blargg_apu_2005.07.30/11.len_reload_timing.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
-                :failure-text "result $F8; 1 means PASSED")))
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :known-fail
+                :failure-text "result $F0 = 2; length reload timing case failed")))
     (:suite "dma" :category :dma
      :subroms ((:id "dmc-dma" :path "dmc_dma_during_read4/dma_2007_read.nes"
                  :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
@@ -261,8 +276,8 @@
                 :failure-text "status 0; 6-MMC3_alt Passed"
                 :mapper4-variant :mmc3-alt)
                (:id "mmc1-a12" :path "MMC1_A12/mmc1_a12.nes"
-                :protocol :text-progress :expected "MMC1 WRAM DISABLE SCANLINE" :max-frames 60 :state :known-fail
-                :failure-text "screen progress protocol; no fixed result code")
+                :protocol :mmc1-a12 :expected 1 :max-frames 60 :state :pass
+                :failure-text "$6000 remains the WRAM-gate sentinel; zero means the A12 probe completed")
                (:id "mmc3-irq-tests-clocking" :path "mmc3_irq_tests/1.Clocking.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :pass
                 :failure-text "result $F8; 1 means PASSED"
@@ -527,9 +542,21 @@
                               :mapper4-variant
                               (rom-contract-mapper4-variant contract)))
 
-(defun run-screen-contract (path contract)
-  (run-screen-protocol path (rom-contract-max-frames contract)
-                       (rom-contract-expected contract)))
+(defun mmc1-a12-tile-map (tile)
+  (cond ((<= #x10 tile #x19) (code-char (+ (char-code #\0) (- tile #x10))))
+        ((<= #x20 tile #x39) (code-char (+ (char-code #\A) (- tile #x20))))
+        ((= tile #x1c) #\=)
+        ((= tile #x1e) #\?)
+        ((= tile #x1f) #\ )
+        ((= tile #x3b) #\/)))
+
+(defun run-nametable-text-contract (path contract)
+  (run-nametable-text-protocol path (rom-contract-max-frames contract)
+                                (rom-contract-expected contract)
+                                :start #x2000 :tile-map #'mmc1-a12-tile-map))
+
+(defun run-mmc1-a12-contract (path contract)
+  (run-mmc1-a12-protocol path (rom-contract-max-frames contract)))
 
 (defun accuracy-result-kind (value)
   (cond

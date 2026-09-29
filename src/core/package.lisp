@@ -143,10 +143,12 @@
    #:protocol-nametable-text
    #:protocol-ram-result-p
    #:protocol-text-result-p
-   #:protocol-framebuffer-hash
+   #:protocol-blargg-complete-p
+   #:protocol-running-result-complete-p
    #:protocol-run-frames-until
    #:run-blargg-protocol
    #:run-ram-result-protocol
    #:run-text-progress-protocol
-   #:run-accuracy-coin-protocol
-   #:run-screen-protocol))
+   #:run-nametable-text-protocol
+   #:run-mmc1-a12-protocol
+   #:run-accuracy-coin-protocol))

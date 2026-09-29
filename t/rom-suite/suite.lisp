@@ -1,12 +1,11 @@
 (in-package #:cl-nes/rom-suite)
 
 (defun result-summary (contract result)
-  (format nil "~A passed=~A frames=~A text=~A hash=~A status=~A error=~A"
+  (format nil "~A passed=~A frames=~A text=~A status=~A error=~A"
           (rom-contract-id contract)
           (getf result :passed)
           (getf result :frames)
           (getf result :text)
-          (getf result :hash)
           (getf result :status)
           (getf result :error)))
 
@@ -19,7 +18,8 @@
           (:blargg (run-blargg-contract path contract))
           (:ram-result (run-ram-result-contract path contract))
           (:text-progress (run-text-progress-contract path contract))
-          (:screen-hash (run-screen-contract path contract))
+          (:nametable-text (run-nametable-text-contract path contract))
+          (:mmc1-a12 (run-mmc1-a12-contract path contract))
           (otherwise (error "Unknown ROM protocol ~S"
                             (rom-contract-protocol contract))))
       (error (condition)
@@ -98,7 +98,7 @@
                        (stringp failure-text)
                        (or (null mapper) (keywordp mapper))
                        (member protocol '(:blargg :ram-result :text-progress
-                                          :screen-hash :accuracy-coin))
+                                          :nametable-text :mmc1-a12 :accuracy-coin))
                        (plusp max-frames)
                        (or (null result-address) (integerp result-address))
                        (or (null running-value) (integerp running-value))

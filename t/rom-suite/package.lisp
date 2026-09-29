@@ -8,7 +8,8 @@
                 #:run-blargg-protocol
                 #:run-ram-result-protocol
                 #:run-text-progress-protocol
-                #:run-screen-protocol)
+                #:run-nametable-text-protocol
+                #:run-mmc1-a12-protocol)
   (:import-from #:cl-weave
                 #:describe-each
                 #:it

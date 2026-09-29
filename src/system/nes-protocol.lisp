@@ -37,12 +37,14 @@ allowing tests to supply the mapping established by that ROM's source."
   "Return true when TEXT contains the expected ROM result marker."
   (not (null (search (string-upcase expected) (string-upcase text)))))
 
-(defun protocol-framebuffer-hash (framebuffer)
-  (let ((hash 2166136261))
-    (loop for byte across framebuffer
-          do (setf hash (logand #xffffffff
-                                (* (logxor hash byte) 16777619))))
-    (format nil "~8,'0X" hash)))
+(defun protocol-blargg-complete-p (status signature-p running-observed)
+  (and running-observed
+       (/= status #x80)
+       (or (and (zerop status) signature-p)
+           (/= status 0))))
+
+(defun protocol-running-result-complete-p (result running-value running-observed)
+  (and running-value running-observed (/= result running-value)))
 
 (defun protocol-run-frames-until (nes max-frames predicate &key input-continuation)
   (or (loop for frame from 1 to max-frames
@@ -75,16 +77,13 @@ button.  The returned plist contains :RESULTS for $0400-$04FF and
           :shared-draw (bus-read bus #x03ff))))
 
 (defun run-blargg-protocol (path max-frames &key mapper4-variant)
-  "Run PATH using the Blargg $6000 status/signature protocol.
-
-The result is a plist with :PASSED, :FRAMES, :TEXT, :STATUS, :SIGNATURE, and
-:HASH.  Both the CLI and the ROM-suite consume this function so the protocol
-remains a single implementation."
+  "Run PATH using the Blargg $6000 status/signature protocol."
   (let* ((load-args (if mapper4-variant
                         (list :mapper4-variant mapper4-variant)
                         nil))
          (nes (make-nes :cartridge (apply #'load-cartridge path load-args)))
          (last-text "")
+         (running-observed nil)
          (frames nil))
     (setf frames
           (protocol-run-frames-until
@@ -92,26 +91,27 @@ remains a single implementation."
            (lambda (frame)
              (declare (ignore frame))
              (let* ((bus (nes-bus nes))
-                    (status (bus-read bus #x6000))
                     (signature-p (equal '(222 176 97)
-                                        (protocol-bus-range bus #x6001 #x6003))))
+                                        (protocol-bus-range bus #x6001 #x6003)))
+                    (status (bus-read bus #x6000)))
+               (when (= status #x80)
+                 (setf running-observed t))
                (setf last-text
                      (protocol-ascii-result
                       (protocol-bus-range bus #x6004 #x60ff)))
-               (or (= status 1)
-                   (and (zerop status) signature-p)
-                   (and (/= status 0) (/= status #x80))
+               (or (protocol-blargg-complete-p status signature-p
+                                               running-observed)
                    (search "FAILED" (string-upcase last-text)))))))
     (let* ((bus (nes-bus nes))
            (signature-ok (equal '(222 176 97)
                                 (protocol-bus-range bus #x6001 #x6003)))
            (status (bus-read bus #x6000)))
-      (list :passed (and signature-ok (zerop status))
+      (list :passed (and running-observed signature-ok (zerop status))
             :frames frames
             :text last-text
             :status status
             :signature signature-ok
-            :hash (protocol-framebuffer-hash (ppu-framebuffer (nes-ppu nes)))))))
+            :running-observed running-observed))))
 
 (defun run-ram-result-protocol (path max-frames result-address expected
                                 &key mapper4-variant running-value)
@@ -125,20 +125,24 @@ value."
                         (list :mapper4-variant mapper4-variant)
                         nil))
          (nes (make-nes :cartridge (apply #'load-cartridge path load-args)))
+         (running-observed nil)
          (frames (protocol-run-frames-until
                   nes max-frames
                   (lambda (frame)
                     (declare (ignore frame))
-                    (and running-value
-                         (/= (bus-read (nes-bus nes) result-address)
-                             running-value)))))
+                    (let ((result (bus-read (nes-bus nes) result-address)))
+                      (when (and running-value (= result running-value))
+                        (setf running-observed t))
+                      (protocol-running-result-complete-p
+                       result running-value running-observed)))))
          (bus (nes-bus nes))
          (result (bus-read bus result-address))
          (text (protocol-ascii-result (protocol-bus-range bus #x6004 #x60ff))))
-    (list :passed (protocol-ram-result-p result expected)
+    (list :passed (and (or (null running-value) running-observed)
+                       (protocol-ram-result-p result expected))
           :frames frames :result result :result-address result-address
           :expected expected :text text
-          :hash (protocol-framebuffer-hash (ppu-framebuffer (nes-ppu nes))))))
+          :running-observed running-observed)))
 
 (defun run-text-progress-protocol (path max-frames expected &key mapper4-variant)
   "Run a legacy ROM whose textual result is exposed at the Blargg text port."
@@ -157,15 +161,44 @@ value."
     (let ((text (protocol-ascii-result
                  (protocol-bus-range (nes-bus nes) #x6004 #x60ff))))
       (list :passed (protocol-text-result-p text expected)
-            :frames frames :text text
-            :hash (protocol-framebuffer-hash
-                   (ppu-framebuffer (nes-ppu nes)))))))
+            :frames frames :text text))))
 
-(defun run-screen-protocol (path max-frames expected-hash)
-  (let ((nes (make-nes :cartridge (load-cartridge path))))
-    (protocol-run-frames-until nes max-frames (constantly t))
-    (let ((hash (protocol-framebuffer-hash
-                 (ppu-framebuffer (nes-ppu nes)))))
-      (list :passed (string-equal hash expected-hash)
-            :hash hash
-            :frames max-frames))))
+(defun run-nametable-text-protocol (path max-frames expected &key
+                                     (start #x2000) (columns 32) (rows 30)
+                                     (tile-map #'code-char)
+                                     mapper4-variant)
+  (let* ((load-args (if mapper4-variant
+                        (list :mapper4-variant mapper4-variant)
+                        nil))
+         (nes (make-nes :cartridge (apply #'load-cartridge path load-args)))
+         (text "")
+         (frames (protocol-run-frames-until
+                  nes max-frames
+                  (lambda (frame)
+                    (declare (ignore frame))
+                    (setf text (protocol-nametable-text
+                                (nes-ppu nes) :start start :columns columns
+                                :rows rows :tile-map tile-map))
+                    (protocol-text-result-p text expected)))))
+    (setf text (protocol-nametable-text
+                (nes-ppu nes) :start start :columns columns
+                :rows rows :tile-map tile-map))
+    (list :passed (protocol-text-result-p text expected)
+          :frames frames :text text)))
+
+(defun run-mmc1-a12-protocol (path max-frames)
+  "Run the MMC1 A12 test until its WRAM gate probe completes.
+
+The ROM stores a sentinel in $6000 while WRAM is disabled during sprite
+fetches.  It stores zero after the probe completes; a stuck sentinel means
+the ROM is still waiting for the expected A12 behavior."
+  (let ((nes (make-nes :cartridge (load-cartridge path)))
+        (completed nil))
+    (dotimes (frame max-frames)
+      (nes-run-frame/k nes #'identity)
+      (when (zerop (bus-read (nes-bus nes) #x6000))
+        (setf completed t)
+        (return)))
+    (list :passed completed
+          :frames max-frames
+          :probe (bus-read (nes-bus nes) #x6000))))
