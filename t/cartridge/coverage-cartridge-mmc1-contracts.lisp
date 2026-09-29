@@ -30,4 +30,12 @@
         (#x8000 #x10)
         (#xA000 1)
         (#xC000 2))
-      (expect-mmc1-chr-layout cartridge 4 8))))
+      (expect-mmc1-chr-layout cartridge 4 8)
+      (write-mmc1-registers! cartridge
+        (#xE000 #x10))
+      (cartridge-write-prg-ram! cartridge #x6000 #xA5)
+      (expect (cartridge-read-prg-ram cartridge #x6000) :to-be nil)
+      (write-mmc1-registers! cartridge
+        (#xE000 0))
+      (cartridge-write-prg-ram! cartridge #x6000 #x5A)
+      (expect (cartridge-read-prg-ram cartridge #x6000) :to-be #x5A))))

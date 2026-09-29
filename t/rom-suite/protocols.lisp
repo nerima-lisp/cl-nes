@@ -141,7 +141,46 @@
      :subroms ((:id "mmc3-test-2" :path "mmc3_test_2/rom_singles/1-clocking.nes"
                  :protocol :blargg :expected 0 :max-frames 60 :state :pass
                  :failure-text "status 0; 1-clocking Passed"
-                 :mapper4-variant :mmc3)))))
+                 :mapper4-variant :mmc3)
+               (:id "mmc3-test-2-details" :path "mmc3_test_2/rom_singles/2-details.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :pass
+                :failure-text "status 0; 2-details Passed"
+                :mapper4-variant :mmc3)
+               (:id "mmc3-test-2-scanline-timing" :path "mmc3_test_2/rom_singles/4-scanline_timing.nes"
+                :protocol :blargg :expected 0 :max-frames 120 :state :known-fail
+                :failure-text "status 128; Scanline 0 IRQ should occur sooner when $2000=$08"
+                :mapper4-variant :mmc3)
+               (:id "mmc3-test-2-alt" :path "mmc3_test_2/rom_singles/6-MMC3_alt.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :pass
+                :failure-text "status 0; 6-MMC3_alt Passed"
+                :mapper4-variant :mmc3-alt)
+               (:id "mmc1-a12" :path "MMC1_A12/mmc1_a12.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
+                :failure-text "status 159; screen-only ROM has no Blargg result protocol")
+               (:id "mmc3-irq-tests-clocking" :path "mmc3_irq_tests/1.Clocking.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
+                :failure-text "screen/beep ROM has no Blargg result protocol"
+                :mapper4-variant :mmc3)
+               (:id "mmc3-irq-tests-details" :path "mmc3_irq_tests/2.Details.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
+                :failure-text "screen/beep ROM has no Blargg result protocol"
+                :mapper4-variant :mmc3)
+               (:id "mmc3-irq-tests-a12" :path "mmc3_irq_tests/3.A12_clocking.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
+                :failure-text "screen/beep ROM has no Blargg result protocol"
+                :mapper4-variant :mmc3)
+               (:id "mmc3-irq-tests-scanline" :path "mmc3_irq_tests/4.Scanline_timing.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
+                :failure-text "screen/beep ROM has no Blargg result protocol"
+                :mapper4-variant :mmc3)
+               (:id "mmc3-irq-tests-rev-a" :path "mmc3_irq_tests/5.MMC3_rev_A.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
+                :failure-text "screen/beep ROM has no Blargg result protocol"
+                :mapper4-variant :mmc3)
+               (:id "mmc3-irq-tests-rev-b" :path "mmc3_irq_tests/6.MMC3_rev_B.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
+                :failure-text "screen/beep ROM has no Blargg result protocol"
+                :mapper4-variant :mmc3)))))
 
 (defparameter *accuracy-coin-contract*
   '(:id "accuracy-coin" :category :accuracy-coin :path "AccuracyCoin.nes"

@@ -66,7 +66,10 @@
                  (mod selected-bank bank-count)
                  (1- bank-count))
              +prg-bank-size+)
-          (mod offset +prg-bank-size+))))))
+             (mod offset +prg-bank-size+))))))
+
+(defun %mapper1-prg-ram-enabled-p (cartridge)
+  (not (logbitp 4 (cartridge-prg-bank cartridge))))
 
 (defun %mapper1-chr-offset (cartridge address)
   (let ((chr (cartridge-chr-rom cartridge))

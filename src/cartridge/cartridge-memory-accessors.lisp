@@ -100,6 +100,7 @@
 
 (defun %cartridge-prg-ram-writable-p (cartridge)
   (case (cartridge-mapper cartridge)
+    (1 (%mapper1-prg-ram-enabled-p cartridge))
     (69 (%mapper69-prg-ram-enabled-p cartridge))
     (4 (and (cartridge-mapper4-prg-ram-enabled-p cartridge)
             (not (cartridge-mapper4-prg-ram-write-protected-p cartridge))))
@@ -143,8 +144,12 @@
   (when (and (not (= (cartridge-mapper cartridge) 87))
              (<= #x6000 address #x7FFF)
              (plusp (length (cartridge-prg-ram cartridge)))
-             (or (not (= (cartridge-mapper cartridge) 69))
-                 (%mapper69-prg-ram-enabled-p cartridge)))
+             (or (and (not (= (cartridge-mapper cartridge) 1))
+                      (not (= (cartridge-mapper cartridge) 69)))
+                 (and (= (cartridge-mapper cartridge) 1)
+                      (%mapper1-prg-ram-enabled-p cartridge))
+                 (and (= (cartridge-mapper cartridge) 69)
+                      (%mapper69-prg-ram-enabled-p cartridge))))
     (let ((offset (%cartridge-prg-ram-offset cartridge address)))
       (when offset
         (aref (cartridge-prg-ram cartridge)
