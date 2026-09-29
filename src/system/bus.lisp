@@ -29,9 +29,9 @@
          ;; are deliberately hook-free, but retain register side effects.
          (loop repeat (1- stall)
                do
-           (bus-read bus (bus-last-cpu-access-address bus))))
+           (%bus-read-device bus (bus-last-cpu-access-address bus))))
        (with-bus-cpu-access-hook (bus nil)
-         (bus-read bus address))))
+         (%bus-read-device bus address))))
     bus))
 
 (defun %bus-read-device (bus address)
