@@ -186,7 +186,7 @@
               killAfterSeconds = timeoutGraceSeconds;
             }).overrideAttrs (old: {
               env = (old.env or { }) // {
-                CL_NES_TEST_ROMS = nes-test-roms;
+                CL_NES_TEST_ROMS = "${nes-test-roms}";
                 CL_NES_ACCURACY_COIN = "${accuracy-coin}/AccuracyCoin.nes";
                 CL_NES_NESTEST_ROM = "${nes-test-roms}/other/nestest.nes";
                 CL_NES_NESTEST_LOG = "${nes-test-roms}/other/nestest.log";
