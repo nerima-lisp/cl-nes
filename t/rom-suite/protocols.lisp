@@ -11,45 +11,45 @@
 (defparameter *nestest-log-environment* "CL_NES_NESTEST_LOG")
 
 (defparameter *rom-contract-data*
-  '(("instr-test-v5" :cpu "instr_test-v5/all_instrs.nes" :blargg 0 720 :known-fail
-     "baseline not measured" nil)
-    ("instr-timing" :cpu "instr_timing/instr_timing.nes" :blargg 0 720 :known-fail
-     "baseline not measured" nil)
-    ("instr-misc" :cpu "instr_misc/instr_misc.nes" :blargg 0 720 :known-fail
-     "baseline not measured" nil)
-    ("cpu-interrupts-v2" :cpu "cpu_interrupts_v2/cpu_interrupts.nes" :blargg 0 720 :known-fail
-     "baseline not measured" nil)
-    ("cpu-dummy-reads" :cpu "cpu_dummy_reads/cpu_dummy_reads.nes" :blargg 0 720 :known-fail
-     "baseline not measured" nil)
-    ("cpu-dummy-writes" :cpu "cpu_dummy_writes/cpu_dummy_writes_oam.nes" :blargg 0 720 :pass
+  '(("instr-test-v5" :cpu "instr_test-v5/all_instrs.nes" :blargg 0 60 :known-fail
+     "status 128; running test 5 of 16" nil)
+    ("instr-timing" :cpu "instr_timing/instr_timing.nes" :blargg 0 60 :known-fail
+     "status 128; 1C/3C/5C page-cross expected 5, got 4" nil)
+    ("instr-misc" :cpu "instr_misc/instr_misc.nes" :blargg 0 60 :known-fail
+     "Illegal 6502 opcode #x9B at #xF3E9" nil)
+    ("cpu-interrupts-v2" :cpu "cpu_interrupts_v2/cpu_interrupts.nes" :blargg 0 360 :known-fail
+     "status 1; failed while running test 2 of 5" nil)
+    ("cpu-dummy-reads" :cpu "cpu_dummy_reads/cpu_dummy_reads.nes" :blargg 0 60 :known-fail
+     "status 0 but signature mismatch" nil)
+    ("cpu-dummy-writes" :cpu "cpu_dummy_writes/cpu_dummy_writes_oam.nes" :blargg 0 360 :pass
      "status 0" nil)
-    ("ppu-vbl-nmi" :ppu "ppu_vbl_nmi/ppu_vbl_nmi.nes" :blargg 0 720 :known-fail
-     "baseline not measured" nil)
-    ("ppu-sprite-hit" :ppu "sprite_hit_tests_2005.10.05/01.basics.nes" :screen-hash "UNRECORDED" 720 :known-fail
-     "baseline not measured" nil)
-    ("ppu-sprite-overflow" :ppu "sprite_overflow_tests/1.Basics.nes" :screen-hash "UNRECORDED" 720 :known-fail
-     "baseline not measured" nil)
-    ("ppu-open-bus" :ppu "ppu_open_bus/ppu_open_bus.nes" :screen-hash "UNRECORDED" 720 :known-fail
-     "baseline not measured" nil)
-    ("ppu-read-buffer" :ppu "ppu_read_buffer/test_ppu_read_buffer.nes" :screen-hash "UNRECORDED" 720 :known-fail
-     "baseline not measured" nil)
-    ("oam-read" :ppu "oam_read/oam_read.nes" :screen-hash "UNRECORDED" 720 :known-fail
-     "baseline not measured" nil)
-    ("apu-test" :apu "apu_test/apu_test.nes" :blargg 0 720 :pass
+    ("ppu-vbl-nmi" :ppu "ppu_vbl_nmi/ppu_vbl_nmi.nes" :blargg 0 360 :known-fail
+     "status 1; failed while running test 2 of 10" nil)
+    ("ppu-sprite-hit" :ppu "sprite_hit_tests_2005.10.05/01.basics.nes" :screen-hash "UNRECORDED" 60 :known-fail
+     "framebuffer hash B87D5DC5; expected hash unrecorded" nil)
+    ("ppu-sprite-overflow" :ppu "sprite_overflow_tests/1.Basics.nes" :screen-hash "UNRECORDED" 60 :known-fail
+     "framebuffer hash B87D5DC5; expected hash unrecorded" nil)
+    ("ppu-open-bus" :ppu "ppu_open_bus/ppu_open_bus.nes" :screen-hash "UNRECORDED" 60 :known-fail
+     "framebuffer hash B87D5DC5; expected hash unrecorded" nil)
+    ("ppu-read-buffer" :ppu "ppu_read_buffer/test_ppu_read_buffer.nes" :screen-hash "UNRECORDED" 60 :known-fail
+     "framebuffer hash B87D5DC5; expected hash unrecorded" nil)
+    ("oam-read" :ppu "oam_read/oam_read.nes" :screen-hash "UNRECORDED" 60 :known-fail
+     "framebuffer hash B87D5DC5; expected hash unrecorded" nil)
+    ("apu-test" :apu "apu_test/apu_test.nes" :blargg 0 360 :pass
      "status 0; all 8 tests passed" nil)
-    ("blargg-apu" :apu "blargg_apu_2005.07.30/01.len_ctr.nes" :blargg 0 720 :known-fail
-     "baseline not measured" nil)
-    ("dmc-dma" :dma "dmc_dma_during_read4/dma_2007_read.nes" :blargg 0 720 :known-fail
-     "baseline not measured" nil)
-    ("sprite-dma-and-dmc" :dma "sprdma_and_dmc_dma/sprdma_and_dmc_dma.nes" :blargg 0 720 :known-fail
-     "baseline not measured" nil)
-    ("mmc3-test-2" :mapper "mmc3_test_2/rom_singles/1-clocking.nes" :blargg 0 720 :pass
+    ("blargg-apu" :apu "blargg_apu_2005.07.30/01.len_ctr.nes" :blargg 0 60 :known-fail
+     "status 0 but signature mismatch" nil)
+    ("dmc-dma" :dma "dmc_dma_during_read4/dma_2007_read.nes" :blargg 0 60 :known-fail
+     "status 0 but signature mismatch" nil)
+    ("sprite-dma-and-dmc" :dma "sprdma_and_dmc_dma/sprdma_and_dmc_dma.nes" :blargg 0 60 :known-fail
+     "status 128; incomplete at text T+ Clocks" nil)
+    ("mmc3-test-2" :mapper "mmc3_test_2/rom_singles/1-clocking.nes" :blargg 0 60 :pass
      "status 0; 1-clocking Passed" :mmc3)))
 
 (defparameter *accuracy-coin-contract*
   '(:id "accuracy-coin" :category :accuracy-coin :path "AccuracyCoin.nes"
-    :protocol :accuracy-coin :expected 146 :max-frames 6000 :state :known-fail
-    :failure-text "baseline not measured"))
+    :protocol :accuracy-coin :expected 146 :max-frames 1200 :state :known-fail
+    :failure-text "0/146 passed; no result cells completed before CI limit"))
 
 (defun rom-contract-table ()
   (mapcar (lambda (row)

@@ -36,10 +36,11 @@ Each row has a bounded frame limit and a ratchet state. A passing `:pass` row
 must remain passing, while an unexpectedly passing `:known-fail` row fails the
 check and requires its recorded baseline to be updated.
 
-The baseline for this worktree is not yet measured because the flake inputs are
-only mounted by the ROM check. Until that check is run, every required ROM is
-recorded as `:known-fail` with the placeholder result text `baseline not
-measured`; this is intentionally visible in the harness output.
+The measured baseline is recorded in the same table. The CI profile uses short
+frame limits for known failures so the check stays within the five-minute
+budget; the table's failure text preserves the first diagnostic observed. The
+full AccuracyCoin run remains a bounded manual run because the current core
+does not complete all 146 result cells within the CI budget.
 
 External validation artifacts are kept outside the checkout. Their records
 include the source revision, per-file SHA-256, and available license or
