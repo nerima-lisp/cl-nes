@@ -96,7 +96,7 @@
   (declare (ignore ppu address)))
 
 (defun %ppu-background-fetch! (ppu dot)
-  (let ((phase (mod dot 8)))
+  (let ((phase (logand dot 7)))
     (case phase
       ((1)
        (multiple-value-bind (split-p split-x split-y)
