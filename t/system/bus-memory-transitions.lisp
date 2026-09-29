@@ -35,4 +35,18 @@
       (setf (cl-nes::bus-last-cpu-access-kind bus) :write
             (cl-nes::bus-cpu-cycle-phase bus) 1)
       (funcall (cl-nes::apu-memory-reader apu) #x8000)
-      (expect (cl-nes::bus-take-dma-stall-cycles! bus) :to-be 3))))
+      (expect (cl-nes::bus-take-dma-stall-cycles! bus) :to-be 3)))
+
+  ;; DMC dummy reads must not re-enter the active CPU operation and recursively
+  ;; clock the APU while the fetch is already in progress.
+  (it "keeps DMC dummy reads outside an active CPU access"
+    (let* ((apu (make-apu))
+           (bus (make-bus :apu apu))
+           (dmc (cl-nes::apu-dmc apu)))
+      (setf (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bytes-remaining dmc) 1
+            (cl-nes::bus-cpu-access-active-p bus) t)
+      (cl-nes::%apu-dmc-fetch! apu)
+      (expect (cl-nes::apu-dmc-sample-buffer-empty-p dmc) :to-be nil)
+      (expect (cl-nes::bus-take-dma-stall-cycles! bus) :to-be 4))))

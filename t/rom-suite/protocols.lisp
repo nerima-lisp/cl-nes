@@ -109,15 +109,6 @@
       (let ((root (env-path *rom-root-environment*)))
         (and root (merge-pathnames "../AccuracyCoin/AccuracyCoin.nes" root)))))
 
-(defun read-bus-range (bus start end)
-  (loop for address from start to end collect (cl-nes:bus-read bus address)))
-
-(defun run-frames-until (nes max-frames predicate)
-  (loop for frame from 1 to max-frames
-        do (cl-nes:nes-run-frame/k nes #'identity)
-           (when (funcall predicate frame)
-             (return frame))))
-
 (defun run-blargg-contract (path contract)
   (run-blargg-protocol path (rom-contract-max-frames contract)
                        :mapper4-variant
@@ -129,7 +120,7 @@
 
 (defun accuracy-result-kind (value)
   (cond
-    ((= value 1) :pass)
+    ((and (oddp value) (/= value 3)) :pass)
     ((= value #xff) :skipped)
     ((= value 3) :running)
     ((and (= (logand value 3) 2) (>= value 2)) :fail)
@@ -138,22 +129,24 @@
 (defun run-accuracy-coin (path contract)
   (let ((nes (cl-nes:make-nes :cartridge (cl-nes:load-cartridge path)))
         (results nil))
-    (run-frames-until
+    (protocol-run-frames-until
      nes (getf contract :max-frames)
      (lambda (frame)
        (declare (ignore frame))
        (let ((bus (cl-nes:nes-bus nes)))
-         (setf results (read-bus-range bus #x0400 #x04ff))
+         (setf results (protocol-bus-range bus #x0400 #x04ff))
          (and results
               (every (lambda (item)
-                       (not (= 3 (nth (- (getf item :address) #x0400)
-                                      results))))
+                       (not (= 3 (cl-nes:bus-read bus (getf item :address)))))
                      (getf contract :items))))))
     (unless results
-      (setf results (read-bus-range (cl-nes:nes-bus nes) #x0400 #x04ff)))
+      (setf results (protocol-bus-range (cl-nes:nes-bus nes) #x0400 #x04ff)))
     (let* ((items (loop for item in (getf contract :items)
                         for address = (getf item :address)
-                        for value = (nth (- address #x0400) results)
+                        for value = (if (= address #x03FF)
+                                        (cl-nes:bus-read (cl-nes:nes-bus nes)
+                                                         address)
+                                        (nth (- address #x0400) results))
                         for kind = (accuracy-result-kind value)
                         collect (list :name (getf item :name)
                                       :address address :value value :kind kind

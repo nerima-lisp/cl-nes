@@ -20,18 +20,18 @@
        ;; the corresponding DMC halt so the next NES step consumes it.  A
        ;; halt attempted during a read costs four clocks; a write attempt is
        ;; delayed until the next get/put phase and is three or four clocks.
-       (let* ((write-p (eq (bus-last-cpu-access-kind bus) :write))
-              (stall (if (and write-p (oddp (bus-cpu-cycle-phase bus)))
-                         3
-                         4)))
-         (incf (bus-dma-stall-cycles bus) stall)
-         ;; 2A03 repeats the CPU read during halt/dummy cycles.  These reads
-         ;; are deliberately hook-free, but retain register side effects.
-         (loop repeat (1- stall)
-               do
-           (%bus-read-device bus (bus-last-cpu-access-address bus))))
        (with-bus-cpu-access-hook (bus nil)
-         (%bus-read-device bus address))))
+         (let* ((write-p (eq (bus-last-cpu-access-kind bus) :write))
+                (stall (if (and write-p (oddp (bus-cpu-cycle-phase bus)))
+                           3
+                           4)))
+           (incf (bus-dma-stall-cycles bus) stall)
+           ;; 2A03 repeats the CPU read during halt/dummy cycles.  These reads
+           ;; are deliberately hook-free, but retain register side effects.
+           (loop repeat (1- stall)
+                 do
+             (%bus-read-device bus (bus-last-cpu-access-address bus)))
+           (bus-read bus address)))))
     bus))
 
 (defun %bus-read-device (bus address)

@@ -2,7 +2,9 @@
 
 (defpackage #:cl-nes/rom-suite
   (:use #:cl)
-  (:import-from #:cl-nes/frontend
+  (:import-from #:cl-nes
+                #:protocol-bus-range
+                #:protocol-run-frames-until
                 #:run-blargg-protocol
                 #:run-screen-protocol)
   (:import-from #:cl-weave

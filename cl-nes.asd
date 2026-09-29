@@ -59,7 +59,8 @@
      (:file "bus-state")
      (:file "bus") (:file "nes-state") (:file "nes")
      (:file "nes-timing") (:file "nes-audio-data")
-     (:file "nes-execution") (:file "nes-output"))))
+     (:file "nes-execution") (:file "nes-output")
+     (:file "nes-protocol"))))
   :in-order-to ((test-op (test-op "cl-nes/test"))))
 
 (defsystem "cl-nes/test"
@@ -199,7 +200,7 @@
   :maintainer "nerima-lisp"
   :license "MIT"
   :version "0.1.1"
-  :depends-on ("cl-nes/frontend" "cl-weave")
+  :depends-on ("cl-nes" "cl-weave")
   :pathname "t/rom-suite"
   :serial t
   :components ((:file "package")

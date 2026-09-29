@@ -3,7 +3,8 @@
   (:import-from #:cl-nes
                 #:+nes-frame-height+ #:+nes-frame-width+
                 #:bus-read #:load-cartridge #:make-nes #:nes-bus #:nes-ppu
-                #:nes-run-frame/k #:nes-write-ppm #:ppu-framebuffer)
+                #:nes-run-frame/k #:nes-write-ppm #:ppu-framebuffer
+                #:run-blargg-protocol #:run-screen-protocol)
   (:import-from #:cl-cli
                 #:application-argv #:make-app #:make-command #:make-option
                 #:make-positional #:option-value #:positional-value #:run-app)

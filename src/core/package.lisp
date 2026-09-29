@@ -133,4 +133,12 @@
    #:+nes-default-audio-sample-rate+
    #:nes-framebuffer-rgb-octets
    #:nes-write-ppm
-   #:nes-write-wav))
+   #:nes-write-wav
+
+   ;; ROM protocols
+   #:protocol-bus-range
+   #:protocol-ascii-result
+   #:protocol-framebuffer-hash
+   #:protocol-run-frames-until
+   #:run-blargg-protocol
+   #:run-screen-protocol))
