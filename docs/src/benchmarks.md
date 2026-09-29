@@ -30,13 +30,13 @@ protocol and reports its status.
 
 Measured with `benchmark/run-benchmarks.lisp` on the same shared aarch64-darwin
 host, using SBCL 2.6.6, rendering enabled (`PPUMASK=$18`), two 60-frame warmup
-batches, and ten 60-frame samples. The load average was `{21.48 21.54 24.02}`
+batches, and ten 60-frame samples. The load average was `{29.13 20.52 14.84}`
 at the end of the run.
 
 | workload | median | minimum | maximum |
 | --- | ---: | ---: | ---: |
-| NROM rendering | 17.589 ms/frame | 17.317 ms/frame | 20.681 ms/frame |
-| MMC3 bank switching and scanline IRQ | 20.647 ms/frame | 17.271 ms/frame | 30.856 ms/frame |
+| NROM rendering | 13.457 ms/frame | 13.380 ms/frame | 13.531 ms/frame |
+| MMC3 bank switching and scanline IRQ | 15.097 ms/frame | 14.538 ms/frame | 16.287 ms/frame |
 
 The measurements are above the provisional 8.3 ms/frame target on this shared
 host. The CPU profile's common leading locations were `%ppu-background-fetch!`,
