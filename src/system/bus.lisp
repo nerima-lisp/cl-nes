@@ -102,8 +102,8 @@
                (< address #x4000)
                (= (logand address 7) 0)
                (not (logbitp 7 value)))
-      (ppu-tick! (bus-ppu bus) 2)
-      (setf ppu-ticks 1))
+      (ppu-tick! (bus-ppu bus) 3)
+      (setf ppu-ticks 0))
     (cond
       ((< address #x2000)
        (setf (aref (bus-ram bus) (mod address #x800)) value))
