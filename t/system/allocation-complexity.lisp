@@ -6,7 +6,7 @@
                        (make-fixture-cartridge
                         :program '(#x78 #x4C #x00 #x80)))))
     (ppu-write-register! (nes-ppu nes) 1 mask)
-    (dotimes (i 60)
+    (dotimes (i 2)
       (nes-run-frame/k nes #'identity))
     (sb-ext:gc :full t)
     (let ((before (sb-ext:get-bytes-consed)))
@@ -56,6 +56,26 @@ CL-WEAVE's BENCHMARK-SCALING-WITHIN-P without changing the test contract."
     (values baseline rendered)))
 
 #+sbcl
+(defun %audio-frame-bytes-consed (&key (samples 10))
+  (let* ((nes (make-nes :cartridge
+                        (make-fixture-cartridge
+                         :program '(#x78 #x4C #x00 #x80))))
+         (buffer (make-nes-audio-buffer :size 1024)))
+    (ppu-write-register! (nes-ppu nes) 1 #x18)
+    (nes-run-frames/k nes 2 #'identity
+                       :audio-buffer buffer
+                       :audio-continuation #'identity)
+    (sb-ext:gc :full t)
+    (loop repeat samples
+          minimize
+          (progn
+            (let ((before (sb-ext:get-bytes-consed)))
+              (nes-run-frames/k nes 2 #'identity
+                                 :audio-buffer buffer
+                                 :audio-continuation #'identity)
+              (- (sb-ext:get-bytes-consed) before))))))
+
+#+sbcl
 (defun %assert-frame-time-scaling-within-p
     (frame-count &key (samples 10) (maximum-ratio 4.0))
   (labels ((median (values)
@@ -68,7 +88,7 @@ CL-WEAVE's BENCHMARK-SCALING-WITHIN-P without changing the test contract."
                                         (make-fixture-cartridge
                                          :program '(#x78 #x4C #x00 #x80)))))
                      (ppu-write-register! (nes-ppu nes) 1 #x18)
-                     (dotimes (i 60)
+                     (dotimes (i 2)
                        (nes-run-frame/k nes #'identity))
                      (let ((start (get-internal-real-time)))
                        (dotimes (i count)
@@ -85,4 +105,6 @@ CL-WEAVE's BENCHMARK-SCALING-WITHIN-P without changing the test contract."
     (%assert-rendered-frame-allocation-gate-p)
     (%assert-rendered-frame-allocation-scaling-within-p 2))
   (it "keeps rendered frame time within the linear bound"
-    (%assert-frame-time-scaling-within-p 2)))
+    (%assert-frame-time-scaling-within-p 2))
+  (it "keeps steady-state audio frame allocation at zero"
+    (expect (%audio-frame-bytes-consed) :to-be 0)))

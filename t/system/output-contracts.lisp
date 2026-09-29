@@ -113,6 +113,20 @@
         (cl-nes::%nes-audio-push! stream
                                   (if (evenp cycle) 1.0f0 0.0f0)))
       (expect (< peak 0.25f0) :to-be t)))
+  (it "keeps resampler output in the normalized audio range"
+    (let* ((buffer (make-nes-audio-buffer :size 256))
+           (peak 0.0f0)
+           (stream (cl-nes::%nes-make-audio-stream
+                    44100 buffer
+                    (lambda (received)
+                      (dotimes (index (nes-audio-buffer-count received))
+                        (setf peak (max peak (abs (aref
+                                                   (nes-audio-buffer-samples received)
+                                                   index)))))))))
+      (dotimes (cycle 50000)
+        (cl-nes::%nes-audio-push! stream
+                                  (if (zerop (mod cycle 997)) 1.0f0 0.0f0)))
+      (expect (<= peak 1.0f0) :to-be t)))
   (it "keeps the 30 kHz third harmonic below -60 dB at 48 kHz"
     (let* ((size 4096)
            (buffer (make-nes-audio-buffer :size size))
