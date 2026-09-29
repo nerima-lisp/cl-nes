@@ -1,6 +1,13 @@
 (in-package #:cl-nes/test)
 
 (describe "APU frame sequencer contracts"
+  (it "clears the frame event offset when a delayed $4017 reset applies"
+    (let ((apu (make-apu)))
+      (apu-write-register! apu #x4017 0)
+      (expect (cl-nes::apu-frame-event-offset apu) :to-be 1)
+      (apu-tick! apu 3)
+      (expect (cl-nes::apu-frame-event-offset apu) :to-be 0)))
+
   (it "keeps four-step frame IRQ visible across its two tail clocks"
     (with-fixture-apu (apu)
       (seed-apu-frame-state! apu
