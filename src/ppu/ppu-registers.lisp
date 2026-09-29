@@ -87,6 +87,10 @@
   (let ((delay (ppu-nmi-delay-p ppu)))
     (and (numberp delay) (plusp delay))))
 
+(defun %nmi-suppression-window-p (ppu)
+  (and (= (ppu-scanline ppu) 241)
+       (<= (ppu-dot ppu) 2)))
+
 (defun %cancel-nmi-delay! (ppu)
   (when (%nmi-delay-active-p ppu)
     (setf (ppu-nmi-delay-p ppu) nil
@@ -104,7 +108,8 @@
                (logbitp 7 (ppu-status ppu)))
       (%request-nmi! ppu))
     (when (and was-enabled (not (logbitp 7 value)))
-      (%cancel-nmi-delay! ppu))))
+      (when (%nmi-suppression-window-p ppu)
+        (%cancel-nmi-delay! ppu)))))
 
 (defun %ppu-write-mask-register! (ppu value)
   (setf (ppu-mask ppu) value

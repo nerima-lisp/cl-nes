@@ -11,7 +11,9 @@
 
 (defun %start-frame! (ppu)
   (setf (ppu-status ppu) (logand (ppu-status ppu) #x1F)
-        (ppu-frame-ready-p ppu) nil))
+        (ppu-frame-ready-p ppu) nil
+        (ppu-nmi-pending-p ppu) nil
+        (ppu-nmi-delay-p ppu) nil))
 
 (defun %ppu-effective-mask (ppu)
   (if (ppu-rendering-mask-valid-p ppu)
