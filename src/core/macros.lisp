@@ -1,5 +1,90 @@
 (in-package #:cl-nes)
 
+(defvar *hardware-state-codecs* nil)
+
+(defun %state-write-u32 (value output)
+  (dotimes (shift 4)
+    (vector-push-extend (ldb (byte 8 (* shift 8)) value) output)))
+
+(defun %state-write-u64 (value output)
+  (dotimes (shift 8)
+    (vector-push-extend (ldb (byte 8 (* shift 8)) value) output)))
+
+(defun %state-read-byte (input position)
+  (when (>= position (length input))
+    (error 'invalid-savestate :reason :truncated))
+  (values (aref input position) (1+ position)))
+
+(defun %state-read-u32 (input position)
+  (let ((value 0))
+    (dotimes (shift 4 (values value position))
+      (multiple-value-bind (byte next) (%state-read-byte input position)
+        (setf value (logior value (ash byte (* shift 8)))
+              position next)))))
+
+(defun %state-read-u64 (input position)
+  (let ((value 0))
+    (dotimes (shift 8 (values value position))
+      (multiple-value-bind (byte next) (%state-read-byte input position)
+        (setf value (logior value (ash byte (* shift 8)))
+              position next)))))
+
+(defun %state-write-value (value output)
+  (cond
+    ((null value) (vector-push-extend 0 output))
+    ((eq value t) (vector-push-extend 1 output))
+    ((integerp value)
+     (vector-push-extend 2 output)
+     (%state-write-u64 (if (minusp value) (- (* -2 value) 1) (* 2 value)) output))
+    ((symbolp value)
+     (vector-push-extend 3 output)
+     (let ((name (map 'vector #'char-code (symbol-name value))))
+       (%state-write-u32 (length name) output)
+       (map nil (lambda (code) (%state-write-u32 code output)) name)))
+    ((vectorp value)
+     (vector-push-extend 4 output)
+     (%state-write-u32 (length value) output)
+     (dotimes (index (length value))
+       (%state-write-value (aref value index) output)))
+    (t
+     (let ((codec (find-if (lambda (entry) (funcall (first entry) value))
+                           *hardware-state-codecs*)))
+       (unless codec
+         (error "Unsupported hardware-state value: ~S" value))
+       (vector-push-extend 5 output)
+       (%state-write-value (fourth codec) output)
+       (funcall (second codec) value output)))))
+
+(defun %state-read-value (input position)
+  (multiple-value-bind (tag position) (%state-read-byte input position)
+    (case tag
+      (0 (values nil position))
+      (1 (values t position))
+      (2 (multiple-value-bind (value position) (%state-read-u64 input position)
+           (values (if (oddp value) (- (ash (1+ value) -1)) (ash value -1))
+                   position)))
+      (3 (multiple-value-bind (length position) (%state-read-u32 input position)
+           (let ((name (make-string length)))
+             (dotimes (index length)
+               (multiple-value-bind (code next) (%state-read-u32 input position)
+                 (setf (char name index) (code-char code)
+                       position next)))
+             (values (intern name '#:cl-nes) position))))
+      (4 (multiple-value-bind (length position) (%state-read-u32 input position)
+           (let ((values (make-array length)))
+             (dotimes (index length)
+               (multiple-value-bind (value next) (%state-read-value input position)
+                 (setf (aref values index) value
+                       position next)))
+             (values values position))))
+      (5 (multiple-value-bind (name position) (%state-read-value input position)
+           (let ((codec (find name *hardware-state-codecs*
+                              :key #'fourth :test #'equal)))
+             (unless codec
+               (error 'invalid-savestate :reason :unknown-state))
+             (funcall (third codec) input position))))
+      (otherwise (error 'invalid-savestate :reason :invalid-tag)))))
+
 (defmacro define-constant (name value &optional documentation)
   `(defconstant ,name
      (if (boundp ',name)
@@ -8,7 +93,7 @@
      ,@(when documentation (list documentation))))
 
 (defmacro define-hardware-state
-    (name slots &key constructor reset reset-preserve console-reset
+    (name slots &key constructor reset reset-preserve console-reset exclude
                               console-preserve console-reset-values)
   "Define a typed hardware state and its generated reset operations.
 
@@ -49,7 +134,21 @@ ordered source for future serialization."
       (let* ((preserve (or reset-preserve '()))
              (bindings (mapcar (lambda (path)
                                  (list (gensym "VALUE") (path-form path)))
-                               console-preserve)))
+                               console-preserve))
+             (state-writer (intern (format nil "%~A-WRITE-STATE" name)
+                                   (symbol-package name)))
+             (state-reader (intern (format nil "%~A-READ-STATE" name)
+                                   (symbol-package name)))
+             (state-save (intern (format nil "~A-SAVE-STATE" name)
+                                 (symbol-package name)))
+             (state-load (intern (format nil "~A-LOAD-STATE" name)
+                                 (symbol-package name)))
+             (values (mapcar (lambda (slot)
+                               (declare (ignore slot))
+                               (gensym "SLOT"))
+                             (remove-if (lambda (slot)
+                                          (member (first slot) exclude))
+                                        slots))))
         `(progn
            (defstruct (,name
                         (:constructor ,constructor
@@ -75,4 +174,40 @@ ordered source for future serialization."
                                   ,(second path-value)))
                          console-reset-values)
                state))
+           (defun ,state-writer (state output)
+             ,@(mapcar (lambda (slot)
+                         `(%state-write-value
+                           (,(slot-accessor slot) state) output))
+                       (remove-if (lambda (slot) (member (first slot) exclude)) slots))
+             output)
+           (defun ,state-reader (input position)
+             (let (,@(mapcar (lambda (value) `(,value nil)) values))
+               ,@(mapcar (lambda (value)
+                           `(multiple-value-setq (,value position)
+                              (%state-read-value input position)))
+                         values)
+               (values (,constructor
+                        ,@(mapcan (lambda (value slot)
+                                  (list (intern (symbol-name (slot-name slot)) :keyword) value))
+                                  values (remove-if (lambda (slot) (member (first slot) exclude)) slots)))
+                       position)))
+           (defun ,state-save (state)
+             (let ((output (make-array 0 :adjustable t :fill-pointer 0
+                                       :element-type '(unsigned-byte 8))))
+               (,state-writer state output)
+               output))
+           (defun ,state-load (state octets)
+             (multiple-value-bind (loaded position)
+                 (,state-reader octets 0)
+               (unless (= position (length octets))
+                 (error 'invalid-savestate :reason :trailing-data))
+               ,@(mapcar (lambda (slot)
+                           `(setf (,(slot-accessor slot) state)
+                                  (,(slot-accessor slot) loaded)))
+                         (remove-if (lambda (slot) (member (first slot) exclude)) slots))
+               state))
+           (eval-when (:load-toplevel :execute)
+             (pushnew (list #',predicate #',state-writer #',state-reader ',name)
+                      *hardware-state-codecs*
+                      :test #'equal))
            ',name)))))

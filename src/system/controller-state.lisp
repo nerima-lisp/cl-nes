@@ -9,9 +9,9 @@
 (defconstant +button-left+ #x40)
 (defconstant +button-right+ #x80)
 
-(defstruct (controller
-            (:constructor %make-controller))
-  (buttons 0 :type (unsigned-byte 8))
-  (strobe nil)
-  (shift 0 :type (unsigned-byte 8))
-  (read-count 0 :type fixnum))
+(define-hardware-state controller
+  ((buttons 0 (unsigned-byte 8))
+   (strobe nil nil)
+   (shift 0 (unsigned-byte 8))
+   (read-count 0 fixnum))
+  :constructor %make-controller)

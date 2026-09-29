@@ -15,6 +15,8 @@
    #:cartridge-battery-error-reason
    #:cartridge-battery-error-expected-size
    #:cartridge-battery-error-actual-size
+   #:invalid-savestate
+   #:invalid-savestate-reason
    ;; Cartridges
    #:cartridge
    #:make-cartridge

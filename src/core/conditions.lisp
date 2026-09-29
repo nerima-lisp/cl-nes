@@ -26,3 +26,9 @@
                      (cartridge-battery-error-reason condition)
                      (cartridge-battery-error-expected-size condition)
                      (cartridge-battery-error-actual-size condition)))))
+
+(define-condition invalid-savestate (nes-error)
+  ((reason :initarg :reason :reader invalid-savestate-reason))
+  (:report (lambda (condition stream)
+             (format stream "Invalid save state: ~A"
+                     (invalid-savestate-reason condition)))))
