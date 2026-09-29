@@ -48,6 +48,13 @@
   apu)
 
 (defun %apu-apply-frame-reset! (apu)
+  ;; A $4017 reset is delayed from the write.  Length reload markers only
+  ;; suppress a half-frame clock on the same sequencer event as the reload;
+  ;; the reset's immediate five-step clock is a later event and must count.
+  (setf (apu-pulse-length-reload-p (apu-pulse-1 apu)) nil
+        (apu-pulse-length-reload-p (apu-pulse-2 apu)) nil
+        (apu-triangle-length-reload-p (apu-triangle apu)) nil
+        (apu-noise-length-reload-p (apu-noise apu)) nil)
   (setf (apu-frame-cycle apu) 0
         (apu-frame-step apu) 0
         (apu-five-step-p apu) (apu-frame-reset-five-step-p apu)

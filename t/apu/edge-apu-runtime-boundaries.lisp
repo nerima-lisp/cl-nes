@@ -49,4 +49,14 @@
               :to-be #x534)
       (expect (cl-nes::apu-envelope-volume
                (cl-nes::apu-pulse-envelope (cl-nes::apu-pulse-1 apu)))
-              :to-be 15))))
+              :to-be 15)))
+
+  (it "clocks a length counter on the delayed five-step reset"
+    (let ((apu (make-apu)))
+      (apu-write-register! apu #x4015 1)
+      (apu-write-register! apu #x4003 #xA0)
+      (apu-write-register! apu #x4017 #x80)
+      (apu-tick! apu 3)
+      (expect (cl-nes::apu-pulse-length-counter
+               (cl-nes::apu-pulse-1 apu))
+              :to-be 47))))
