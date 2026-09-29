@@ -8,39 +8,73 @@
 (defconstant +chr-bank-1k-size+ 1024)
 (defconstant +chr-bank-4k-size+ (* 4 1024))
 (defconstant +chr-bank-size+ (* 8 1024))
-;; The MMC3 A12 low-pass window is eight CPU cycles, or 24 PPU cycles.
 (defconstant +mapper4-a12-low-filter-cycles+ 24)
 
-(defstruct (cartridge-mapper5-state
-            (:constructor %make-cartridge-mapper5-state-instance ()))
-  prg-mode
-  chr-mode
-  prg-banks
-  chr-banks
-  prg-ram-protect-1
-  prg-ram-protect-2
-  exram-mode
-  nametable-mapping
-  fill-tile
-  fill-attribute
-  split-control
-  split-scroll
-  split-bank
-  irq-scanline
-  irq-enabled-p
-  irq-pending-p
-  in-frame-p
-  multiplier-a
-  multiplier-b
-  exram)
+(define-hardware-state cartridge-mapper5-state
+  ((prg-mode 3 nil)
+   (chr-mode 3 nil)
+   (prg-banks (make-array 8 :element-type '(unsigned-byte 8)
+                          :initial-element 0) vector)
+   (chr-banks (make-array 12 :element-type '(unsigned-byte 8)
+                          :initial-element 0) vector)
+   (prg-ram-protect-1 0 nil)
+   (prg-ram-protect-2 0 nil)
+   (exram-mode 0 nil)
+   (nametable-mapping 0 nil)
+   (fill-tile 0 nil)
+   (fill-attribute 0 nil)
+   (split-control 0 nil)
+   (split-scroll 0 nil)
+   (split-bank 0 nil)
+   (irq-scanline 0 nil)
+   (irq-enabled-p nil nil)
+   (irq-pending-p nil nil)
+   (in-frame-p nil nil)
+   (multiplier-a 0 nil)
+   (multiplier-b 0 nil)
+   (exram (make-array #x400 :element-type '(unsigned-byte 8)
+                      :initial-element 0) vector))
+  :constructor %make-cartridge-mapper5-state-instance
+  :reset %reset-cartridge-mapper5-state!)
+
+(define-hardware-state mapper-state-core
+  ((mapper-shift #x10 nil)
+   (mapper-control #x0C nil)
+   (mapper-chr-bank-0 0 nil)
+   (mapper-chr-bank-1 0 nil)
+   (mapper-prg-bank-1 0 nil)
+   (mapper-registers (make-array 8 :element-type '(unsigned-byte 8)
+                                 :initial-element 0) vector)
+   (mapper-register-select 0 nil)
+   (mapper-mode 0 nil)
+   (mapper-outer-bank #xFF nil))
+  :constructor %make-mapper-state-core-instance
+  :reset %reset-mapper-state-core!)
+
+(define-hardware-state cartridge-mapper4-state
+  ((mapper4-bank-select 0 nil)
+   (mapper4-registers (make-array 8 :element-type '(unsigned-byte 8)
+                                  :initial-element 0) vector)
+   (mapper4-variant :mmc3 nil)
+   (mapper4-prg-ram-enabled-p t nil)
+   (mapper4-prg-ram-write-protected-p nil nil)
+   (mapper4-irq-latch 0 nil)
+   (mapper4-irq-counter 0 nil)
+   (mapper4-irq-reload-p nil nil)
+   (mapper4-irq-enabled-p nil nil)
+   (mapper4-irq-pending-p nil nil)
+   (mapper4-ppu-a12-high-p nil nil)
+   (mapper4-ppu-a12-low-cycles 0 nil))
+  :constructor %make-cartridge-mapper4-state-instance
+  :reset %reset-cartridge-mapper4-state!)
+
+(deftype cartridge () 'simple-vector)
 
 (defun %install-vector-accessor-pair (reader writer index)
   (setf (fdefinition reader)
-        (lambda (state)
-          (aref state index))
+        (lambda (state) (aref state index))
         (fdefinition writer)
-        (lambda (state value)
-          (setf (aref state index) value)))
+        (lambda (state value) (setf (aref state index) value)))
   nil)
 
 (defun %install-vector-accessor-pairs (specs)
@@ -48,64 +82,6 @@
     (destructuring-bind (reader writer index) spec
       (%install-vector-accessor-pair reader writer index)))
   nil)
-
-(defun %make-mapper-state-core-instance ()
-  (make-array 9 :initial-element nil))
-
-(%install-vector-accessor-pairs
- '((mapper-state-core-mapper-shift set-mapper-state-core-mapper-shift! 0)
-   (mapper-state-core-mapper-control set-mapper-state-core-mapper-control! 1)
-   (mapper-state-core-mapper-chr-bank-0 set-mapper-state-core-mapper-chr-bank-0! 2)
-   (mapper-state-core-mapper-chr-bank-1 set-mapper-state-core-mapper-chr-bank-1! 3)
-   (mapper-state-core-mapper-prg-bank-1 set-mapper-state-core-mapper-prg-bank-1! 4)
-   (mapper-state-core-mapper-registers set-mapper-state-core-mapper-registers! 5)
-   (mapper-state-core-mapper-register-select set-mapper-state-core-mapper-register-select! 6)
-   (mapper-state-core-mapper-mode set-mapper-state-core-mapper-mode! 7)
-   (mapper-state-core-mapper-outer-bank set-mapper-state-core-mapper-outer-bank! 8)))
-
-(defun %make-cartridge-mapper4-state-instance ()
-  (make-array 12 :initial-element nil))
-
-(%install-vector-accessor-pairs
- '((cartridge-mapper4-state-mapper4-bank-select
-    set-cartridge-mapper4-state-mapper4-bank-select!
-    0)
-   (cartridge-mapper4-state-mapper4-registers
-    set-cartridge-mapper4-state-mapper4-registers!
-    1)
-   (cartridge-mapper4-state-mapper4-variant
-    set-cartridge-mapper4-state-mapper4-variant!
-    2)
-   (cartridge-mapper4-state-mapper4-prg-ram-enabled-p
-    set-cartridge-mapper4-state-mapper4-prg-ram-enabled-p!
-    3)
-   (cartridge-mapper4-state-mapper4-prg-ram-write-protected-p
-    set-cartridge-mapper4-state-mapper4-prg-ram-write-protected-p!
-    4)
-   (cartridge-mapper4-state-mapper4-irq-latch
-    set-cartridge-mapper4-state-mapper4-irq-latch!
-    5)
-   (cartridge-mapper4-state-mapper4-irq-counter
-    set-cartridge-mapper4-state-mapper4-irq-counter!
-    6)
-   (cartridge-mapper4-state-mapper4-irq-reload-p
-    set-cartridge-mapper4-state-mapper4-irq-reload-p!
-    7)
-   (cartridge-mapper4-state-mapper4-irq-enabled-p
-    set-cartridge-mapper4-state-mapper4-irq-enabled-p!
-    8)
-   (cartridge-mapper4-state-mapper4-irq-pending-p
-    set-cartridge-mapper4-state-mapper4-irq-pending-p!
-    9)
-   (cartridge-mapper4-state-mapper4-ppu-a12-high-p
-    set-cartridge-mapper4-state-mapper4-ppu-a12-high-p!
-    10)
-   (cartridge-mapper4-state-mapper4-ppu-a12-low-cycles
-    set-cartridge-mapper4-state-mapper4-ppu-a12-low-cycles!
-    11)))
-
-(deftype cartridge ()
-  'simple-vector)
 
 (defun %make-cartridge-instance ()
   (make-array 14 :initial-element nil))

@@ -125,8 +125,11 @@ the next test seam without parsing generated HTML."
 ;; after enabling coverage collection.
 (asdf:oos 'asdf:compile-op "cl-nes" :force t)
 (asdf:oos 'asdf:load-op "cl-nes" :force t)
-(asdf:oos 'asdf:compile-op "cl-nes/test" :force t)
-(asdf:oos 'asdf:load-op "cl-nes/test" :force t)
+;; Test source is not part of the measured artifact. Force-compiling it and
+;; then loading it registers every cl-weave form twice in one image because
+;; registration happens at compile and load time. Load its existing FASLs
+;; once, after the instrumented core is ready.
+(asdf:load-system "cl-nes/test")
 
 (let ((source-files
         (mapcar (lambda (name) (merge-pathnames name *coverage-root*))
@@ -178,6 +181,8 @@ the next test seam without parsing generated HTML."
                   "src/core/macros.lisp" "src/apu/apu-data.lisp"
                   "src/apu/apu-state.lisp"
                   "src/cartridge/cartridge-state.lisp"
+                  "src/cartridge/cartridge-state-constructors.lisp"
+                  "src/cartridge/cartridge-state-forwarders.lisp"
                   "src/system/controller-state.lisp"
                   "src/system/bus-state.lisp" "src/cpu/cpu-state.lisp"
                   "src/ppu/ppu-state.lisp" "src/system/nes-state.lisp")))
