@@ -97,7 +97,8 @@ P6 image:
 (cl-nes:nes-write-ppm "frame.ppm" framebuffer)
 ~~~
 
-To save audio, collect unsigned 8-bit samples with the `:sample-continuation`
-keyword of `nes-run-frames/k`, then pass the samples to `nes-write-wav`. The
-optional `:sample-rate` keyword controls the output rate and defaults to 44100
-Hz.
+To save audio, create one reusable buffer and pass it with
+`:audio-buffer`/`:audio-continuation` to `nes-run-frames/k`. The continuation
+receives a full single-float buffer in `[-1,1]`; pass copied buffers to
+`nes-write-wav` when a file is desired. The optional `:sample-rate` keyword
+controls the output rate and defaults to 44100 Hz.
