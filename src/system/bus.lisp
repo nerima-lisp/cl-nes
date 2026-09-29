@@ -92,7 +92,8 @@
 
 (defun bus-write! (bus address value)
   (let ((address (logand address #xFFFF))
-        (value (logand value #xFF)))
+        (value (logand value #xFF))
+        (previous-address (bus-last-cpu-access-address bus)))
     (setf (bus-last-cpu-access-kind bus) :write
           (bus-last-cpu-access-address bus) address)
     (setf (bus-open-bus bus) value)
@@ -108,8 +109,11 @@
       ((= address #x4015)
        (apu-write-register! (bus-apu bus) address value))
       ((= address #x4016)
-       (controller-write! (bus-controller-1 bus) value)
-       (controller-write! (bus-controller-2 bus) value))
+       (let ((strobe-p (or (not (logbitp 0 value))
+                           (not (= previous-address #x4016))
+                           (= (bus-cpu-cycle-phase bus) 0))))
+         (controller-write! (bus-controller-1 bus) value :strobe-p strobe-p)
+         (controller-write! (bus-controller-2 bus) value :strobe-p strobe-p)))
       ((= address #x4017)
        (apu-write-register! (bus-apu bus) address value))
       ((bus-cartridge bus)

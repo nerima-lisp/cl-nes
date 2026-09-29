@@ -10,8 +10,8 @@
           (controller-read-count controller) 0))
   controller)
 
-(defun controller-write! (controller value)
-  (let ((new-strobe (logbitp 0 value)))
+(defun controller-write! (controller value &key (strobe-p t))
+  (let ((new-strobe (and strobe-p (logbitp 0 value))))
     (when new-strobe
       (setf (controller-shift controller) (controller-buttons controller)
             (controller-read-count controller) 0))
