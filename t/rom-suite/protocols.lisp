@@ -20,8 +20,8 @@
                  :protocol :blargg :expected 0 :max-frames 3000 :state :pass
                  :failure-text "All 16 tests passed")
                (:id "instr-timing" :path "instr_timing/instr_timing.nes"
-                 :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                 :failure-text "1C/3C/5C page-cross expected 5, got 4")
+                 :protocol :blargg :expected 0 :max-frames 1500 :state :pass
+                 :failure-text "All 2 tests passed")
                (:id "instr-misc" :path "instr_misc/instr_misc.nes"
                  :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
                  :failure-text "Illegal 6502 opcode #x9B at #xF3E9")
@@ -78,9 +78,9 @@
       (:id "instr-misc-04-dummy-reads-apu" :path "instr_misc/rom_singles/04-dummy_reads_apu.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
       (:id "instr-timing-01" :path "instr_timing/rom_singles/1-instr_timing.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+       :protocol :blargg :expected 0 :max-frames 1500 :state :pass :failure-text "1-instr_timing..Passed")
       (:id "instr-timing-02-branch" :path "instr_timing/rom_singles/2-branch_timing.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+       :protocol :blargg :expected 0 :max-frames 1500 :state :pass :failure-text "2-branch_timing..Passed")
       (:id "cpu-interrupts-v2-01-cli" :path "cpu_interrupts_v2/rom_singles/1-cli_latency.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; Passed")
       (:id "cpu-interrupts-v2-02-nmi-brk" :path "cpu_interrupts_v2/rom_singles/2-nmi_and_brk.nes"
