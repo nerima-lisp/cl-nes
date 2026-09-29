@@ -44,7 +44,7 @@
   "Consume an NMI edge which is already visible to the CPU."
   (let ((ppu (nes-ppu nes)))
     (and (ppu-nmi-pending-p ppu)
-         (not (ppu-nmi-delay-p ppu))
+         (not (%nmi-delay-active-p ppu))
          (ppu-take-nmi! ppu))))
 
 (defun %nes-poll-nmi-during-operation! (nes)
@@ -53,11 +53,7 @@
 The PPU models the short propagation delay separately from the pending edge.
 At the CPU's vector polling point both states are observable: the first read
 advances a delayed edge to the CPU, and the following poll consumes it."
-  (let ((ppu (nes-ppu nes)))
-    (when (and (ppu-nmi-pending-p ppu)
-               (ppu-nmi-delay-p ppu))
-      (ppu-take-nmi! ppu))
-    (%nes-take-nmi! nes)))
+  (%nes-take-nmi! nes))
 
 (defun nes-step/k (nes continuation &key cycle-hook)
   "Run one NES step and pass its CPU-cycle count to CONTINUATION.

@@ -79,12 +79,16 @@
 
 (defun %request-nmi! (ppu)
   (unless (ppu-nmi-pending-p ppu)
-    (setf (ppu-nmi-delay-p ppu) t))
+    (setf (ppu-nmi-delay-p ppu) 3))
   (setf (ppu-nmi-pending-p ppu) t)
   ppu)
 
+(defun %nmi-delay-active-p (ppu)
+  (let ((delay (ppu-nmi-delay-p ppu)))
+    (and (numberp delay) (plusp delay))))
+
 (defun %cancel-nmi-delay! (ppu)
-  (when (ppu-nmi-delay-p ppu)
+  (when (%nmi-delay-active-p ppu)
     (setf (ppu-nmi-delay-p ppu) nil
           (ppu-nmi-pending-p ppu) nil))
   ppu)

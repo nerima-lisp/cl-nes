@@ -242,6 +242,9 @@
 
 (defun ppu-tick! (ppu &optional (ticks 1))
   (loop repeat ticks do
+    (when (and (numberp (ppu-nmi-delay-p ppu))
+               (plusp (ppu-nmi-delay-p ppu)))
+      (decf (ppu-nmi-delay-p ppu)))
     (%ppu-clock-decay! ppu 1)
     (%ppu-advance-rendering-mask! ppu)
     (incf (ppu-dot ppu))
@@ -271,10 +274,8 @@
 
 (defun ppu-take-nmi! (ppu)
   (when (ppu-nmi-pending-p ppu)
-    (if (ppu-nmi-delay-p ppu)
-        (progn
-          (setf (ppu-nmi-delay-p ppu) nil)
-          nil)
+    (if (%nmi-delay-active-p ppu)
+        nil
         (progn
           (setf (ppu-nmi-pending-p ppu) nil)
           t))))
