@@ -112,9 +112,10 @@
                   (tile-y (logand (ash v -5) #x1F)))
              (multiple-value-bind (split-p split-x split-y)
                  (%ppu-mmc5-split-state ppu dot)
-               (let* ((effective-x (if split-p split-x tile-x))
+                      (let* ((effective-x (if split-p split-x tile-x))
                       (effective-y (if split-p (floor split-y 8) tile-y))
-                      (exram (and (not split-p)
+                      (exram (and (ppu-cartridge ppu)
+                                  (not split-p)
                                   (= (cartridge-mapper (ppu-cartridge ppu)) 5)
                                   (= (cartridge-mapper5-exram-mode
                                       (ppu-cartridge ppu))
@@ -142,7 +143,8 @@
              (multiple-value-bind (split-p split-x split-y)
                  (%ppu-mmc5-split-state ppu dot)
                (declare (ignore split-x split-y))
-               (let ((exram (and (not split-p)
+               (let ((exram (and (ppu-cartridge ppu)
+                                 (not split-p)
                                  (= (cartridge-mapper (ppu-cartridge ppu)) 5)
                                  (= (cartridge-mapper5-exram-mode
                                      (ppu-cartridge ppu))
@@ -160,7 +162,8 @@
              (multiple-value-bind (split-p split-x split-y)
                  (%ppu-mmc5-split-state ppu dot)
                (declare (ignore split-x split-y))
-               (let ((exram (and (not split-p)
+               (let ((exram (and (ppu-cartridge ppu)
+                                 (not split-p)
                                  (= (cartridge-mapper5-exram-mode
                                      (ppu-cartridge ppu))
                                     1)
@@ -246,8 +249,9 @@
       (when (>= (ppu-scanline ppu) 262)
         (setf (ppu-scanline ppu) 0
               (ppu-odd-frame-p ppu) (not (ppu-odd-frame-p ppu))))
-      (cartridge-clock-scanline! (ppu-cartridge ppu)
-                                 (ppu-scanline ppu))))
+      (when (ppu-cartridge ppu)
+        (cartridge-clock-scanline! (ppu-cartridge ppu)
+                                   (ppu-scanline ppu)))))
   ppu)
 
 (defun ppu-take-nmi! (ppu)
