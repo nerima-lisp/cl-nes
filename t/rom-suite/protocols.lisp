@@ -17,8 +17,8 @@
 (defparameter *rom-contract-data*
   '((:suite "cpu" :category :cpu
      :subroms ((:id "instr-test-v5" :path "instr_test-v5/all_instrs.nes"
-                 :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                 :failure-text "status 128; running test 5 of 16")
+                 :protocol :blargg :expected 0 :max-frames 3000 :state :pass
+                 :failure-text "All 16 tests passed")
                (:id "instr-timing" :path "instr_timing/instr_timing.nes"
                  :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
                  :failure-text "1C/3C/5C page-cross expected 5, got 4")
@@ -29,8 +29,9 @@
                  :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
                  :failure-text "status 1; failed while running test 2 of 5")
                (:id "cpu-dummy-reads" :path "cpu_dummy_reads/cpu_dummy_reads.nes"
-                 :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                 :failure-text "status 0 but signature mismatch")
+                 :protocol :ram-result :expected 0 :result-address #x6000
+                 :running-value #x80 :max-frames 60 :state :pass
+                 :failure-text "status $6000; 0 means PASSED")
                (:id "cpu-dummy-writes" :path "cpu_dummy_writes/cpu_dummy_writes_oam.nes"
                  :protocol :blargg :expected 0 :max-frames 360 :state :pass
                  :failure-text "status 0")))
@@ -95,7 +96,9 @@
       (:id "cpu-exec-space-ppuio" :path "cpu_exec_space/test_cpu_exec_space_ppuio.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; Passed")
       (:id "cpu-dummy-reads-subrom" :path "cpu_dummy_reads/cpu_dummy_reads.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 0; signature mismatch")
+       :protocol :ram-result :expected 0 :result-address #x6000
+       :running-value #x80 :max-frames 120 :state :pass
+       :failure-text "status $6000; 0 means PASSED")
       (:id "cpu-reset-ram" :path "cpu_reset/ram_after_reset.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
       (:id "cpu-reset-registers" :path "cpu_reset/registers.nes"
