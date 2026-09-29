@@ -136,6 +136,37 @@
     (%set-flag! cpu +flag-carry+ (>= masked value))
     (%update-zn! cpu result)))
 
+(defun %xaa! (cpu value)
+  (let ((result (logand (cpu-x cpu) value #xEE)))
+    (%update-zn! cpu (setf (cpu-a cpu) result))))
+
+(defun %las! (cpu value)
+  (let ((result (logand value (cpu-sp cpu))))
+    (setf (cpu-a cpu) result
+          (cpu-x cpu) result
+          (cpu-sp cpu) result)
+    (%update-zn! cpu result)))
+
+(defun %tas-op! (cpu bus)
+  (let* ((base (%fetch-word cpu bus))
+         (address (logand (+ base (cpu-y cpu)) #xFFFF))
+         (mask (logand (1+ (ldb (byte 8 8) address)) #xFF))
+         (stored (logand (setf (cpu-sp cpu) (logand (cpu-a cpu) (cpu-x cpu)))
+                         mask)))
+    (bus-write! bus (logior (logand address #xFF) (ash stored 8)) stored)
+    5))
+
+(defun %sha-mode-op! (cpu bus mode cycles)
+  (multiple-value-bind (address crossed-p base)
+      (%address-for-mode cpu bus mode)
+    (when (and (eq mode :indy) crossed-p)
+      (bus-read bus (logior (logand base #xFF00)
+                            (logand address #x00FF))))
+    (let* ((mask (logand (1+ (ldb (byte 8 8) address)) #xFF))
+           (stored (logand (cpu-a cpu) (cpu-x cpu) mask)))
+      (bus-write! bus (logior (logand address #xFF) (ash stored 8)) stored)
+      cycles)))
+
 (defun %unstable-store-op! (cpu bus index value)
   (let* ((base (%fetch-word cpu bus))
          (effective-address (logand (+ base index) #xFFFF))

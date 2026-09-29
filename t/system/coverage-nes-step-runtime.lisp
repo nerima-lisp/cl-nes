@@ -10,12 +10,11 @@
         (expect (cl-nes::bus-dma-stall-cycles (nes-bus nes)) :to-be 0)
         (expect (cpu-pc (nes-cpu nes)) :to-be #x8001))))
 
-  (it "signals illegal opcodes at the CPU execution boundary"
+  (it "stops on JAM opcodes at the CPU execution boundary"
     (let* ((cartridge (make-fixture-cartridge :program '(#x02)))
            (bus (make-bus :cartridge cartridge))
            (cpu (make-cpu)))
       (cpu-reset! cpu bus)
-      (let ((condition
-              (captured-condition (lambda () (cpu-step! cpu bus)))))
-        (expect (typep condition 'illegal-opcode) :to-be t)
-        (expect (illegal-opcode-value condition) :to-be #x02)))))
+      (expect (cpu-step! cpu bus) :to-be 2)
+      (expect (cpu-stopped-p cpu) :to-be t)
+      (expect (cpu-step! cpu bus) :to-be 0))))

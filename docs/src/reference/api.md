@@ -134,7 +134,6 @@ per frame before that frame's first CPU step.
 
 ## Conditions
 
-The exported condition types are nes-error, invalid-rom, unsupported-mapper,
-and illegal-opcode. Their accessors are invalid-rom-reason,
-unsupported-mapper-number, illegal-opcode-value, and
-illegal-opcode-address. See [Conditions](conditions.md) for handling examples.
+The exported condition types are nes-error, invalid-rom, and
+unsupported-mapper. Their accessors are invalid-rom-reason and
+unsupported-mapper-number. See [Conditions](conditions.md) for handling examples.

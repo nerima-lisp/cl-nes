@@ -11,9 +11,6 @@
    #:invalid-rom-reason
    #:unsupported-mapper
    #:unsupported-mapper-number
-   #:illegal-opcode
-   #:illegal-opcode-value
-   #:illegal-opcode-address
 
    ;; Cartridges
    #:cartridge

@@ -18,4 +18,14 @@
       (expect (aref (ppu-oam (cl-nes::bus-ppu bus)) #xFF) :to-be #xFF)
       (expect (ppu-oam-address (cl-nes::bus-ppu bus)) :to-be 0)
       (expect (cl-nes::bus-take-dma-stall-cycles! bus) :to-be 513)
-      (expect (cl-nes::bus-take-dma-stall-cycles! bus) :to-be 0))))
+      (expect (cl-nes::bus-take-dma-stall-cycles! bus) :to-be 0)))
+
+  (it "charges a DMC fetch as a CPU DMA stall"
+    (let* ((apu (make-apu))
+           (bus (make-bus :apu apu))
+           (dmc (cl-nes::apu-dmc apu)))
+      (setf (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bytes-remaining dmc) 1)
+      (cl-nes::%apu-dmc-fetch! apu)
+      (expect (cl-nes::bus-take-dma-stall-cycles! bus) :to-be 4))))

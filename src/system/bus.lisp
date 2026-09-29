@@ -16,6 +16,20 @@
        ;; A DMC fetch is an internal device read.  It must use the CPU address
        ;; decoder, but it must not re-enter NES's per-CPU-access clock hook
        ;; while APU-TICK is already running.
+       ;; The current APU interface services the byte synchronously; charge
+       ;; the corresponding DMC halt so the next NES step consumes it.  A
+       ;; halt attempted during a read costs four clocks; a write attempt is
+       ;; delayed until the next get/put phase and is three or four clocks.
+       (let* ((write-p (eq (bus-last-cpu-access-kind bus) :write))
+              (stall (if (and write-p (oddp (bus-cpu-cycle-phase bus)))
+                         3
+                         4)))
+         (incf (bus-dma-stall-cycles bus) stall)
+         ;; 2A03 repeats the CPU read during halt/dummy cycles.  These reads
+         ;; are deliberately hook-free, but retain register side effects.
+         (loop repeat (1- stall)
+               do
+           (bus-read bus (bus-last-cpu-access-address bus))))
        (with-bus-cpu-access-hook (bus nil)
          (bus-read bus address))))
     bus))
@@ -38,13 +52,16 @@
     (t nil)))
 
 (defun bus-read (bus address)
-  (let ((value (%bus-read-device bus (logand address #xFFFF))))
+  (let ((address (logand address #xFFFF)))
+    (setf (bus-last-cpu-access-kind bus) :read
+          (bus-last-cpu-access-address bus) address)
+    (let ((value (%bus-read-device bus address)))
     (setf value (logand (or value (bus-open-bus bus)) #xFF)
           (bus-open-bus bus) value)
     (let ((hook (bus-cpu-access-hook bus)))
       (when hook
         (funcall hook)))
-    value))
+      value)))
 
 (defun %perform-oam-dma! (bus page)
   (let ((base (ash (logand page #xFF) 8)))
@@ -69,6 +86,8 @@
 (defun bus-write! (bus address value)
   (let ((address (logand address #xFFFF))
         (value (logand value #xFF)))
+    (setf (bus-last-cpu-access-kind bus) :write
+          (bus-last-cpu-access-address bus) address)
     (setf (bus-open-bus bus) value)
     (cond
       ((< address #x2000)

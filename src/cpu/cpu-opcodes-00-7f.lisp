@@ -2,6 +2,7 @@
 
 (defun %dispatch-cpu-opcode-00-7f (cpu bus opcode nmi-poll)
   (define-cpu-opcodes (cpu bus opcode)
+    (:jam (#x02 #x12 #x22 #x32 #x42 #x52 #x62 #x72) %jam-op!)
     (#x00 (%brk-op! cpu bus nmi-poll))
     (:read #x01 :indx #'%ora! nil)
     (:rmw #x03 :indx #'%slo-value! 8)

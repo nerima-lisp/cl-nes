@@ -2,6 +2,7 @@
 
 (defun %dispatch-cpu-opcode-80-ff (cpu bus opcode)
   (define-cpu-opcodes (cpu bus opcode)
+    (:jam (#x92 #xB2 #xD2 #xF2) %jam-op!)
     (:nop (#x80 #x82 #x89 #xC2 #xE2) :immediate 2)
     (:write #x81 :indx (cpu-a cpu))
     (:write #x83 :indx (logand (cpu-a cpu) (cpu-x cpu)))
@@ -38,11 +39,12 @@
     (#x9C (%unstable-store-op! cpu bus (cpu-x cpu) (cpu-y cpu)))
     (:write #x9D :absx (cpu-a cpu))
     (#x9E (%unstable-store-op! cpu bus (cpu-y cpu) (cpu-x cpu)))
+    (#x93 (%sha-mode-op! cpu bus :indy 6))
+    (#x9B (%tas-op! cpu bus))
+    (#x9F (%sha-mode-op! cpu bus :absy 5))
 
-    (:read #xA0 :immediate
-     (lambda (cpu value)
-       (%update-zn! cpu (setf (cpu-y cpu) value)))
-     nil)
+    (:read #x8B :immediate #'%xaa! nil)
+    (:read #xA0 :immediate #'%load-y! nil)
     (:read #xA1 :indx #'%load-a! nil)
     (:read #xA2 :immediate #'%load-x! nil)
     (:read #xA3 :indx #'%lax! nil)
@@ -73,6 +75,7 @@
     (:read #xB7 :zpy #'%lax! nil)
     (#xB8 (%set-flag! cpu +flag-overflow+ nil) 2)
     (:read #xB9 :absy #'%load-a! t)
+    (:read #xBB :absy #'%las! t)
     (#xBA
      (setf (cpu-x cpu) (cpu-sp cpu))
      (%update-zn! cpu (cpu-x cpu))

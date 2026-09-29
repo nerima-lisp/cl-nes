@@ -9,17 +9,9 @@
       (expect (format nil "~A" condition)
               :to-equal "Invalid iNES ROM: bad header")))
 
-  (it "formats mapper and opcode failures"
+  (it "formats mapper failures"
     (let ((mapper-condition
             (captured-condition
-             (lambda () (error 'unsupported-mapper :number 22))))
-          (opcode-condition
-            (captured-condition
-             (lambda ()
-               (error 'illegal-opcode :opcode #x02 :address #xC123)))))
+             (lambda () (error 'unsupported-mapper :number 22)))))
       (expect (format nil "~A" mapper-condition)
-              :to-equal "Unsupported NES mapper: 22")
-      (expect (illegal-opcode-value opcode-condition) :to-be #x02)
-      (expect (illegal-opcode-address opcode-condition) :to-be #xC123)
-      (expect (format nil "~A" opcode-condition)
-              :to-equal "Illegal 6502 opcode #x02 at #xC123"))))
+              :to-equal "Unsupported NES mapper: 22"))))

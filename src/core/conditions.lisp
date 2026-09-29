@@ -14,11 +14,3 @@
   (:report (lambda (condition stream)
              (format stream "Unsupported NES mapper: ~D"
                      (unsupported-mapper-number condition)))))
-
-(define-condition illegal-opcode (nes-error)
-  ((opcode :initarg :opcode :reader illegal-opcode-value)
-   (address :initarg :address :reader illegal-opcode-address))
-  (:report (lambda (condition stream)
-             (format stream "Illegal 6502 opcode #x~2,'0X at #x~4,'0X"
-                     (illegal-opcode-value condition)
-                     (illegal-opcode-address condition)))))

@@ -20,6 +20,9 @@
         (:branch
          (destructuring-bind (opcode condition-form) rest
            `(,opcode (%branch! ,cpu ,bus ,condition-form))))
+        (:jam
+         (destructuring-bind (opcodes operation) rest
+           `(,opcodes (,operation ,cpu ,bus))))
         (otherwise clause)))))
 
 (defmacro define-cpu-opcodes ((cpu bus opcode) &body clauses)
@@ -27,3 +30,9 @@
   `(case ,opcode
      ,@(mapcar (lambda (clause) (%expand-cpu-opcode-clause cpu bus clause))
                clauses)))
+
+
+(defun %dispatch-cpu-opcode (cpu bus opcode nmi-poll)
+  (if (< opcode #x80)
+      (%dispatch-cpu-opcode-00-7f cpu bus opcode nmi-poll)
+      (%dispatch-cpu-opcode-80-ff cpu bus opcode)))
