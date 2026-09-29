@@ -10,8 +10,8 @@
 (defparameter *coverage-output-directory*
   (merge-pathnames "coverage/" *coverage-root*))
 
-(defparameter *minimum-expression-coverage* 0.96d0)
-(defparameter *minimum-branch-coverage* 0.86d0)
+(defparameter *minimum-expression-coverage* (/ 8330d0 8710d0))
+(defparameter *minimum-branch-coverage* (/ 1021d0 1116d0))
 (defparameter *coverage-target* 1.0d0)
 
 (defun %coverage-ratio (covered total)

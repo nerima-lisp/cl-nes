@@ -27,7 +27,12 @@ documentation in separate areas.
   `bus-routing-transitions.lisp`, and `bus-memory-transitions.lisp`.
 - run-tests.lisp loads the ASDF test system and forwards focused cl-weave
   selection from environment variables without requiring ad hoc edits to the
-  test files.
+  test files. Focused selection is for local diagnosis; it is not the
+  integration gate.
+- run-rom-suite.lisp loads the ROM-suite system. It validates the declarative
+  ROM contract table, runs the configured ROM protocols, runs AccuracyCoin,
+  and checks the nestest trace. AccuracyCoin is part of the suite even while
+  its contract is recorded as a known-fail ratchet.
 - run-coverage.lisp writes the SBCL expression and branch report under
   coverage/.
 
@@ -102,23 +107,19 @@ Enter the pinned environment and run the focused checks:
 nix develop
 sbcl --noinform --non-interactive --eval '(require :asdf)' --load cl-nes.asd --eval '(asdf:compile-system "cl-nes" :force t)' --quit
 sbcl --noinform --non-interactive --load run-tests.lisp --quit
+nix build .#checks.aarch64-darwin.rom-suite --print-build-logs
 nix flake check
 ~~~
 
-Before integrating a branch into `main`, run the ROM contract suite with both
-test-ROM and AccuracyCoin paths configured. Unit tests alone do not exercise
-the cycle-level ROM contracts or the AccuracyCoin item ratchet.
-
-~~~sh
-CL_NES_TEST_ROMS=/path/to/nes-test-roms \
-CL_NES_ACCURACY_COIN=/path/to/AccuracyCoin.nes \
-sbcl --noinform --non-interactive --load run-rom-suite.lisp --quit
-~~~
-
-The suite must finish with no unexpected contract failure, and AccuracyCoin
-must not lose any previously passing item. Update the declared contract only
-when an item is intentionally promoted or its failure is explained by a
-verified implementation change.
+The complete cl-weave run and the complete ROM-suite run are both required
+before integrating any change into `main`. The ROM-suite check must run with
+the pinned corpus variables, including `CL_NES_ACCURACY_COIN`; the Nix ROM-suite
+check and `nix flake check` supply these variables. A focused test filter,
+an omitted AccuracyCoin input, or a run that selects no tests does not clear
+this gate. Each ROM contract must satisfy its declared ratchet state.
+AccuracyCoin currently remains a tracked `:known-fail` contract, so it must be
+executed and its recorded result checked even before that ratchet is promoted
+to `:pass`.
 
 Run coverage separately when its generated report is needed:
 

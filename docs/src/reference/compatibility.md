@@ -36,40 +36,75 @@ Each row has a bounded frame limit and a ratchet state. A passing `:pass` row
 must remain passing, while an unexpectedly passing `:known-fail` row fails the
 check and requires its recorded baseline to be updated.
 
-The measured baseline is recorded in the same table. The CI profile uses short
-frame limits for known failures so the check stays within the five-minute
-budget; the table's failure text preserves the first diagnostic observed. The
-full AccuracyCoin run remains a bounded manual run because the current core
-does not complete all 146 result cells within the CI budget.
+The table is the ROM-by-ROM verdict: `:pass` rows are required to pass, and
+`:known-fail` rows are expected to fail until their recorded limitation is
+fixed. The current table contains 101 bounded ROM contracts. Its category
+counts are derived from the `:category` and `:state` fields in
+`t/rom-suite/protocols.lisp`:
 
-The nestest CPU trace is ratcheted as `:known-fail`; the current first
-reported difference is CYC 14691 expected versus 14690 actual at log line
-5046. PPU scanline/dot fields remain explicitly excluded because the public
-core API does not expose them.
+| category | expected pass | expected known-fail | total |
+| --- | ---: | ---: | ---: |
+| CPU | 28 | 10 | 38 |
+| PPU | 16 | 19 | 35 |
+| APU | 8 | 6 | 14 |
+| DMA | 0 | 2 | 2 |
+| mapper | 8 | 4 | 12 |
+| total | 60 | 41 | 101 |
+
+The per-ROM rows in `*rom-contract-data*` are the source of truth for the
+individual verdicts. They contain the id, category, ROM path, protocol, frame
+bound, ratchet state, and failure diagnostic; there is no second compatibility
+list. The same table is checked first by `run-rom-suite.lisp`. In the current
+measured run, all 200 declarative table checks passed, then execution stopped
+at `sprite-hit-11`: it is marked `:pass` but did not complete within its 360
+frame bound. This is a current ratchet regression, not evidence that the
+contract row passes.
+
+AccuracyCoin is a separate contract with 146 expected result cells and a
+1200-frame bound. Its `:known-fail` state is enforced by the same ratchet. The
+runner reads the result RAM at `$0400-$04FF`, classifies each cell as pass,
+fail, skipped, or running, and prints pass/fail counts followed by counts for
+the categories declared in `*accuracy-coin-item-specs*`. The category names
+currently include CPU behavior, CPU instructions, unofficial opcode groups,
+CPU interrupts, DMA, APU, CPU behavior 2, PPU, PPU vblank, sprite, PPU misc,
+advanced background, and advanced sprite. AccuracyCoin was not reached in the
+measured run above because the ROM suite stopped at `sprite-hit-11`; no
+AccuracyCoin pass count is asserted here.
+
+To reproduce the complete harness with legally obtained ROM inputs, use the
+flake check:
+
+~~~sh
+nix build .#checks.aarch64-darwin.rom-suite --print-build-logs
+~~~
+
+For a direct run, provide the same four inputs used by the flake:
+
+~~~sh
+CL_NES_TEST_ROMS=/path/to/nes-test-roms \
+CL_NES_ACCURACY_COIN=/path/to/AccuracyCoin.nes \
+CL_NES_NESTEST_ROM=/path/to/nestest.nes \
+CL_NES_NESTEST_LOG=/path/to/nestest.log \
+sbcl --noinform --non-interactive --load run-rom-suite.lisp --quit
+~~~
+
+The harness prints one result for every ROM reached, AccuracyCoin category
+counts when that contract is reached, and the nestest trace result. A `:pass`
+row failing is a regression; a `:known-fail` row passing requires updating the
+table and its diagnostic. ROM bytes and generated output remain outside the
+checkout.
 
 External validation artifacts are kept outside the checkout. Their records
 include the source revision, per-file SHA-256, and available license or
 permission metadata; ROM binaries are not part of the repository.
 
-For the current validation run, each valid manifest entry was executed in a
-fresh emulator process with a bounded wall-clock limit. Every valid iNES or
-NES 2.0 entry in the public test-ROM manifest reached 10 frames, covering the
-mapper numbers represented by that manifest. A separate homebrew corpus reached
-60 frames per entry. A malformed ROM was reported as `invalid` and excluded
-from the valid ROM pass. Focused mapper contracts also cover the discrete
-banking paths for mappers 66, 71, and 87; those contracts are separate from the
-ROM-corpus evidence above.
-
-These results verify bounded loading, mapper selection, reset execution, and
-continued frame progression. They do not verify reference framebuffer output,
-interactive controls, audio fidelity, exact cycle traces, or compatibility
-with every NES game.
-
-The reset and initial execution phase was also compared with the public
-`nestest` reference log. Starting the test at `$C000`, the first eight
-instructions matched for CPU registers, PPU scanline/dot position, and CPU
-cycle count. This check covers the reset phase and its immediate execution
-path; it is not a claim that every timing edge is cycle exact.
+The current measured run therefore establishes only that the declarative table
+checks load and that the runtime reaches the reported `sprite-hit-11` ratchet
+failure. It does not establish a passing ROM suite, AccuracyCoin counts,
+nestest results, reference framebuffer output, interactive controls, audio
+fidelity, exact cycle traces, or compatibility with every NES game. PPU
+scanline/dot fields in nestest remain excluded because the public core API does
+not expose them.
 
 ## Mapper 4
 
@@ -114,3 +149,10 @@ Unsupported mapper numbers, unsupported ROM header features, malformed ROM
 data, and unsupported CPU opcodes signal conditions. The project does not
 provide a graphical window, audio output device, or a promise that every NES
 timing edge is reproduced.
+
+The current known-fail set is concentrated in unofficial CPU opcode coverage,
+interrupt/reset edge timing, PPU sprite-hit and power-up behavior, APU
+length/IRQ/DMC timing, DMA ordering, and selected MMC3 scanline timing. The
+AccuracyCoin result cells are reported by the ROM suite and remain the
+authoritative measured record for precision work; they are not inferred from
+the category counts above.

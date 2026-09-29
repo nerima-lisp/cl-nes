@@ -170,7 +170,7 @@
         in
         {
           checks = {
-            # run-coverage.lisp asserts its own 96%/86% floor and errors
+            # run-coverage.lisp asserts its own measured 95.64%/91.49% floor and errors
             # (non-zero exit) below it, so this check needs no separate
             # threshold script -- unlike cl-host-kit, which scrapes raw
             # sb-cover HTML because its run-coverage.lisp has no such
@@ -226,7 +226,10 @@
                 }
                 ''
                   cd "$src"
-                  for file in src/*.lisp t/*.lisp run-*.lisp benchmark/*.lisp; do
+                  find src t frontend -type f -name '*.lisp' -print | while read -r file; do
+                    paredit inspect check --file "$file" --timeout-ms 30000
+                  done
+                  for file in run-*.lisp benchmark/*.lisp; do
                     paredit inspect check --file "$file" --timeout-ms 30000
                   done
                   touch "$out"

@@ -39,6 +39,7 @@ nav:
       - Architecture: reference/architecture.md
       - Conditions: reference/conditions.md
       - Compatibility: reference/compatibility.md
+  - Benchmarks: benchmarks.md
   - Project:
       - Development: project/development.md
       - Roadmap: project/roadmap.md

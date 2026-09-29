@@ -4,7 +4,7 @@
   :description "A headless Nintendo Entertainment System core."
   :author "nerima-lisp"
   :license "MIT"
-  :version "0.1.1"
+  :version "0.2.0"
   :depends-on ("cl-host-kit")
   :pathname "src"
   :components
@@ -68,7 +68,7 @@
   :description "cl-nes tests driven by cl-weave."
   :author "nerima-lisp"
   :license "MIT"
-  :version "0.1.1"
+  :version "0.2.0"
   :depends-on ("cl-nes" "cl-weave")
   :pathname "t"
   :components
@@ -178,7 +178,7 @@
   :description "Interactive GLFW/OpenGL/SDL2 frontend for cl-nes."
   :author "nerima-lisp"
   :license "MIT"
-  :version "0.1.1"
+  :version "0.2.0"
   :depends-on ("cl-nes" "cl-glfw3-kit" "cl-cli")
   :pathname "frontend"
   :serial t
@@ -201,7 +201,7 @@
   :description "Headless tests for the cl-nes frontend's pure components."
   :author "nerima-lisp"
   :license "MIT"
-  :version "0.1.1"
+  :version "0.2.0"
   :depends-on ("cl-nes/frontend" "cl-weave")
   :pathname "frontend/test"
   :serial t
@@ -220,7 +220,7 @@
   :author "nerima-lisp"
   :maintainer "nerima-lisp"
   :license "MIT"
-  :version "0.1.1"
+  :version "0.2.0"
   :depends-on ("cl-nes" "cl-weave")
   :pathname "t/rom-suite"
   :serial t

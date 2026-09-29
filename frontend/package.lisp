@@ -46,4 +46,4 @@
 
 (in-package #:cl-nes/frontend)
 
-(defparameter *frontend-version* "0.1.1")
+(defparameter *frontend-version* "0.2.0")

@@ -94,9 +94,6 @@
         (logior (logand (ppu-vram-address ppu) #x041F)
                 (logand (ppu-temporary-address ppu) #x7BE0))))
 
-(defun %ppu-fetch! (ppu address)
-  (declare (ignore ppu address)))
-
 (defun %ppu-background-fetch! (ppu dot)
   (let ((phase (logand dot 7)))
     (case phase
@@ -150,8 +147,7 @@
                              ppu (logand (ppu-vram-address ppu) #x1F)
                              (logand (ash (ppu-vram-address ppu) -5) #x1F)))))
            (setf (ppu-next-pattern-low ppu)
-                 (%ppu-mmc5-background-chr ppu address split-p exram))
-           (%ppu-fetch! ppu address))))
+                 (%ppu-mmc5-background-chr ppu address split-p exram)))))
       ((7)
        (multiple-value-bind (split-p split-x split-y)
            (%ppu-mmc5-split-state ppu dot)
@@ -170,8 +166,7 @@
                              ppu (logand (ppu-vram-address ppu) #x1F)
                              (logand (ash (ppu-vram-address ppu) -5) #x1F)))))
            (setf (ppu-next-pattern-high ppu)
-                 (%ppu-mmc5-background-chr ppu address split-p exram))
-           (%ppu-fetch! ppu address))))
+                 (%ppu-mmc5-background-chr ppu address split-p exram)))))
       ((0) (setf (ppu-background-shift-low ppu)
                  (logand #xFFFF
                          (logior (ash (ppu-next-pattern-low ppu) 8)
@@ -240,8 +235,7 @@
                       (%reverse-byte (aref (ppu-sprite-shift-low ppu) sprite))
                       (aref (ppu-sprite-shift-high ppu) sprite)
                       (%reverse-byte (aref (ppu-sprite-shift-high ppu) sprite)))))
-          (%ppu-fetch! ppu address)
-          (%ppu-fetch! ppu (+ address 8))))))))
+          ))))))
 
 (defun ppu-tick! (ppu &optional (ticks 1))
   (loop repeat ticks do

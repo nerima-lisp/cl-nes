@@ -71,12 +71,9 @@
     (with-output-to-string (stream)
       (loop for value across state do (format stream "~8,'0X" value)))))
 
-(defun %rom-octets (rom-path)
-  (restore-octets rom-path))
-
 (defun rom-identity (rom-path)
   "Return the lowercase SHA-256 identity of ROM-PATH's bytes."
-  (string-downcase (%sha256-hex (%rom-octets rom-path))))
+  (string-downcase (%sha256-hex (restore-octets rom-path))))
 
 (defun frontend-data-directory (&optional state-directory)
   (host-kit:ensure-directory-pathname
