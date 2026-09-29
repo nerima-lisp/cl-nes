@@ -38,6 +38,16 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    nes-test-roms = {
+      url = "github:christopherpow/nes-test-roms/95d8f621ae55cee0d09b91519a8989ae0e64753b";
+      flake = false;
+    };
+
+    accuracy-coin = {
+      url = "github:100thCoin/AccuracyCoin/673ef550db296136d52229961e7d39366116882a";
+      flake = false;
+    };
+
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -52,6 +62,8 @@
       cl-weave,
       cl-host-kit,
       paredit-cli,
+      nes-test-roms,
+      accuracy-coin,
       treefmt-nix,
       ...
     }:
@@ -118,6 +130,19 @@
               timeoutSeconds = testTimeoutSeconds;
               killAfterSeconds = timeoutGraceSeconds;
             };
+            rom-suite = (ctx.cl.mkScriptCheck {
+              drv = ctx.package;
+              entryPoint = "run-rom-suite.lisp";
+              name = "cl-nes-rom-suite";
+              timeoutSeconds = testTimeoutSeconds;
+              killAfterSeconds = timeoutGraceSeconds;
+            }).overrideAttrs (_: {
+              CL_NES_TEST_ROMS = nes-test-roms;
+              CL_NES_ACCURACY_COIN = "${accuracy-coin}/AccuracyCoin.nes";
+              CL_NES_NESTEST_ROM = "${nes-test-roms}/other/nestest.nes";
+              CL_NES_NESTEST_LOG = "${nes-test-roms}/other/nestest.log";
+              CL_NES_RUN_ROM_SUITE = "1";
+            });
           }
           // pkgs.lib.optionalAttrs (paredit != null) {
             paredit =

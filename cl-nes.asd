@@ -164,3 +164,24 @@
   :depends-on ("cl-nes")
   :pathname "benchmark"
   :components ((:file "run-benchmarks")))
+
+(defsystem "cl-nes/rom-suite"
+  :description "Table-driven test-ROM and golden-trace harness for cl-nes."
+  :author "nerima-lisp"
+  :maintainer "nerima-lisp"
+  :license "MIT"
+  :version "0.1.1"
+  :depends-on ("cl-nes" "cl-weave")
+  :pathname "t/rom-suite"
+  :serial t
+  :components ((:file "package")
+               (:file "protocols")
+               (:file "suite")
+               (:file "nestest"))
+  :perform
+  (test-op (operation component)
+    (declare (ignore operation))
+    (unless (uiop:symbol-call :cl-weave :run-all
+                              :reporter :spec
+                              :pass-with-no-tests nil)
+      (error "cl-nes ROM contract tests failed."))))

@@ -1,5 +1,22 @@
 {
   "nodes": {
+    "accuracy-coin": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1790185426,
+        "narHash": "sha256-D7KIkfsU8Y7j9b9SIDtWeEmAuH4f4lwyHBY0rqSpi0Y=",
+        "owner": "100thCoin",
+        "repo": "AccuracyCoin",
+        "rev": "673ef550db296136d52229961e7d39366116882a",
+        "type": "github"
+      },
+      "original": {
+        "owner": "100thCoin",
+        "repo": "AccuracyCoin",
+        "rev": "673ef550db296136d52229961e7d39366116882a",
+        "type": "github"
+      }
+    },
     "cl-host-kit": {
       "inputs": {
         "cl-nix-forge": "cl-nix-forge",
@@ -210,6 +227,23 @@
         "type": "github"
       }
     },
+    "nes-test-roms": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1646250477,
+        "narHash": "sha256-ubsxgW8l6/ac4/qFfiUbgikVCrOkdbXP08DUktSZCkA=",
+        "owner": "christopherpow",
+        "repo": "nes-test-roms",
+        "rev": "95d8f621ae55cee0d09b91519a8989ae0e64753b",
+        "type": "github"
+      },
+      "original": {
+        "owner": "christopherpow",
+        "repo": "nes-test-roms",
+        "rev": "95d8f621ae55cee0d09b91519a8989ae0e64753b",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1786106723,
@@ -303,9 +337,11 @@
     },
     "root": {
       "inputs": {
+        "accuracy-coin": "accuracy-coin",
         "cl-host-kit": "cl-host-kit",
         "cl-nix-forge": "cl-nix-forge_3",
         "cl-weave": "cl-weave_2",
+        "nes-test-roms": "nes-test-roms",
         "nixpkgs": "nixpkgs",
         "paredit-cli": "paredit-cli_3",
         "treefmt-nix": "treefmt-nix_11"

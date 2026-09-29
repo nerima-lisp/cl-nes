@@ -27,6 +27,20 @@ does not expose PRG-RAM through that range.
 
 ## ROM verification evidence
 
+The automated P2 harness is `cl-nes/rom-suite`. It consumes fixed, flake-only
+inputs for `christopherpow/nes-test-roms` and `100thCoin/AccuracyCoin`; ROM
+bytes are not committed to this repository. The contract table is in
+`t/rom-suite/protocols.lisp` and uses the blargg `$6000` signature/status
+protocol, framebuffer hashes, and AccuracyCoin's `$0400-$04FF` result RAM.
+Each row has a bounded frame limit and a ratchet state. A passing `:pass` row
+must remain passing, while an unexpectedly passing `:known-fail` row fails the
+check and requires its recorded baseline to be updated.
+
+The baseline for this worktree is not yet measured because the flake inputs are
+only mounted by the ROM check. Until that check is run, every required ROM is
+recorded as `:known-fail` with the placeholder result text `baseline not
+measured`; this is intentionally visible in the harness output.
+
 External validation artifacts are kept outside the checkout. Their records
 include the source revision, per-file SHA-256, and available license or
 permission metadata; ROM binaries are not part of the repository.
