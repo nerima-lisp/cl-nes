@@ -7,4 +7,4 @@
            (apu (nes-apu nes)))
       (expect (apu-read-register apu #x4015) :to-be 0)
       (expect (apu-irq-pending-p apu) :to-be nil)
-      (expect (apu-sample apu) :to-be 0))))
+      (expect (apu-mix apu) :to-be 0.0f0))))

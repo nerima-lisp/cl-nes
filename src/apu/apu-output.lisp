@@ -27,11 +27,12 @@
       0
       (%apu-envelope-output (apu-noise-envelope noise))))
 
-(defun apu-sample (apu)
-  "Return the current headless mixer output as an unsigned 8-bit integer."
+(defun apu-mix (apu)
+  "Return the current nonlinear hardware mixer output in the range 0..1."
   (let* ((pulse (+ (%apu-pulse-output (apu-pulse-1 apu) t)
                    (%apu-pulse-output (apu-pulse-2 apu) nil)))
-         (triangle (%apu-triangle-output (apu-triangle apu)))
-         (noise (%apu-noise-output (apu-noise apu)))
-         (dmc (apu-dmc-output (apu-dmc apu))))
-    (min 255 (+ (* 4 pulse) (* 2 triangle) noise dmc))))
+         (tnd (+ (* 3 (%apu-triangle-output (apu-triangle apu)))
+                 (* 2 (%apu-noise-output (apu-noise apu)))
+                 (apu-dmc-output (apu-dmc apu)))))
+    (+ (aref +apu-pulse-mixer-table+ pulse)
+       (aref +apu-tnd-mixer-table+ tnd))))

@@ -1,6 +1,26 @@
 (in-package #:cl-nes/test)
 
 (describe "APU mixer contracts"
+  (it "matches the NESdev reference equations for every table entry"
+    (dotimes (pulse 31)
+      (let ((expected (if (zerop pulse)
+                          0.0f0
+                          (coerce (/ 95.88d0 (+ (/ 8128d0 pulse) 100d0))
+                                  'single-float))))
+        (expect (<= (abs (- (aref cl-nes::+apu-pulse-mixer-table+ pulse)
+                            expected))
+                    1.0e-6)
+                :to-be t)))
+    (dotimes (tnd 203)
+      (let ((expected (if (zerop tnd)
+                          0.0f0
+                          (coerce (/ 159.79d0
+                                     (+ (/ 1d0 (/ tnd 8227d0)) 100d0))
+                                  'single-float))))
+        (expect (<= (abs (- (aref cl-nes::+apu-tnd-mixer-table+ tnd)
+                            expected))
+                    1.0e-6)
+                :to-be t))))
   (it "applies output gates and mixes all channels"
     (with-fixture-apu (apu pulse pulse-2 triangle noise dmc)
       (seed-apu-pulse-channel! pulse
@@ -50,7 +70,9 @@
       (seed-apu-dmc-channel! dmc :output 127)
       (expect (cl-nes::%apu-triangle-output triangle) :to-be 15)
       (expect (cl-nes::%apu-noise-output noise) :to-be 15)
-      (expect (apu-sample apu) :to-be 255)
+      (expect (apu-mix apu)
+              :to-be (+ (aref cl-nes::+apu-pulse-mixer-table+ 30)
+                        (aref cl-nes::+apu-tnd-mixer-table+ 202)))
       (seed-apu-triangle-channel! triangle :linear-counter 0)
       (seed-apu-noise-channel! noise :shift-register 1)
       (expect (cl-nes::%apu-triangle-output triangle) :to-be 0)

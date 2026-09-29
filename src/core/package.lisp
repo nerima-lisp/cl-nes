@@ -67,7 +67,7 @@
    #:apu-write-register!
    #:apu-tick!
    #:apu-irq-pending-p
-   #:apu-sample
+   #:apu-mix
 
    ;; PPU
    #:ppu
@@ -121,6 +121,10 @@
    #:nes-step/k
    #:nes-run-frame/k
    #:nes-run-frames/k
+   #:nes-audio-buffer
+   #:make-nes-audio-buffer
+   #:nes-audio-buffer-samples
+   #:nes-audio-buffer-count
    #:+nes-frame-width+
    #:+nes-frame-height+
    #:+nes-framebuffer-size+

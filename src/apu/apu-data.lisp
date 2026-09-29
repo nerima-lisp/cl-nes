@@ -28,3 +28,24 @@
 (defparameter +apu-triangle-table+
   #(15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0
     0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15))
+
+;; The mixer tables are kept with the other APU data.  Values are normalized
+;; to the hardware's 0..1 output range; the formulas below are the NESdev
+;; reference equations used to generate the tables.
+(defparameter +apu-pulse-mixer-table+
+  (coerce (loop for pulse from 0 to 30
+                collect (if (zerop pulse)
+                            0.0f0
+                            (coerce (/ 95.88d0 (+ (/ 8128d0 pulse) 100d0))
+                                    'single-float)))
+          'simple-vector))
+
+(defparameter +apu-tnd-mixer-table+
+  (coerce
+   (loop for tnd from 0 to 202
+         collect (if (zerop tnd)
+                     0.0f0
+                     (coerce (/ 159.79d0
+                                (+ (/ 1d0 (/ tnd 8227d0)) 100d0))
+                             'single-float)))
+   'simple-vector))
