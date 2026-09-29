@@ -83,7 +83,9 @@
 
 (defun bus-write! (bus address value)
   (let ((address (logand address #xFFFF))
-        (value (logand value #xFF)))
+        (value (logand value #xFF))
+        (previous-kind (bus-last-cpu-access-kind bus))
+        (previous-address (bus-last-cpu-access-address bus)))
     (setf (bus-last-cpu-access-kind bus) :write
           (bus-last-cpu-access-address bus) address)
     (setf (bus-open-bus bus) value)
@@ -104,7 +106,19 @@
       ((= address #x4017)
        (apu-write-register! (bus-apu bus) address value))
       ((bus-cartridge bus)
-       (cartridge-cpu-write! (bus-cartridge bus) address value))
+       (let* ((cartridge (bus-cartridge bus))
+              (cpu-cycle
+                (when (bus-cpu-access-active-p bus)
+                  (+ (cpu-cycles (nes-cpu (bus-cpu-access-nes bus)))
+                     (bus-cpu-access-count bus))))
+              (cpu-cycle
+                (if (and cpu-cycle
+                         (= (cartridge-mapper cartridge) 1)
+                         (eq previous-kind :write)
+                         (= previous-address address))
+                    (1- cpu-cycle)
+                    cpu-cycle)))
+         (cartridge-cpu-write! cartridge address value cpu-cycle)))
       (t nil))
     (%bus-cpu-access! bus)
     value))

@@ -1,17 +1,39 @@
 (in-package #:cl-nes)
 
+(defun %mapper69-prg-rom-at-6000-p (cartridge)
+  (not (logbitp 6 (aref (cartridge-mapper69-registers cartridge) 8))))
+
+(defun %mapper69-prg-ram-enabled-p (cartridge)
+  (and (not (%mapper69-prg-rom-at-6000-p cartridge))
+       (logbitp 7 (aref (cartridge-mapper69-registers cartridge) 8))))
+
+(defun %mapper69-prg-ram-offset (cartridge address)
+  (+ (* (mod (ldb (byte 6 0)
+                  (aref (cartridge-mapper69-registers cartridge) 8))
+              (floor (length (cartridge-prg-ram cartridge))
+                     +prg-ram-bank-size+))
+         +prg-ram-bank-size+)
+     (mod (- address #x6000) +prg-ram-bank-size+)))
+
 (defun %mapper69-prg-offset (cartridge address)
-  (let* ((slot (floor (- address #x8000) +prg-bank-8k-size+))
+  (let* ((slot (if (< address #x8000)
+                   0
+                   (floor (- address #x8000) +prg-bank-8k-size+)))
          (bank-count (floor (length (cartridge-prg-rom cartridge))
                             +prg-bank-8k-size+))
          (registers (cartridge-mapper69-registers cartridge))
-         (bank (case slot
-                 (0 (aref registers 8))
-                 (1 (aref registers 9))
-                 (2 (aref registers 10))
-                 (otherwise (1- bank-count)))))
+         (bank (if (< address #x8000)
+                   (aref registers 8)
+                   (case slot
+                     (0 (aref registers 9))
+                     (1 (aref registers 10))
+                     (2 (aref registers 11))
+                     (otherwise (1- bank-count))))))
     (+ (* (mod bank bank-count) +prg-bank-8k-size+)
-       (mod (- address #x8000) +prg-bank-8k-size+))))
+       (mod (if (< address #x8000)
+                (- address #x6000)
+                (- address #x8000))
+            +prg-bank-8k-size+))))
 
 (defun %mapper69-chr-offset (cartridge address)
   (let ((bank (aref (cartridge-mapper69-registers cartridge)
@@ -28,10 +50,17 @@
        (setf (cartridge-mapper69-command cartridge) (logand value #x0F)))
       ((= (logand address #xE000) #xA000)
        (cond
-         ((<= command 7)
+         ((<= command 11)
           (setf (aref (cartridge-mapper69-registers cartridge) command) value))
-         ((<= 8 command 10)
-          (setf (aref (cartridge-mapper69-registers cartridge) command) value))
+         ((= command 12)
+          (unless (cartridge-four-screen-p cartridge)
+            (set-cartridge-mirroring!
+             cartridge
+             (case (logand value #x03)
+               (0 :vertical)
+               (1 :horizontal)
+               (2 :single-screen-lower)
+               (otherwise :single-screen-upper)))))
          ((= command 13)
           (setf (cartridge-mapper69-irq-counter cartridge)
                 (dpb value (byte 8 8) (cartridge-mapper69-irq-counter cartridge))))

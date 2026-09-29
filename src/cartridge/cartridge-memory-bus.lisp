@@ -39,7 +39,7 @@
        (cartridge-read-prg-ram cartridge address))
       (t nil))))
 
-(defun cartridge-cpu-write! (cartridge address value)
+(defun cartridge-cpu-write! (cartridge address value &optional cpu-cycle)
   (when cartridge
     (cond
       ((and (= (cartridge-mapper cartridge) 79)
@@ -49,11 +49,11 @@
             (= (cartridge-mapper cartridge) 5))
        (cartridge-write-expansion! cartridge address value))
       ((<= #x5000 address #x5FFF)
-       (cartridge-write-prg! cartridge address value))
+       (cartridge-write-prg! cartridge address value cpu-cycle))
       ((and (<= #x6000 address #x7FFF)
             (not (%nrom-368-p cartridge)))
        (cartridge-write-prg-ram! cartridge address value))
       ((>= address #x8000)
-       (cartridge-write-prg! cartridge address value))
+       (cartridge-write-prg! cartridge address value cpu-cycle))
       (t nil)))
   value)

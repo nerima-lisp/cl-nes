@@ -1,7 +1,10 @@
 (in-package #:cl-nes)
 
 (defun %cartridge-prg-address-p (cartridge address)
-  (or (and (%nrom-368-p cartridge)
+  (or (and (= (cartridge-mapper cartridge) 69)
+           (<= #x6000 address #x7FFF)
+           (%mapper69-prg-rom-at-6000-p cartridge))
+      (and (%nrom-368-p cartridge)
            (<= #x4800 address #xFFFF))
       (<= #x8000 address #xFFFF)))
 
@@ -89,6 +92,7 @@
 
 (defun %cartridge-prg-ram-offset (cartridge address)
   (case (cartridge-mapper cartridge)
+    (69 (%mapper69-prg-ram-offset cartridge address))
     (4 (and (cartridge-mapper4-prg-ram-enabled-p cartridge)
             (- address #x6000)))
     (5 (%mapper5-prg-ram-offset cartridge address))
@@ -96,6 +100,7 @@
 
 (defun %cartridge-prg-ram-writable-p (cartridge)
   (case (cartridge-mapper cartridge)
+    (69 (%mapper69-prg-ram-enabled-p cartridge))
     (4 (and (cartridge-mapper4-prg-ram-enabled-p cartridge)
             (not (cartridge-mapper4-prg-ram-write-protected-p cartridge))))
     (5 (%mapper5-prg-ram-writable-p cartridge))
@@ -137,7 +142,9 @@
 (defun cartridge-read-prg-ram (cartridge address)
   (when (and (not (= (cartridge-mapper cartridge) 87))
              (<= #x6000 address #x7FFF)
-             (plusp (length (cartridge-prg-ram cartridge))))
+             (plusp (length (cartridge-prg-ram cartridge)))
+             (or (not (= (cartridge-mapper cartridge) 69))
+                 (%mapper69-prg-ram-enabled-p cartridge)))
     (let ((offset (%cartridge-prg-ram-offset cartridge address)))
       (when offset
         (aref (cartridge-prg-ram cartridge)
