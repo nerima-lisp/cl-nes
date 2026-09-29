@@ -76,7 +76,9 @@
     (values color attribute)))
 
 (defun %background-pixel (ppu x y)
-  (let* ((base-table (logand (ppu-control ppu) 3))
+  (multiple-value-bind (split-p split-x split-y)
+      (%ppu-mmc5-split-state ppu (1+ x))
+    (let* ((base-table (logand (ppu-control ppu) 3))
          (base-x (mod base-table 2))
          (base-y (floor base-table 2))
          (world-x (+ x (ppu-scroll-x ppu)))
@@ -91,10 +93,6 @@
          (tile-x (floor local-x 8))
          (tile-y (floor local-y 8))
          (nametable-base (+ #x2000 (* table #x400)))
-         (split-state (multiple-value-list (%ppu-mmc5-split-state ppu (1+ x))))
-         (split-p (first split-state))
-         (split-x (second split-state))
-         (split-y (third split-state))
          (backdrop (logand (ppu-read-vram ppu #x3F00) #x3F)))
     (multiple-value-bind (color palette-number)
         (%ppu-background-sample ppu local-x local-y tile-x tile-y nametable-base
@@ -108,7 +106,7 @@
                (logand
                 (ppu-read-vram ppu (+ #x3F00 (* palette-number 4) color))
                 #x3F)
-               t))))))
+               t)))))))
 
 (defun %sprite-pattern-address (ppu tile attributes pixel-y)
   (let* ((height (if (logbitp 5 (ppu-control ppu)) 16 8))
@@ -170,18 +168,15 @@
 The address and fine-X state are advanced by the timing code.  Keeping this
 lookup separate from the fetch schedule makes the schedule observable while
 retaining the existing cartridge nametable and CHR interfaces."
-  (let* ((v (ppu-vram-address ppu))
+  (multiple-value-bind (split-p split-x split-y)
+      (%ppu-mmc5-split-state ppu (ppu-dot ppu))
+    (let* ((v (ppu-vram-address ppu))
          (coarse-x (logand v #x1F))
          (coarse-y (logand (ash v -5) #x1F))
          (table (logand (ash v -10) 3))
          (fine-y (logand (ash v -12) 7))
          (x (mod (+ (ppu-fine-x ppu) (1- (ppu-dot ppu))) 8))
          (nametable-base (+ #x2000 (ash table 10)))
-         (split-state (multiple-value-list
-                       (%ppu-mmc5-split-state ppu (ppu-dot ppu))))
-         (split-p (first split-state))
-         (split-x (second split-state))
-         (split-y (third split-state))
          (color nil)
          (palette-number nil))
     (multiple-value-setq (color palette-number)
@@ -198,7 +193,7 @@ retaining the existing cartridge nametable and CHR interfaces."
              (logand
               (ppu-read-vram ppu (+ #x3F00 (* palette-number 4) color))
               #x3F)
-             t)))))
+             t))))))
 
 (defun %ppu-palette-pixel (ppu color)
   (let ((color (logand color #x3F))
