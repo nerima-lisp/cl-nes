@@ -3,9 +3,8 @@
 (defvar *nes-step-context* nil)
 
 (defun %nes-poll-irq-before-clock! (nes)
-  (let ((irq-pending-p (%nes-irq-pending-p nes)))
-    (setf (nes-irq-seen-before-last-p nes) irq-pending-p
-          (nes-irq-seen-p nes) irq-pending-p)))
+  (setf (nes-irq-seen-before-last-p nes) (nes-irq-seen-p nes)
+        (nes-irq-seen-p nes) (%nes-irq-pending-p nes)))
 
 (defun %nes-poll-irq-before-cycle! ()
   (%nes-poll-irq-before-clock! *nes-step-context*))
@@ -96,7 +95,10 @@ continuation's result."
             (when (and (not nmi-taken-p)
                        (zerop dma-cycles)
                        (%nes-irq-eligible-p cpu irq-disabled-at-start)
-                       (nes-irq-seen-before-last-p nes))
+                       (if (and (= cycles 2)
+                                (not (cpu-irq-poll-delay cpu)))
+                           (nes-irq-seen-p nes)
+                           (nes-irq-seen-before-last-p nes)))
               (let ((interrupt-cycles
                       (%nes-run-interrupt!
                        nes :irq t cycle-hook #'%nes-poll-irq-before-cycle!)))
