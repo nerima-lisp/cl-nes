@@ -49,4 +49,42 @@
             (cl-nes::bus-cpu-access-active-p bus) t)
       (cl-nes::%apu-dmc-fetch! apu)
       (expect (cl-nes::apu-dmc-sample-buffer-empty-p dmc) :to-be nil)
-      (expect (cl-nes::bus-take-dma-stall-cycles! bus) :to-be 4))))
+      (expect (cl-nes::bus-take-dma-stall-cycles! bus) :to-be 4)))
+
+  (it "advances OAM DMA as get/put cycles"
+    (let* ((cartridge (make-fixture-cartridge))
+           (nes (make-nes :cartridge cartridge))
+           (bus (cl-nes::nes-bus nes)))
+      (dotimes (offset 256)
+        (setf (aref (cl-nes::bus-ram bus) (+ #x700 offset)) offset))
+      (setf (cl-nes::bus-cpu-access-active-p bus) t
+            (cl-nes::bus-cpu-access-nes bus) nes)
+      (bus-write! bus #x4014 7)
+      (setf (cl-nes::bus-cpu-access-active-p bus) nil)
+      (cl-nes::%nes-run-dma-stalls!
+       nes (cl-nes::bus-take-dma-stall-cycles! bus))
+      (expect (cl-nes::bus-oam-dma-active-p bus) :to-be nil)
+      (expect (cl-nes::bus-oam-dma-index bus) :to-be 256)
+      (expect (aref (ppu-oam (cl-nes::bus-ppu bus)) #x00) :to-be 0)
+      (expect (aref (ppu-oam (cl-nes::bus-ppu bus)) #xFF) :to-be #xFF)))
+
+  (it "lets a DMC get preempt an OAM get without adding a standalone stall"
+    (let* ((cartridge (make-fixture-cartridge))
+           (nes (make-nes :cartridge cartridge))
+           (bus (cl-nes::nes-bus nes))
+           (dmc (cl-nes::apu-dmc (cl-nes::nes-apu nes)))
+           (clock-count 0))
+      (setf (cl-nes::bus-cpu-access-active-p bus) t
+            (cl-nes::bus-cpu-access-nes bus) nes)
+      (bus-write! bus #x4014 7)
+      (setf (cl-nes::bus-cpu-access-active-p bus) nil
+            (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bytes-remaining dmc) 1
+            (cl-nes::apu-dmc-timer dmc) 0)
+      (cl-nes::%nes-run-dma-stalls!
+       nes (cl-nes::bus-take-dma-stall-cycles! bus)
+       (lambda () (incf clock-count)))
+      (expect (cl-nes::bus-oam-dma-active-p bus) :to-be nil)
+      (expect (cl-nes::bus-dmc-dma-remaining bus) :to-be 0)
+      (expect clock-count :to-be 514))))

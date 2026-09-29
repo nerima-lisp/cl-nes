@@ -29,7 +29,14 @@
 
 (defun nes-load-cartridge! (nes cartridge)
   (setf (bus-cartridge (nes-bus nes)) cartridge)
-  (setf (bus-dma-stall-cycles (nes-bus nes)) 0)
+  (let ((bus (nes-bus nes)))
+    (setf (bus-dma-stall-cycles bus) 0
+          (bus-oam-dma-active-p bus) nil
+          (bus-oam-dma-index bus) 0
+          (bus-oam-dma-stage bus) :halt
+          (bus-oam-dma-alignment-p bus) nil
+          (bus-dmc-dma-remaining bus) 0
+          (bus-dma-cycle-preempted-p bus) nil))
   (when cartridge
     (cartridge-reset! cartridge))
   (ppu-load-cartridge! (nes-ppu nes) cartridge)
@@ -45,7 +52,14 @@
   nes)
 
 (defun nes-reset! (nes)
-  (setf (bus-dma-stall-cycles (nes-bus nes)) 0)
+  (let ((bus (nes-bus nes)))
+    (setf (bus-dma-stall-cycles bus) 0
+          (bus-oam-dma-active-p bus) nil
+          (bus-oam-dma-index bus) 0
+          (bus-oam-dma-stage bus) :halt
+          (bus-oam-dma-alignment-p bus) nil
+          (bus-dmc-dma-remaining bus) 0
+          (bus-dma-cycle-preempted-p bus) nil))
   (when (bus-cartridge (nes-bus nes))
     (cartridge-reset! (bus-cartridge (nes-bus nes))))
   (ppu-reset! (nes-ppu nes))
