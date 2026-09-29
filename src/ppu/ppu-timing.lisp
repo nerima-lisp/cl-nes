@@ -31,7 +31,9 @@
 (defun %ppu-rendering-scanline-p (ppu)
   (and (or (< (ppu-scanline ppu) 240)
            (= (ppu-scanline ppu) 261))
-       (%ppu-rendering-enabled-p ppu)))
+       (let ((mask (%ppu-effective-mask ppu)))
+         (or (logbitp 3 mask)
+             (logbitp 4 mask)))))
 
 (defun %ppu-clock-render-a12! (ppu high-p &optional (low-cycles 1))
   (when (and (ppu-cartridge ppu)

@@ -37,6 +37,7 @@
   (setf (apu-frame-last-five-step-p apu) (logbitp 7 value)
         (apu-frame-reset-delay apu)
         (if (zerop (apu-cycle-parity apu)) 3 4)
+        (apu-frame-event-offset apu) (if (zerop (apu-cycle-parity apu)) 1 0)
         (apu-frame-reset-five-step-p apu) (logbitp 7 value)
         (apu-frame-reset-irq-inhibit-p apu) (logbitp 6 value)
         ;; The inhibit bit takes effect at the write.  The
