@@ -46,7 +46,8 @@
       (setf (aref (ppu-oam sprite-ppu) 3) 8
             (ppu-mask sprite-ppu) #x10)
       (setf (ppu-mask sprite-ppu) #x18
+            (cl-nes::ppu-rendering-mask-valid-p sprite-ppu) nil
             (cl-nes::ppu-secondary-oam-count sprite-ppu) 1
             (aref (cl-nes::ppu-sprite-indexes sprite-ppu) 0) 0)
-      (expect (cl-nes::%ppu-sprite-pixel-at-dot sprite-ppu 0 1 nil)
+      (expect (cl-nes::%ppu-sprite-pixel-at-dot sprite-ppu 8 1 nil)
               :to-be #x21))))

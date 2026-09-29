@@ -12,10 +12,12 @@
                 (aref oam 2) #x20
                 (aref oam 3) 8)
           (setf (ppu-control ppu) #x10
-                (ppu-mask ppu) #x1E)
+                (ppu-mask ppu) #x1E
+                (cl-nes::ppu-scanline ppu) 1)
           (setf (cl-nes::ppu-vram-address ppu) 0
                 (cl-nes::ppu-dot ppu) 9)
           (ppu-write-vram! ppu #x1000 #x80)
+          (ppu-write-vram! ppu #x0000 #x80)
           (ppu-write-vram! ppu #x2000 0)
           (ppu-write-vram! ppu #x3F01 #x21)
           (ppu-write-vram! ppu #x3F11 #x22)
@@ -27,8 +29,8 @@
           (setf (ppu-status ppu) (logand (ppu-status ppu) #xDF))
           (dotimes (sprite 9)
             (setf (aref oam (* sprite 4)) 0))
-          (cl-nes::%ppu-evaluate-sprites! ppu 0)
-          (expect (logand (ppu-status ppu) #x20) :to-be #x20))))))
+          (cl-nes::%ppu-evaluate-sprites! ppu 1)
+          (expect (logand (ppu-status ppu) #x20) :to-be #x20)))))
 
   (it "selects background and sprite A12 fetch phases"
     (let ((ppu (make-ppu)))
