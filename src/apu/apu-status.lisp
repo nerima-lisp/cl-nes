@@ -40,6 +40,7 @@
         (apu-frame-event-offset apu) (if (zerop (apu-cycle-parity apu)) 1 0)
         (apu-frame-reset-five-step-p apu) (logbitp 7 value)
         (apu-frame-reset-irq-inhibit-p apu) (logbitp 6 value)
+        (apu-frame-irq-clear-delay apu) 0
         ;; The inhibit bit takes effect at the write.  The
         ;; sequencer mode itself still changes after its
         ;; hardware reset delay.
