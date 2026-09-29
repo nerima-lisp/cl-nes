@@ -120,8 +120,8 @@
                 :protocol :blargg :expected 0 :max-frames 360 :state :pass
                 :failure-text "status 0; measured pass")
                (:id "ppu-vbl-06" :path "ppu_vbl_nmi/rom_singles/06-suppression.nes"
-                :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
-                :failure-text "status 128; suppression failed")
+                :protocol :blargg :expected 0 :max-frames 360 :state :pass
+                :failure-text "status 0; measured pass")
                (:id "ppu-vbl-07" :path "ppu_vbl_nmi/rom_singles/07-nmi_on_timing.nes"
                 :protocol :blargg :expected 0 :max-frames 360 :state :pass
                 :failure-text "status 0; measured pass")
