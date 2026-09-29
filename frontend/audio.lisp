@@ -1,12 +1,12 @@
 (in-package #:cl-nes/frontend)
 
-(defstruct (audio-queue (:constructor %make-audio-queue (sample-rate)))
-  sample-rate device opened-p (queued-bytes 0))
+(defstruct (audio-queue (:constructor %make-audio-queue (sample-rate octets)))
+  sample-rate device opened-p (queued-bytes 0) octets)
 
 (defun make-audio-queue (&key (sample-rate cl-nes:+nes-default-audio-sample-rate+)
                               (capacity 8192))
-  (declare (ignore capacity))
-  (%make-audio-queue sample-rate))
+  (%make-audio-queue sample-rate
+                     (make-array capacity :element-type '(unsigned-byte 8))))
 
 #+sbcl
 (progn
@@ -72,8 +72,10 @@
   "Queue signed 16-bit little-endian SAMPLES and return queued byte count."
   (unless (audio-queue-opened-p queue) (error "Audio queue is not open."))
   #+sbcl
-  (let ((octets (make-array (* 2 (length samples))
-                            :element-type '(unsigned-byte 8))))
+  (let ((octets (audio-queue-octets queue)))
+    (when (> (* 2 (length samples)) (length octets))
+      (error "Audio queue capacity is too small for ~D samples."
+             (length samples)))
     (loop for sample across samples for i from 0 by 2
           for value = (max -32768
                        (min 32767

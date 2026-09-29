@@ -54,7 +54,23 @@
 (defun gl-framebuffer-upload! (framebuffer palette-index-frame)
   "Convert and upload one NES framebuffer to the bound texture."
   (let ((rgb (gl-framebuffer-rgb framebuffer)))
-    (replace rgb (cl-nes:nes-framebuffer-rgb-octets palette-index-frame))
+    (loop for pixel below cl-nes:+nes-framebuffer-size+
+          for rgb-index from 0 by 3
+          for packed = (aref palette-index-frame pixel)
+          for palette-offset = (* (logand packed #x3F) 3)
+          for emphasis = (ldb (byte 3 6) packed)
+          do (setf (aref rgb rgb-index)
+                   (cl-nes::%nes-emphasized-channel
+                    (aref cl-nes::*nes-default-palette* palette-offset)
+                    emphasis nil t t)
+                   (aref rgb (1+ rgb-index))
+                   (cl-nes::%nes-emphasized-channel
+                    (aref cl-nes::*nes-default-palette* (+ palette-offset 1))
+                    emphasis t nil t)
+                   (aref rgb (+ rgb-index 2))
+                   (cl-nes::%nes-emphasized-channel
+                    (aref cl-nes::*nes-default-palette* (+ palette-offset 2))
+                    emphasis t t nil)))
     #+sbcl
     (sb-sys:with-pinned-objects (rgb)
       (%gl-bind-texture #x0DE1 (gl-framebuffer-texture framebuffer))
