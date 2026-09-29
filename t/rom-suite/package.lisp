@@ -2,6 +2,9 @@
 
 (defpackage #:cl-nes/rom-suite
   (:use #:cl)
+  (:import-from #:cl-nes/frontend
+                #:run-blargg-protocol
+                #:run-screen-protocol)
   (:import-from #:cl-weave
                 #:describe-each
                 #:it

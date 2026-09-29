@@ -80,63 +80,20 @@
 (defun read-bus-range (bus start end)
   (loop for address from start to end collect (cl-nes:bus-read bus address)))
 
-(defun ascii-result (bytes)
-  (string-trim '(#\Space #\Tab #\Return #\Newline #\Null #\.)
-               (coerce (mapcar (lambda (byte)
-                                 (if (<= 32 byte 126) (code-char byte) #\.))
-                               bytes)
-                       'string)))
-
-(defun framebuffer-hash (framebuffer)
-  (let ((hash 2166136261))
-    (loop for byte across framebuffer
-          do (setf hash (logand #xffffffff (* (logxor hash byte) 16777619))))
-    (format nil "~8,'0X" hash)))
-
 (defun run-frames-until (nes max-frames predicate)
   (loop for frame from 1 to max-frames
         do (cl-nes:nes-run-frame/k nes #'identity)
            (when (funcall predicate frame)
              (return frame))))
 
-(defun load-contract-cartridge (path contract)
-  (let ((variant (rom-contract-mapper4-variant contract)))
-    (if variant
-        (cl-nes:load-cartridge path :mapper4-variant variant)
-        (cl-nes:load-cartridge path))))
-
 (defun run-blargg-contract (path contract)
-  (let* ((cartridge (load-contract-cartridge path contract))
-         (nes (cl-nes:make-nes :cartridge cartridge))
-         (last-text "")
-         (frames (run-frames-until
-                  nes (rom-contract-max-frames contract)
-                  (lambda (frame)
-                    (declare (ignore frame))
-                    (let* ((bus (cl-nes:nes-bus nes))
-                           (status (cl-nes:bus-read bus #x6000))
-                           (signature-p (equal '(222 176 97)
-                                               (read-bus-range bus #x6001 #x6003))))
-                      (setf last-text (ascii-result (read-bus-range bus #x6004 #x60ff)))
-                      (or (= status 1)
-                          (and (zerop status) signature-p)
-                          (and (/= status 0) (/= status #x80))
-                          (search "FAILED" (string-upcase last-text))))))))
-    (let* ((bus (cl-nes:nes-bus nes))
-           (signature-ok (equal '(222 176 97)
-                                (read-bus-range bus #x6001 #x6003)))
-           (status (cl-nes:bus-read bus #x6000))
-           (passed (and signature-ok (zerop status))))
-      (list :passed passed :frames frames :text last-text :status status
-            :signature signature-ok
-            :hash (framebuffer-hash (cl-nes:ppu-framebuffer (cl-nes:nes-ppu nes)))))))
+  (run-blargg-protocol path (rom-contract-max-frames contract)
+                       :mapper4-variant
+                       (rom-contract-mapper4-variant contract)))
 
 (defun run-screen-contract (path contract)
-  (let ((nes (cl-nes:make-nes :cartridge (cl-nes:load-cartridge path))))
-    (run-frames-until nes (rom-contract-max-frames contract) (constantly t))
-    (let ((hash (framebuffer-hash (cl-nes:ppu-framebuffer (cl-nes:nes-ppu nes)))))
-      (list :passed (string-equal hash (rom-contract-expected contract))
-            :hash hash :frames (rom-contract-max-frames contract)))))
+  (run-screen-protocol path (rom-contract-max-frames contract)
+                       (rom-contract-expected contract)))
 
 (defun accuracy-result-value-p (value)
   (or (= value 1) (= value #xff) (= value 3)

@@ -30,6 +30,17 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # Temporary local pin until the frontend API is released by cl-glfw3-kit.
+    cl-glfw3-kit = {
+      url = "git+file:///Users/take/ghq/github.com/nerima-lisp/cl-glfw3-kit.git?ref=takeokunn-p6a-nes-frontend-api&rev=b609852e750819b96121e3c4dd56f609576923b1";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    cl-cli = {
+      url = "github:nerima-lisp/cl-cli/v1.4.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     # Dev-time only (outside the dependency layers entirely): structural
     # refactoring input for `paredit inspect check`, never linked into the
     # Lisp image.
@@ -61,6 +72,8 @@
       cl-nix-forge,
       cl-weave,
       cl-host-kit,
+      cl-cli,
+      cl-glfw3-kit,
       paredit-cli,
       nes-test-roms,
       accuracy-coin,
@@ -84,6 +97,41 @@
       testTimeoutSeconds = 300;
       benchmarkTimeoutSeconds = 120;
       timeoutGraceSeconds = 15;
+
+      frontendExecutable =
+        ctx:
+        let
+          glfw = cl-glfw3-kit.packages.${ctx.system}.cl-glfw3-kit;
+          cli = cl-cli.packages.${ctx.system}.cl-cli;
+          sdl2 = ctx.pkgs.SDL2;
+          sharedLibrary = ctx.pkgs.stdenv.hostPlatform.extensions.sharedLibrary;
+          glfwLibrary = "${ctx.pkgs.glfw}/lib/libglfw${sharedLibrary}";
+          sdl2Library =
+            if ctx.pkgs.stdenv.hostPlatform.isDarwin then
+              "${sdl2}/lib/libSDL2-2.0.0.dylib"
+            else
+              "${sdl2}/lib/libSDL2-2.0.so";
+        in
+        ctx.cl.mkExecutable {
+          programPath = "frontend/cl-nes";
+          args = ctx.lispDerivationArgs // {
+            pname = "cl-nes";
+            lispSystem = "cl-nes/frontend";
+            lispDependencies = [
+              ctx.package
+              cli
+              glfw
+            ];
+            nativeLibraries = [
+              ctx.pkgs.glfw
+              sdl2
+            ];
+            env = {
+              CL_GLFW3_KIT_LIBRARY = glfwLibrary;
+              CL_NES_SDL2_LIBRARY = sdl2Library;
+            };
+          };
+        };
     in
     cl-nix-forge.lib.${builtins.head systems}.mkPackageFlake {
       inherit self systems nixpkgs;
@@ -130,18 +178,6 @@
               timeoutSeconds = testTimeoutSeconds;
               killAfterSeconds = timeoutGraceSeconds;
             };
-            rom-suite = (ctx.cl.mkScriptCheck {
-              drv = ctx.package;
-              entryPoint = "run-rom-suite.lisp";
-              name = "cl-nes-rom-suite";
-              timeoutSeconds = 600;
-              killAfterSeconds = timeoutGraceSeconds;
-            }).overrideAttrs (_: {
-              CL_NES_TEST_ROMS = nes-test-roms;
-              CL_NES_ACCURACY_COIN = "${accuracy-coin}/AccuracyCoin.nes";
-              CL_NES_NESTEST_ROM = "${nes-test-roms}/other/nestest.nes";
-              CL_NES_NESTEST_LOG = "${nes-test-roms}/other/nestest.log";
-            });
           }
           // pkgs.lib.optionalAttrs (paredit != null) {
             paredit =
@@ -168,6 +204,16 @@
             lisp = ctx.lispDerivationArgs.lisp;
             lispDependencies = ctx.lispDerivationArgs.lispDependencies;
           };
+        };
+
+      overrideOutputs =
+        ctx:
+        let
+          frontend = frontendExecutable ctx;
+        in
+        {
+          packages.default = frontend;
+          apps.default = ctx.cl.mkApp { drv = frontend; };
         };
     };
 }

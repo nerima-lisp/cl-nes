@@ -170,13 +170,36 @@
   :pathname "benchmark"
   :components ((:file "run-benchmarks")))
 
+(defsystem "cl-nes/frontend"
+  :description "Interactive GLFW/OpenGL/SDL2 frontend for cl-nes."
+  :author "nerima-lisp"
+  :license "MIT"
+  :version "0.1.1"
+  :depends-on ("cl-nes" "cl-glfw3-kit" "cl-cli")
+  :pathname "frontend"
+  :serial t
+  :components
+  ((:file "package")
+   (:file "input")
+   (:file "video")
+   (:file "audio")
+   (:file "persistence")
+   (:file "play")
+   (:file "protocol")
+   (:file "render")
+   (:file "rom-test")
+   (:file "cli"))
+  :build-operation "program-op"
+  :build-pathname "cl-nes"
+  :entry-point "cl-nes/frontend:image-entry-point")
+
 (defsystem "cl-nes/rom-suite"
   :description "Table-driven test-ROM and golden-trace harness for cl-nes."
   :author "nerima-lisp"
   :maintainer "nerima-lisp"
   :license "MIT"
   :version "0.1.1"
-  :depends-on ("cl-nes" "cl-weave")
+  :depends-on ("cl-nes/frontend" "cl-weave")
   :pathname "t/rom-suite"
   :serial t
   :components ((:file "package")

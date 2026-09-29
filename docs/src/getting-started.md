@@ -38,26 +38,34 @@ nes-run-frame/k:
 The continuation runs when the PPU reaches the next frame boundary. The core
 does not choose a windowing or audio library.
 
-## Use the command-line runner
+## Use the frontend CLI
 
-To write one PPM frame:
-
-~~~sh
-sbcl --script run-nes.lisp game.nes
-~~~
-
-This creates frame-0001.ppm, a 256x240 binary PPM image. The optional
-arguments are the frame count and output prefix:
+The frontend executable uses subcommands. Check its version with:
 
 ~~~sh
-sbcl --script run-nes.lisp game.nes 3 capture
+cl-nes --version
 ~~~
 
-For ROM diagnostics, run the suite wrapper:
+To play a ROM interactively:
 
 ~~~sh
-sbcl --script run-rom-suite.lisp game.nes 1000000 mmc3
+cl-nes play game.nes
 ~~~
 
-The wrapper prints one TSV row containing status, mapper, steps, frames, final
-PC, elapsed seconds, checksum, output, error, and ROM path.
+The `play` command accepts `--state-directory PATH` for battery-backed saves
+and `--scale INTEGER` for the logical viewport scale. To render frames without
+opening the interactive frontend:
+
+~~~sh
+cl-nes render game.nes --frames 3 --prefix capture --format png
+~~~
+
+For a bounded ROM diagnostic:
+
+~~~sh
+cl-nes rom-test game.nes --max-frames 1000
+~~~
+
+The diagnostic reports whether the ROM protocol passed and includes its frame,
+status, signature, and text fields. The CLI does not download ROMs; use only a
+legally obtained test corpus.

@@ -190,53 +190,30 @@ mkdocs build --strict -f docs/mkdocs.yml
 The navigation is declared in the configuration so missing pages and broken
 navigation entries are visible during a strict build.
 
-## ROM tools
+## Frontend and ROM diagnostics
 
-run-nes.lisp loads one iNES ROM and writes binary PPM frames:
-
-~~~sh
-sbcl --script run-nes.lisp ROM.nes [frames] [output-prefix]
-~~~
-
-run-rom-suite.lisp executes a ROM for a bounded number of steps and prints TSV
-diagnostics. Its optional third argument selects the mapper 4 variant:
+The `cl-nes` executable provides the frontend commands. Its version is
+available without a ROM:
 
 ~~~sh
-sbcl --script run-rom-suite.lisp ROM.nes [max-steps] [mmc3|mmc6|mmc3-alt]
+cl-nes --version
 ~~~
 
-The wrapper accepts one ROM per invocation. It does not download or bundle ROM
-files; use a self-created, homebrew, public-domain, or otherwise legally
-obtained corpus. A bounded batch run can preserve one TSV row per ROM while
-still failing overall when any ROM does not pass:
+Use `play` for the interactive GLFW/OpenGL frontend, `render` for numbered
+PPM/PNG output, and `rom-test` for a bounded diagnostic protocol:
 
 ~~~sh
-result=0
-found=0
-for rom in roms/*.nes; do
-  [ -f "$rom" ] || continue
-  found=1
-  sbcl --script run-rom-suite.lisp "$rom" 1000000 mmc3 || result=1
-done
-[ "$found" -eq 1 ] || { printf '%s\n' 'no ROMs found' >&2; exit 2; }
-exit "$result"
+cl-nes play ROM.nes [--state-directory PATH] [--scale INTEGER]
+cl-nes render ROM.nes [--frames INTEGER] [--prefix PREFIX] [--format ppm|png]
+cl-nes rom-test ROM.nes [--max-frames INTEGER]
 ~~~
 
-For a manifest-driven run, `run-rom-batch.lisp` keeps the corpus in one
-machine-readable invocation and constructs a fresh NES for each manifest row:
-
-~~~sh
-sbcl --script run-rom-batch.lisp MANIFEST [max-steps] [frames] [mmc3|mmc6|mmc3-alt]
-~~~
-
-The manifest has one ROM path per line. Blank lines and lines beginning with
-`#` are ignored. The runner emits a TSV header followed by one row per ROM;
-`frame` means that the requested number of frames was reached, while
-`stopped`, `limit`, `unsupported`, `invalid`, and `error` identify other
-outcomes. It exits 0 only when every row is `frame`, 1 when any row is another
-outcome, and 2 for a malformed command or empty/unreadable manifest. Keep
-manifests and downloaded/generated ROMs outside the repository unless their
-redistribution rights are explicit.
+The frontend does not download or bundle ROM files. Use a self-created,
+homebrew, public-domain, or otherwise legally obtained corpus. A bounded ROM
+diagnostic is a startup/protocol smoke check, not evidence of complete
+instruction, timing, audio, mapper, or game-level compatibility. Keep
+generated frames, save files, and test corpora outside the checkout unless
+their redistribution rights are explicit.
 
 Record the source URL or repository, revision, per-file SHA-256, and applicable
 license or permission next to any corpus used for repeatable validation. A
@@ -247,19 +224,14 @@ it does not establish instruction, timing, audio, mapper, or game-level
 compatibility. Use the focused emulator tests and ROM-specific diagnostic
 protocols for those claims.
 
-Select `mmc3`, `mmc6`, or `mmc3-alt` for mapper 4 ROMs as appropriate. The
-reported status is the result of the bounded invocation (`pass`, `fail`,
-`limit`, `no-result`, `unsupported`, `invalid`, or `error`); a corpus result
-does not imply compatibility with every NES ROM.
-
 Development-only synthetic ROMs can exercise supported mapper IDs and mapper 4
 variants without storing ROM files in the repository. Keep those generated
-artifacts outside the checkout and use the same bounded runner and TSV output
-as for a legally obtained corpus. Mapper 5 cases that access PRG-RAM must first
+artifacts outside the checkout and use the same bounded diagnostic command as
+for a legally obtained corpus. Mapper 5 cases that access PRG-RAM must first
 unlock it with the mapper's protection registers; a locked read is a valid
 hardware state, not evidence that the ROM loader failed.
 
 The validation corpus for this refactor was kept outside the checkout and
 covered every mapper named in the compatibility reference, including
-mirroring, trainer, and PRG-RAM variants. Preserve the per-ROM TSV output when
-recording a comparable validation run.
+mirroring, trainer, and PRG-RAM variants. Preserve the per-ROM diagnostic output
+when recording a comparable validation run.

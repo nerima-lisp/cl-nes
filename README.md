@@ -89,38 +89,23 @@ The flake currently supports x86_64-linux and aarch64-darwin. aarch64-linux
 and x86_64-darwin are left out; neither was covered by this repository's own
 tooling in a way it could verify.
 
-run-nes.lisp writes rendered frames as binary PPM images:
+The frontend executable is `cl-nes`. It exposes the interactive player,
+offline rendering, and bounded ROM diagnostics as subcommands. `--version`
+prints the frontend version and exits:
 
 ~~~sh
-sbcl --script run-nes.lisp ROM.nes [frames] [output-prefix]
+cl-nes --version
+cl-nes play ROM.nes [--state-directory PATH] [--scale INTEGER]
+cl-nes render ROM.nes [--frames INTEGER] [--prefix PREFIX] [--format ppm|png]
+cl-nes rom-test ROM.nes [--max-frames INTEGER]
 ~~~
 
-run-rom-suite.lisp executes one ROM and emits TSV diagnostics. Mapper 4
-accepts an explicit mmc3, mmc6, or mmc3-alt variant:
-
-~~~sh
-sbcl --script run-rom-suite.lisp ROM.nes [max-steps] [mmc3|mmc6|mmc3-alt]
-~~~
-
-The runner processes one ROM per invocation and does not download or distribute
-ROM files. Use a self-created, homebrew, public-domain, or otherwise legally
-obtained corpus, and inspect each TSV status; bounded results are not a claim
-of universal ROM compatibility. For a manifest-driven smoke run, use the batch
-runner:
-
-~~~sh
-sbcl --script run-rom-batch.lisp MANIFEST [max-steps] [frames] [mmc3|mmc6|mmc3-alt]
-~~~
-
-The manifest contains one ROM path per line; blank lines and lines beginning
-with `#` are ignored. The batch runner creates a fresh NES for each path,
-emits one TSV row per ROM, returns 0 only when every row reaches the requested
-frame count, returns 1 for a ROM status such as `limit`, `invalid`, or
-`unsupported`, and returns 2 for an invalid command or empty manifest. Reaching
-a frame is a bounded startup smoke check, not a claim of complete game
-compatibility or correctness. The full manifest and legal corpus workflow is
-documented in the
-[development guide](docs/src/project/development.md#rom-tools).
+`play` opens the GLFW/OpenGL window, restores battery-backed saves from the
+state directory, and writes them back on exit. `render` writes numbered PPM or
+PNG frames. `rom-test` runs the bounded diagnostic protocol and reports its
+status. These commands do not download or distribute ROM files; use a
+self-created, homebrew, public-domain, or otherwise legally obtained corpus.
+A bounded result is a smoke check, not a claim of universal ROM compatibility.
 
 ## Contributing
 
