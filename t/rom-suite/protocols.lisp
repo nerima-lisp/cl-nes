@@ -30,7 +30,7 @@
                  :failure-text "status 1; failed while running test 2 of 5")
                (:id "cpu-dummy-reads" :path "cpu_dummy_reads/cpu_dummy_reads.nes"
                  :protocol :ram-result :expected 0 :result-address #x6000
-                 :running-value #x80 :max-frames 60 :state :pass
+                 :max-frames 60 :state :pass
                  :failure-text "status $6000; 0 means PASSED")
                (:id "cpu-dummy-writes" :path "cpu_dummy_writes/cpu_dummy_writes_oam.nes"
                  :protocol :blargg :expected 0 :max-frames 360 :state :pass
@@ -97,7 +97,7 @@
        :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; Passed")
       (:id "cpu-dummy-reads-subrom" :path "cpu_dummy_reads/cpu_dummy_reads.nes"
        :protocol :ram-result :expected 0 :result-address #x6000
-       :running-value #x80 :max-frames 120 :state :pass
+       :max-frames 120 :state :pass
        :failure-text "status $6000; 0 means PASSED")
       (:id "cpu-reset-ram" :path "cpu_reset/ram_after_reset.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
