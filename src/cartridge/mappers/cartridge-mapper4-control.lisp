@@ -14,7 +14,7 @@
       ;; is reloaded from zero.  The iNES header has no revision/submapper bit
       ;; for this distinction, so MMC6 behavior is an explicit cartridge option.
       (when (or (not (member (cartridge-mapper4-variant cartridge)
-                             '(:mmc6 :mmc3-alt)))
+                             '(:mmc3-rev-a :mmc6 :mmc3-alt)))
                 reload-p
                 (plusp counter))
         (setf (cartridge-mapper4-irq-pending-p cartridge) t)))))

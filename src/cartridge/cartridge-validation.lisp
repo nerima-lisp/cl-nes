@@ -5,9 +5,9 @@
     (error 'unsupported-mapper :number mapper)))
 
 (defun %ensure-valid-mapper4-variant! (mapper4-variant)
-  (unless (member mapper4-variant '(:mmc3 :mmc6 :mmc3-alt))
+  (unless (member mapper4-variant '(:mmc3 :mmc3-rev-a :mmc6 :mmc3-alt))
     (error 'invalid-rom
-           :reason "MMC3 variant must be :MMC3, :MMC6, or :MMC3-ALT")))
+           :reason "MMC3 variant must be :MMC3, :MMC3-REV-A, :MMC6, or :MMC3-ALT")))
 
 (defun %ensure-valid-prg-ram-size! (prg-ram-size)
   (unless (and (integerp prg-ram-size) (>= prg-ram-size 0))

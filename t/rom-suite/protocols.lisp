@@ -207,7 +207,7 @@
                  :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
                  :failure-text "result $F8; 1 means PASSED")
                (:id "blargg-apu-02" :path "blargg_apu_2005.07.30/02.len_table.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "blargg-apu-03" :path "blargg_apu_2005.07.30/03.irq_flag.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
@@ -280,9 +280,9 @@
                 :failure-text "result $F8; 1 means PASSED"
                 :mapper4-variant :mmc3)
                (:id "mmc3-irq-tests-rev-a" :path "mmc3_irq_tests/5.MMC3_rev_A.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :pass
                 :failure-text "result $F8; 1 means PASSED"
-                :mapper4-variant :mmc3)
+                :mapper4-variant :mmc3-rev-a)
                (:id "mmc3-irq-tests-rev-b" :path "mmc3_irq_tests/6.MMC3_rev_B.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :pass
                 :failure-text "result $F8; 1 means PASSED"
