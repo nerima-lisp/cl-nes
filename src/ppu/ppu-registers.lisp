@@ -102,7 +102,7 @@
           (ppu-nmi-pending-p ppu) nil))
   ppu)
 
-(defun %ppu-write-control-register! (ppu value)
+(defun %ppu-write-control-register! (ppu value &optional cpu-access-p)
   (let ((was-enabled (logbitp 7 (ppu-control ppu))))
     (setf (ppu-control ppu) value
           (ppu-temporary-address ppu)
@@ -111,7 +111,7 @@
     (when (and (not was-enabled)
                (logbitp 7 value)
                (logbitp 7 (ppu-status ppu)))
-      (%request-nmi! ppu))
+      (%request-nmi! ppu (if cpu-access-p 6 3)))
     (when (and was-enabled (not (logbitp 7 value)))
       (%cancel-nmi-delay! ppu))))
 
@@ -135,11 +135,11 @@
   (%ppu-vram-increment ppu)
   (%ppu-clock-address-a12! ppu 1))
 
-(defun ppu-write-register! (ppu register value)
+(defun ppu-write-register! (ppu register value &optional cpu-access-p)
   (setf value (logand value #xFF))
   (%ppu-drive-decay! ppu value)
   (case (logand register 7)
-    (0 (%ppu-write-control-register! ppu value))
+    (0 (%ppu-write-control-register! ppu value cpu-access-p))
     (1 (%ppu-write-mask-register! ppu value))
     (3 (setf (ppu-oam-address ppu) value))
     (4 (%ppu-write-oam-data-register! ppu value))

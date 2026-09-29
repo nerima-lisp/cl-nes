@@ -176,7 +176,7 @@
       ((< address #x2000)
        (setf (aref (bus-ram bus) (mod address #x800)) value))
       ((< address #x4000)
-       (ppu-write-register! (bus-ppu bus) (logand address 7) value))
+       (ppu-write-register! (bus-ppu bus) (logand address 7) value t))
       ((and (<= #x4000 address #x4013))
        (apu-write-register! (bus-apu bus) address value))
       ((= address #x4014)
