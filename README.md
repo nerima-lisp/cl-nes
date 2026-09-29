@@ -97,7 +97,7 @@ prints the frontend version and exits:
 cl-nes --version
 cl-nes play ROM.nes [--state-directory PATH] [--scale INTEGER]
 cl-nes render ROM.nes [--frames INTEGER] [--prefix PREFIX] [--format ppm|png]
-cl-nes rom-test ROM.nes [--max-frames INTEGER]
+cl-nes rom-test ROM.nes [--max-frames INTEGER] [--mapper4-variant mmc3|mmc6|mmc3-alt]
 ~~~
 
 `play` opens the GLFW/OpenGL window, restores battery-backed saves from the

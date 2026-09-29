@@ -63,7 +63,7 @@ cl-nes render game.nes --frames 3 --prefix capture --format png
 For a bounded ROM diagnostic:
 
 ~~~sh
-cl-nes rom-test game.nes --max-frames 1000
+cl-nes rom-test game.nes --max-frames 1000 --mapper4-variant mmc3
 ~~~
 
 The diagnostic reports whether the ROM protocol passed and includes its frame,

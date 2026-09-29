@@ -83,7 +83,7 @@ zero-counter reload suppression behavior.
 The command-line wrapper handles the framebuffer-to-PPM conversion:
 
 ~~~sh
-sbcl --script run-nes.lisp game.nes 10 frame
+cl-nes render game.nes --frames 10 --prefix frame --format ppm
 ~~~
 
 It writes frame-0001.ppm through frame-0010.ppm using the standard 64-entry

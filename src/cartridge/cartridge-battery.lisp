@@ -21,5 +21,10 @@
     (unless (= expected actual)
       (error 'cartridge-battery-error :reason :size-mismatch
              :expected-size expected :actual-size actual))
-    (replace (cartridge-prg-ram cartridge) octets))
+    (replace (cartridge-prg-ram cartridge) octets)
+    (set-cartridge-battery-dirty-p! cartridge nil))
+  cartridge)
+
+(defun cartridge-clear-battery-dirty! (cartridge)
+  (set-cartridge-battery-dirty-p! cartridge nil)
   cartridge)

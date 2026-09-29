@@ -14,7 +14,10 @@
                                        :name (pathname-name (pathname rom-path)))
                         (pathname state-directory)))
          (audio (make-audio-queue :sample-rate cl-nes:+nes-default-audio-sample-rate+
-                                  :capacity 8192)))
+                                  :capacity 8192))
+         (audio-buffer (cl-nes:make-nes-audio-buffer :size 2048))
+         (last-battery-save (get-internal-real-time))
+         (battery-save-interval (* 3 internal-time-units-per-second)))
     (when (and (cl-nes:cartridge-battery-backed-p cartridge)
                (probe-file battery-path))
       (cl-nes:cartridge-restore-battery! cartridge (restore-octets battery-path)))
@@ -27,48 +30,51 @@
                    (rate (make-rate-controller)))
                (audio-queue-open! audio)
                (unwind-protect
-                    (cl-glfw3-kit:for-each-frame (frame window)
-                      (declare (ignore frame))
-                      (let ((p (cl-glfw3-kit:key-pressed-p window :p))
-                            (r (cl-glfw3-kit:key-pressed-p window :r)))
-                        (when (and p (not previous-p))
-                          (setf paused (not paused)))
-                        (when (and r (not previous-r))
-                          (setf reset-requested t))
-                        (setf previous-p p previous-r r))
-                      (when reset-requested
-                        (cl-nes:nes-reset! nes)
-                        (setf reset-requested nil))
-                      (unless paused
-                        (cl-nes:controller-set-buttons!
-                         controller-1 (logior (keyboard-button-mask window)
-                                              (glfw-gamepad-mask 0)))
-                        (cl-nes:controller-set-buttons!
-                         controller-2 (glfw-gamepad-mask 1))
-                        (let ((samples (make-array 1024 :adjustable t
-                                                   :fill-pointer 0))
-                              (sample-phase 0))
-                          (cl-nes:nes-run-frame/k
-                           nes
-                           (lambda (pixels)
-                             (gl-framebuffer-upload! framebuffer pixels))
-                           :cycle-hook
-                           (lambda ()
-                             (incf sample-phase cl-nes:+nes-default-audio-sample-rate+)
-                             (loop while (>= sample-phase
-                                              cl-nes:+nes-ntsc-cpu-frequency+)
-                                   do (decf sample-phase
-                                            cl-nes:+nes-ntsc-cpu-frequency+)
-                                      (vector-push-extend
-                                       (cl-nes:apu-mix (cl-nes:nes-apu nes))
-                                       samples))))
-                          (when (plusp (length samples))
-                            (audio-queue-push! audio samples))))
-                      (rate-controller-update! rate (audio-queue-size audio))
-                      (when (plusp (rate-controller-delay rate))
-                        (sleep (rate-controller-delay rate))))
+                    (labels ((save-battery-if-dirty ()
+                               (when (and (cl-nes:cartridge-battery-backed-p cartridge)
+                                          (cl-nes:cartridge-battery-dirty-p cartridge)
+                                          (>= (- (get-internal-real-time)
+                                                 last-battery-save)
+                                              battery-save-interval))
+                                 (atomic-save-octets battery-path
+                                                      (cl-nes:cartridge-save-battery cartridge))
+                                 (cl-nes:cartridge-clear-battery-dirty! cartridge)
+                                 (setf last-battery-save (get-internal-real-time))))
+                             (frame-continuation (pixels)
+                               (gl-framebuffer-upload! framebuffer pixels))
+                             (audio-continuation (buffer)
+                               (audio-queue-push!
+                                audio (cl-nes:nes-audio-buffer-samples buffer))))
+                      (cl-glfw3-kit:for-each-frame (frame window)
+                        (declare (ignore frame))
+                        (let ((p (cl-glfw3-kit:key-pressed-p window :p))
+                              (r (cl-glfw3-kit:key-pressed-p window :r)))
+                          (when (and p (not previous-p))
+                            (setf paused (not paused)))
+                          (when (and r (not previous-r))
+                            (setf reset-requested t))
+                          (setf previous-p p previous-r r))
+                        (when reset-requested
+                          (cl-nes:nes-reset! nes)
+                          (setf reset-requested nil))
+                        (unless paused
+                          (cl-nes:controller-set-buttons!
+                           controller-1 (logior (keyboard-button-mask window)
+                                                (glfw-gamepad-mask 0)))
+                          (cl-nes:controller-set-buttons!
+                           controller-2 (glfw-gamepad-mask 1))
+                          (cl-nes:nes-run-frames/k
+                           nes 1 #'frame-continuation
+                           :audio-buffer audio-buffer
+                           :audio-continuation #'audio-continuation))
+                        (rate-controller-update! rate (audio-queue-size audio))
+                        (when (plusp (rate-controller-delay rate))
+                          (sleep (rate-controller-delay rate)))
+                        (save-battery-if-dirty)))
                  (audio-queue-close! audio)))))
-      (when (cl-nes:cartridge-battery-backed-p cartridge)
+      (when (and (cl-nes:cartridge-battery-backed-p cartridge)
+                 (cl-nes:cartridge-battery-dirty-p cartridge))
         (atomic-save-octets battery-path
-                            (cl-nes:cartridge-save-battery cartridge))))
+                            (cl-nes:cartridge-save-battery cartridge))
+        (cl-nes:cartridge-clear-battery-dirty! cartridge)))
     nes))

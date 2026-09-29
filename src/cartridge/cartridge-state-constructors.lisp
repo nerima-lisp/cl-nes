@@ -113,6 +113,7 @@
     (set-cartridge-prg-rom! cartridge prg-rom)
     (set-cartridge-chr-rom! cartridge chr-rom)
     (set-cartridge-prg-ram! cartridge prg-ram)
+    (set-cartridge-battery-dirty-p! cartridge nil)
     (set-cartridge-mapper! cartridge mapper)
     (set-cartridge-submapper! cartridge submapper)
     (set-cartridge-bus-conflict-p! cartridge bus-conflict-p)

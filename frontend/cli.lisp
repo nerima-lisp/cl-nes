@@ -10,15 +10,26 @@
         0)
     (error (condition)
       (format (cl-cli:invocation-stderr invocation) "cl-nes render: ~A~%" condition)
-      1)))
+      70)))
 
 (defun %rom-test-handler (invocation)
   (handler-case
-      (run-rom-test (positional-value invocation :rom)
-                    (option-value invocation :max-frames))
+      (let ((variant (option-value invocation :mapper4-variant)))
+        (if variant
+            (let ((result (run-blargg-protocol
+                           (positional-value invocation :rom)
+                           (option-value invocation :max-frames)
+                           :mapper4-variant (intern (string-upcase variant) :keyword))))
+              (format t "passed=~A frames=~A status=~A signature=~A text=~A~%"
+                      (getf result :passed) (getf result :frames)
+                      (getf result :status) (getf result :signature)
+                      (getf result :text))
+              (if (getf result :passed) 0 1))
+            (run-rom-test (positional-value invocation :rom)
+                          (option-value invocation :max-frames))))
     (error (condition)
       (format (cl-cli:invocation-stderr invocation) "cl-nes rom-test: ~A~%" condition)
-      1)))
+      70)))
 
 (defun make-cli-app ()
   (make-app
@@ -38,10 +49,16 @@
                (make-option :key :scale :name "scale"
                                    :kind :value :type :integer :min 1 :default 3))
      :handler (lambda (invocation)
-                (run-play (positional-value invocation :rom)
-                          :state-directory (option-value invocation :state-directory)
-                          :scale (option-value invocation :scale))
-                0))
+                (handler-case
+                    (progn
+                      (run-play (positional-value invocation :rom)
+                                :state-directory (option-value invocation :state-directory)
+                                :scale (option-value invocation :scale))
+                      0)
+                  (error (condition)
+                    (format (cl-cli:invocation-stderr invocation)
+                            "cl-nes play: ~A~%" condition)
+                    70))))
     (make-command
      :name "render" :description "Render ROM frames to PPM or PNG files."
      :positionals (list (make-positional :key :rom :name "ROM" :required-p t))
@@ -54,9 +71,11 @@
      :handler #'%render-handler)
     (make-command
      :name "rom-test" :description "Run one ROM using the $6000 test protocol."
-     :positionals (list (make-positional :key :rom :required-p t))
+     :positionals (list (make-positional :key :rom :name "ROM" :required-p t))
      :options (list (make-option :key :max-frames :name "max-frames" :kind :value
-                                 :type :integer :min 1 :default 360))
+                                 :type :integer :min 1 :default 360)
+                    (make-option :key :mapper4-variant :name "mapper4-variant"
+                                 :kind :value :choices '("mmc3" "mmc6" "mmc3-alt")))
      :handler #'%rom-test-handler))))
 
 (defun main (&optional argv)

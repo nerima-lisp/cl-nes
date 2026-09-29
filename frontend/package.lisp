@@ -36,12 +36,3 @@
 (in-package #:cl-nes/frontend)
 
 (defparameter *frontend-version* "0.1.1")
-
-(defconstant +button-a-mask+ cl-nes:+button-a+)
-(defconstant +button-b-mask+ cl-nes:+button-b+)
-(defconstant +button-select-mask+ cl-nes:+button-select+)
-(defconstant +button-start-mask+ cl-nes:+button-start+)
-(defconstant +button-up-mask+ cl-nes:+button-up+)
-(defconstant +button-down-mask+ cl-nes:+button-down+)
-(defconstant +button-left-mask+ cl-nes:+button-left+)
-(defconstant +button-right-mask+ cl-nes:+button-right+)

@@ -30,6 +30,8 @@
    #:cartridge-mapper4-variant
    #:cartridge-mirroring
    #:cartridge-battery-backed-p
+   #:cartridge-battery-dirty-p
+   #:cartridge-clear-battery-dirty!
    #:cartridge-four-screen-p
    #:cartridge-chr-writable-p
    #:cartridge-read-prg

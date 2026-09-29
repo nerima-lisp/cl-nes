@@ -166,7 +166,9 @@
         (when offset
           (setf (aref (cartridge-prg-ram cartridge)
                       (mod offset (length (cartridge-prg-ram cartridge))))
-                (logand value #xFF))))))
+                (logand value #xFF)
+                (cartridge-battery-dirty-p cartridge)
+                (and (cartridge-battery-backed-p cartridge) t))))))
   value)
 
 (defun cartridge-read-chr (cartridge address &optional (sprite-p t))

@@ -93,7 +93,7 @@
   nil)
 
 (defun %make-cartridge-instance ()
-  (make-array 17 :initial-element nil))
+  (make-array 18 :initial-element nil))
 
 (%install-vector-accessor-pairs
  '((cartridge-prg-rom set-cartridge-prg-rom! 0)
@@ -112,4 +112,5 @@
    (cartridge-mapper-state set-cartridge-mapper-state! 13)
    (cartridge-submapper set-cartridge-submapper! 14)
    (cartridge-bus-conflict-p set-cartridge-bus-conflict-p! 15)
-   (cartridge-cpu-clock-required-p set-cartridge-cpu-clock-required-p! 16)))
+   (cartridge-cpu-clock-required-p set-cartridge-cpu-clock-required-p! 16)
+   (cartridge-battery-dirty-p set-cartridge-battery-dirty-p! 17)))

@@ -111,20 +111,9 @@ Run coverage separately when its generated report is needed:
 sbcl --noinform --non-interactive --load run-coverage.lisp --quit
 ~~~
 
-Run the benchmark suite (two warmup batches, ten samples, 60 frames per
-sample, median/min/max, and GC outside the measured region) with:
-
-~~~sh
-nix run .#bench
-~~~
-
-The benchmark reports two synthetic workloads: an NROM cartridge with
-`PPUMASK=$18` so background and sprite rendering are enabled, and an MMC3
-cartridge that performs CHR/PRG bank writes while its scanline IRQ is armed.
-Each workload reports milliseconds per frame and bytes consed per frame.
-`bench.yml` runs these diagnostics only by manual dispatch or on the weekly
-schedule; they are not a pull-request gate. `ci.yml` is the single required
-GitHub Actions job and runs `nix flake check` on `ubuntu-latest`.
+Performance measurements are documented separately when a reproducible,
+repository-supported benchmark command is available. `ci.yml` is the single
+required GitHub Actions job and runs `nix flake check` on `ubuntu-latest`.
 
 Focused cl-weave runs use the same launcher and optional environment
 variables:
