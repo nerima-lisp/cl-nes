@@ -108,8 +108,8 @@
                 :protocol :blargg :expected 0 :max-frames 360 :state :pass
                 :failure-text "status 0; measured pass")
                (:id "ppu-vbl-02" :path "ppu_vbl_nmi/rom_singles/02-vbl_set_time.nes"
-                :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
-                :failure-text "status 128; vbl_set_time failed")
+                :protocol :blargg :expected 0 :max-frames 360 :state :pass
+                :failure-text "status 0; measured pass")
                (:id "ppu-vbl-03" :path "ppu_vbl_nmi/rom_singles/03-vbl_clear_time.nes"
                 :protocol :blargg :expected 0 :max-frames 360 :state :pass
                 :failure-text "status 0; measured pass")
