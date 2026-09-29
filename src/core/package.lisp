@@ -123,6 +123,8 @@
    #:nes-load-cartridge!
    #:nes-initialize!
    #:nes-reset!
+   #:nes-save-state
+   #:nes-load-state
    #:nes-step/k
    #:nes-run-frame/k
    #:nes-run-frames/k

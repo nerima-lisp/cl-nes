@@ -37,6 +37,8 @@ The mapper4-variant values are :mmc3 (default), :mmc6, and :mmc3-alt.
 | nes-cpu, nes-bus, nes-ppu, nes-apu | Access the connected devices. |
 | nes-load-cartridge! | Install a cartridge and reset the connected machine. |
 | nes-reset! | Reset the machine. |
+| nes-save-state | Return a deterministic octet vector for the complete machine state. |
+| nes-load-state | Restore a machine from a save-state octet vector. Signals invalid-savestate for malformed input. |
 | nes-step/k | Execute one CPU instruction and call a continuation with cycle count. |
 | nes-run-frame/k | Run until a frame is ready and call a continuation with the framebuffer. |
 | nes-run-frames/k | Run frames and fill reusable fixed-size audio buffers through CPS. |
@@ -143,6 +145,8 @@ step.
 
 ## Conditions
 
-The exported condition types are nes-error, invalid-rom, and
-unsupported-mapper. Their accessors are invalid-rom-reason and
-unsupported-mapper-number. See [Conditions](conditions.md) for handling examples.
+The exported condition types are nes-error, invalid-rom, unsupported-mapper,
+and invalid-savestate. Their accessors are invalid-rom-reason,
+unsupported-mapper-number, and invalid-savestate-reason. Save states include a
+format magic and version; truncated, mismatched, or malformed input signals
+invalid-savestate.

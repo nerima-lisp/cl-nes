@@ -7,7 +7,9 @@
          (apu (or apu (make-apu)))
          (bus nil))
     (ppu-load-cartridge! ppu cartridge)
-    (setf bus (%make-bus cartridge ppu controller-1 controller-2 apu))
+    (setf bus (%make-bus :cartridge cartridge :ppu ppu
+                          :controller-1 controller-1 :controller-2 controller-2
+                          :apu apu))
     ;; DMC reads use the same address decoder as the CPU, including PRG-ROM,
     ;; PRG-RAM and open-bus behavior.
     (apu-set-memory-reader!

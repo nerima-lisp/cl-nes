@@ -90,6 +90,7 @@
    (cycle-parity 0 fixnum apu-cycle-parity)
    (memory-reader nil nil apu-memory-reader))
   :reset-preserve (memory-reader)
+  :exclude (memory-reader)
   :console-reset apu-console-reset!
   :console-reset-values (((frame-reset-delay) 3))
   :console-preserve

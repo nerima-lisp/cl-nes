@@ -30,6 +30,20 @@ The controller strobe and serial reads are driven through bus writes and reads
 at the normal controller addresses. The first eight reads return the latched
 button bits; subsequent reads return the controller's post-shift value.
 
+## Save and restore a machine
+
+Save states are deterministic octet vectors and can be restored into the same
+machine instance:
+
+~~~lisp
+(let ((state (cl-nes:nes-save-state nes)))
+  ;; Store STATE as binary data, then later:
+  (cl-nes:nes-load-state nes state))
+~~~
+
+`invalid-savestate` is signaled for truncated data, an unknown magic, an
+unsupported version, or malformed sections.
+
 ## Drive controller input at frame boundaries
 
 The `:input-continuation` keyword of `nes-run-frame/k` and `nes-run-frames/k`

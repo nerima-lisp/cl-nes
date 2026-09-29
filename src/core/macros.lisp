@@ -93,7 +93,7 @@
      ,@(when documentation (list documentation))))
 
 (defmacro define-hardware-state
-    (name slots &key constructor reset reset-preserve console-reset exclude
+    (name slots &key constructor predicate reset reset-preserve console-reset exclude
                               console-preserve console-reset-values)
   "Define a typed hardware state and its generated reset operations.
 
@@ -108,8 +108,9 @@ ordered source for future serialization."
         (console-reset (or console-reset
                            (intern (format nil "~A-CONSOLE-RESET!" name)
                                    (symbol-package name))))
-        (predicate (intern (format nil "~A-P" name)
-                           (symbol-package name))))
+        (predicate (or predicate
+                       (intern (format nil "~A-P" name)
+                               (symbol-package name)))))
     (labels ((slot-name (slot) (first slot))
              (slot-default (slot) (second slot))
              (slot-type (slot) (third slot))
@@ -139,9 +140,9 @@ ordered source for future serialization."
                                    (symbol-package name)))
              (state-reader (intern (format nil "%~A-READ-STATE" name)
                                    (symbol-package name)))
-             (state-save (intern (format nil "~A-SAVE-STATE" name)
+             (state-save (intern (format nil "~A-STATE-SAVE" name)
                                  (symbol-package name)))
-             (state-load (intern (format nil "~A-LOAD-STATE" name)
+             (state-load (intern (format nil "~A-STATE-LOAD" name)
                                  (symbol-package name)))
              (values (mapcar (lambda (slot)
                                (declare (ignore slot))

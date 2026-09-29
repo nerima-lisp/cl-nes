@@ -59,6 +59,7 @@
      (:file "bus-state")
      (:file "bus") (:file "nes-state") (:file "nes")
      (:file "nes-timing") (:file "nes-audio-data")
+     (:file "nes-savestate")
      (:file "nes-execution") (:file "nes-output")
      (:file "nes-protocol"))))
   :in-order-to ((test-op (test-op "cl-nes/test"))))
@@ -157,7 +158,8 @@
      (:file "coverage-nes-lifecycle-surface") (:file "coverage-nes-step-runtime")
      (:file "coverage-nes-irq-runtime") (:file "mapper69-irq-runtime")
      (:file "coverage-nes-nmi-runtime")
-     (:file "public-api-nes-runtime") (:file "output-contracts"))))
+     (:file "public-api-nes-runtime") (:file "savestate-contracts")
+     (:file "output-contracts"))))
   :perform
   (test-op (operation component)
     (declare (ignore operation))

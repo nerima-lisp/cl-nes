@@ -22,7 +22,7 @@
                         :controller-2 controller-2
                         :apu apu))
          (cpu (make-cpu)))
-    (let ((nes (%make-nes cpu bus ppu (bus-apu bus))))
+    (let ((nes (%make-nes :cpu cpu :bus bus :ppu ppu :apu (bus-apu bus))))
       (when cartridge
         (%nes-reset-cpu-and-clock! nes))
       nes)))
