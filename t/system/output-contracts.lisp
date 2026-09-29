@@ -56,6 +56,23 @@
                (expect (aref bytes 49) :to-be 127)))
         (when (probe-file pathname)
           (delete-file pathname)))))
+  (it "validates WAV sample rates"
+    (let ((pathname (output-test-pathname "wav")))
+      (unwind-protect
+           (progn
+             (expect (handler-case
+                         (progn (nes-write-wav pathname #(0.0f0) :sample-rate 0)
+                                nil)
+                       (error () t))
+                     :to-be t)
+             (expect (handler-case
+                         (progn
+                           (nes-write-wav pathname #(0.0f0) :sample-rate #x100000000)
+                           nil)
+                       (error () t))
+                     :to-be t))
+        (when (probe-file pathname)
+          (delete-file pathname)))))
   (it "fills and reuses a fixed-size audio buffer while running frames"
     (let ((nes (make-nes :cartridge (make-fixture-cartridge)))
           (frames 0)
