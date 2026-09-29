@@ -107,7 +107,7 @@
 
 (defun %bus-advance-dma-cycle! (bus)
   (setf (bus-dma-cycle-preempted-p bus) nil)
-  (let ((dmc-get-p (= (bus-dmc-dma-remaining bus) 1)))
+  (let ((dmc-active-p (plusp (bus-dmc-dma-remaining bus))))
     (when (plusp (bus-dmc-dma-remaining bus))
       (when (> (bus-dmc-dma-remaining bus) 1)
         (%bus-dma-dummy-read! bus))
@@ -121,7 +121,7 @@
          (%bus-dma-dummy-read! bus)
          (setf (bus-oam-dma-stage bus) :get))
         (:get
-         (if dmc-get-p
+         (if dmc-active-p
              (setf (bus-dma-cycle-preempted-p bus) t)
              (progn
                (let ((address (+ (ash (bus-oam-dma-page bus) 8)

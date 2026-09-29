@@ -68,7 +68,7 @@
       (expect (aref (ppu-oam (cl-nes::bus-ppu bus)) #x00) :to-be 0)
       (expect (aref (ppu-oam (cl-nes::bus-ppu bus)) #xFF) :to-be #xFF)))
 
-  (it "lets a DMC get preempt an OAM get without adding a standalone stall"
+  (it "lets DMC phases preempt OAM gets while OAM puts continue"
     (let* ((cartridge (make-fixture-cartridge))
            (nes (make-nes :cartridge cartridge))
            (bus (cl-nes::nes-bus nes))
@@ -87,4 +87,4 @@
        (lambda () (incf clock-count)))
       (expect (cl-nes::bus-oam-dma-active-p bus) :to-be nil)
       (expect (cl-nes::bus-dmc-dma-remaining bus) :to-be 0)
-      (expect clock-count :to-be 514))))
+      (expect clock-count :to-be 516))))
