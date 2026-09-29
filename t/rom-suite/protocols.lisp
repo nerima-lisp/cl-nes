@@ -174,7 +174,7 @@
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-overflow-2" :path "sprite_overflow_tests/2.Details.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-overflow-3" :path "sprite_overflow_tests/3.Timing.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
