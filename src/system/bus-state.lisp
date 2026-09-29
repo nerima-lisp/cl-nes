@@ -15,6 +15,7 @@
    (oam-dma-stage :halt)
    (oam-dma-alignment-p nil nil)
    (dmc-dma-remaining 0 fixnum)
+   (dmc-read-replay-p nil nil)
    (dma-cycle-preempted-p nil nil)
   ;; The last CPU bus operation is repeated on DMC halt/dummy cycles.
    (last-cpu-access-kind :read)

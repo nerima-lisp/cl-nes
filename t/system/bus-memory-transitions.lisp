@@ -51,6 +51,28 @@
       (expect (cl-nes::apu-dmc-sample-buffer-empty-p dmc) :to-be nil)
       (expect (cl-nes::bus-take-dma-stall-cycles! bus) :to-be 4)))
 
+  (it "replays a CPU PPU read after DMC dummy reads"
+    (let* ((nes (make-nes))
+           (bus (cl-nes::nes-bus nes))
+           (ppu (cl-nes::nes-ppu nes))
+           (apu (cl-nes::nes-apu nes))
+           (dmc (cl-nes::apu-dmc apu)))
+      (setf (aref (cl-nes::ppu-nametable ppu) 0) #x22
+            (aref (cl-nes::ppu-nametable ppu) 1) #x33
+            (aref (cl-nes::ppu-nametable ppu) 2) #x44
+            (cl-nes::ppu-vram-address ppu) #x2000
+            (cl-nes::ppu-read-buffer ppu) #x11
+            (cl-nes::bus-cpu-access-active-p bus) t
+            (cl-nes::bus-cpu-access-nes bus) nes
+            (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bytes-remaining dmc) 1
+            (cl-nes::apu-dmc-timer dmc) 0)
+      (expect (bus-read bus #x2007) :to-be #x33)
+      (expect (cl-nes::ppu-read-buffer ppu) :to-be #x44)
+      (expect (cl-nes::ppu-vram-address ppu) :to-be #x2003)
+      (expect (cl-nes::bus-dmc-read-replay-p bus) :to-be nil)))
+
   (it "advances OAM DMA as get/put cycles"
     (let* ((cartridge (make-fixture-cartridge))
            (nes (make-nes :cartridge cartridge))

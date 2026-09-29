@@ -36,6 +36,7 @@
           (bus-oam-dma-stage bus) :halt
           (bus-oam-dma-alignment-p bus) nil
           (bus-dmc-dma-remaining bus) 0
+          (bus-dmc-read-replay-p bus) nil
           (bus-dma-cycle-preempted-p bus) nil))
   (when cartridge
     (cartridge-reset! cartridge))
@@ -59,6 +60,7 @@
           (bus-oam-dma-stage bus) :halt
           (bus-oam-dma-alignment-p bus) nil
           (bus-dmc-dma-remaining bus) 0
+          (bus-dmc-read-replay-p bus) nil
           (bus-dma-cycle-preempted-p bus) nil))
   (when (bus-cartridge (nes-bus nes))
     (cartridge-reset! (bus-cartridge (nes-bus nes))))

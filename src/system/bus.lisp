@@ -34,12 +34,17 @@
                              (bus-open-bus bus))
                          #xFF))
                (progn
-                 (incf (bus-dma-stall-cycles bus) stall)
+               (incf (bus-dma-stall-cycles bus) stall)
+                 (setf (bus-dmc-read-replay-p bus) (not write-p))
                  ;; Preserve the established standalone DMC timing path.
-                 (loop repeat (1- stall)
+                 (loop repeat (if write-p
+                                  (1- stall)
+                                  (if (zerop (bus-cpu-cycle-phase bus)) 1 2))
                        do (%bus-read-device
                            bus (bus-last-cpu-access-address bus)))
-                 (bus-read bus address)))))))
+                 (logand (or (%bus-read-device bus address)
+                             (bus-open-bus bus))
+                         #xFF)))))))
     bus))
 
 (defun %bus-read-device (bus address)
@@ -62,7 +67,8 @@
 (defun bus-read (bus address)
   (let ((address (logand address #xFFFF)))
     (setf (bus-last-cpu-access-kind bus) :read
-          (bus-last-cpu-access-address bus) address)
+          (bus-last-cpu-access-address bus) address
+          (bus-dmc-read-replay-p bus) nil)
     ;; A CPU read observes PPU status late in its cycle.  Advance the PPU to
     ;; the final two dots before the device read, then charge the last dot in
     ;; the normal CPU-cycle clock below.
@@ -76,6 +82,12 @@
         (setf value (logand (or value (bus-open-bus bus)) #xFF)
               (bus-open-bus bus) value)
         (%bus-cpu-access! bus ppu-ticks)
+        (when (bus-dmc-read-replay-p bus)
+          (setf value (logand (or (%bus-read-device bus address)
+                                  (bus-open-bus bus))
+                              #xFF)
+                (bus-open-bus bus) value
+                (bus-dmc-read-replay-p bus) nil))
         value))))
 
 (defun %perform-oam-dma! (bus page)
