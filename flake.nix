@@ -148,7 +148,11 @@
       };
 
       lispDependencies = ctx: [ cl-host-kit.packages.${ctx.system}.cl-host-kit ];
-      lispCheckDependencies = ctx: [ cl-weave.packages.${ctx.system}.cl-weave ];
+      lispCheckDependencies = ctx: [
+        cl-weave.packages.${ctx.system}.cl-weave
+        cl-cli.packages.${ctx.system}.cl-cli
+        cl-glfw3-kit.packages.${ctx.system}.cl-glfw3-kit
+      ];
 
       runner = "run-tests.lisp";
       timeoutSeconds = testTimeoutSeconds;
@@ -178,6 +182,24 @@
               timeoutSeconds = testTimeoutSeconds;
               killAfterSeconds = timeoutGraceSeconds;
             };
+            frontend =
+              (ctx.cl.mkScriptCheck {
+                drv = ctx.package;
+                entryPoint = "run-frontend-tests.lisp";
+                name = "cl-nes-frontend-test";
+                timeoutSeconds = testTimeoutSeconds;
+                killAfterSeconds = timeoutGraceSeconds;
+              }).overrideAttrs
+                (old: {
+                  env = (old.env or { }) // {
+                    CL_GLFW3_KIT_LIBRARY = "${pkgs.glfw}/lib/libglfw${pkgs.stdenv.hostPlatform.extensions.sharedLibrary}";
+                    CL_NES_SDL2_LIBRARY =
+                      if pkgs.stdenv.hostPlatform.isDarwin then
+                        "${pkgs.SDL2}/lib/libSDL2-2.0.0.dylib"
+                      else
+                        "${pkgs.SDL2}/lib/libSDL2-2.0.so";
+                  };
+                });
             rom-suite =
               (ctx.cl.mkScriptCheck {
                 drv = ctx.package;
