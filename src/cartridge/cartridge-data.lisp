@@ -87,20 +87,27 @@
              :mapper4-irq-enabled-p nil
              :mapper4-irq-pending-p nil
              :mapper4-ppu-a12-high-p nil
-             :mapper4-ppu-a12-low-cycles 0)))
-      (%make-cartridge :prg-rom prg
-                       :chr-rom chr
-                       :prg-ram prg-ram
-                       :mapper mapper
-                       :mirroring mirroring
-                       :initial-mirroring mirroring
-                       :battery-backed-p battery-backed-p
-                       :submapper submapper
-                       :bus-conflict-p bus-conflict-p
-                       :four-screen-p four-screen-p
-                       :chr-writable-p chr-writable-p
-                       :prg-bank 0
-                       :chr-bank 0
-                       :mapper5-state mapper5-state
-                       :mapper4-state mapper4-state
-                       :mapper-state mapper-state))))
+             :mapper4-ppu-a12-low-cycles 0
+             :mapper4-a12-low-m2-cycles 0)))
+      (let ((cartridge
+              (%make-cartridge :prg-rom prg
+                               :chr-rom chr
+                               :prg-ram prg-ram
+                               :mapper mapper
+                               :mirroring mirroring
+                               :initial-mirroring mirroring
+                               :battery-backed-p battery-backed-p
+                               :submapper submapper
+                               :bus-conflict-p bus-conflict-p
+                               :four-screen-p four-screen-p
+                               :chr-writable-p chr-writable-p
+                               :prg-bank 0
+                               :chr-bank 0
+                               :mapper5-state mapper5-state
+                               :mapper4-state mapper4-state
+                               :mapper-state mapper-state)))
+        (set-cartridge-cpu-clock-required-p!
+         cartridge
+         (getf (cdr (assoc mapper +mapper-definitions+))
+               :cpu-clock-required-p))
+        cartridge))))

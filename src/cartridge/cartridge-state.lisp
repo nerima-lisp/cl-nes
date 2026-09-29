@@ -8,9 +8,10 @@
 (defconstant +chr-bank-1k-size+ 1024)
 (defconstant +chr-bank-4k-size+ (* 4 1024))
 (defconstant +chr-bank-size+ (* 8 1024))
-(defconstant +mapper4-a12-low-filter-cycles+ 24)
+(defconstant +mapper4-a12-low-filter-cycles+ 3)
 (define-constant +mapper-definitions+
-  '((69 :cpu-clock-required-p t)))
+  '((4 :cpu-clock-required-p t)
+    (69 :cpu-clock-required-p t)))
 
 (define-hardware-state cartridge-mapper5-state
   ((prg-mode 3 nil)
@@ -74,7 +75,8 @@
    (mapper4-irq-enabled-p nil nil)
    (mapper4-irq-pending-p nil nil)
    (mapper4-ppu-a12-high-p nil nil)
-   (mapper4-ppu-a12-low-cycles 0 nil))
+   (mapper4-ppu-a12-low-cycles 0 nil)
+   (mapper4-a12-low-m2-cycles 0 nil))
   :constructor %make-cartridge-mapper4-state-instance
   :reset %reset-cartridge-mapper4-state!)
 

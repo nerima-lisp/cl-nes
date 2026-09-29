@@ -83,7 +83,8 @@
                                            (mapper4-irq-enabled-p nil)
                                            (mapper4-irq-pending-p nil)
                                            (mapper4-ppu-a12-high-p nil)
-                                           (mapper4-ppu-a12-low-cycles 0))
+                                           (mapper4-ppu-a12-low-cycles 0)
+                                           (mapper4-a12-low-m2-cycles 0))
   (let ((state (%make-cartridge-mapper4-state-instance)))
     (setf (cartridge-mapper4-state-mapper4-bank-select state) mapper4-bank-select
           (cartridge-mapper4-state-mapper4-registers state) mapper4-registers
@@ -96,7 +97,8 @@
           (cartridge-mapper4-state-mapper4-irq-enabled-p state) mapper4-irq-enabled-p
           (cartridge-mapper4-state-mapper4-irq-pending-p state) mapper4-irq-pending-p
           (cartridge-mapper4-state-mapper4-ppu-a12-high-p state) mapper4-ppu-a12-high-p
-          (cartridge-mapper4-state-mapper4-ppu-a12-low-cycles state) mapper4-ppu-a12-low-cycles)
+          (cartridge-mapper4-state-mapper4-ppu-a12-low-cycles state) mapper4-ppu-a12-low-cycles
+          (cartridge-mapper4-state-mapper4-a12-low-m2-cycles state) mapper4-a12-low-m2-cycles)
     state))
 
 (defun %make-cartridge (&key (prg-rom #()) (chr-rom #()) (mapper 0)

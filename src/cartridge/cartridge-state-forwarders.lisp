@@ -71,6 +71,8 @@
                            cartridge-mapper4-state-mapper4-ppu-a12-high-p)
 (%define-mapper4-forwarder cartridge-mapper4-ppu-a12-low-cycles
                            cartridge-mapper4-state-mapper4-ppu-a12-low-cycles)
+(%define-mapper4-forwarder cartridge-mapper4-a12-low-m2-cycles
+                           cartridge-mapper4-state-mapper4-a12-low-m2-cycles)
 
 (defmacro %define-mapper5-forwarder (name slot-accessor)
   `(defun ,name (cartridge)
