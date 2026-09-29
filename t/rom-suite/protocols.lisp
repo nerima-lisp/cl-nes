@@ -183,7 +183,7 @@
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-overflow-5" :path "sprite_overflow_tests/5.Emulator.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "ppu-open-bus" :path "ppu_open_bus/ppu_open_bus.nes"
                 :protocol :ram-result :expected 0 :result-address #x6000 :running-value #x80 :max-frames 360 :state :pass
