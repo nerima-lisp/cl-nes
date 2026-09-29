@@ -6,15 +6,15 @@ the synthetic cartridges in `benchmark/run-benchmarks.lisp`, not external ROMs.
 
 ## Flake check timing
 
-The release-candidate checks were run on the pinned aarch64-darwin host with
-`/usr/bin/time -p nix flake check --print-build-logs`. The complete run took
-693.55 s real time. Individual check-phase times were 67 s for the full test
-suite, 47 s for coverage, and 219 s for the ROM suite. The frontend suite
-passed 15 tests; its derivation did not emit a check-phase duration. Docs,
-treefmt, and paredit passed; paredit spent 9m33s building its pinned tool.
-The combined release gate is therefore above the provisional five-minute
-target, and the ROM suite stopped at the existing `sprite-hit-11` ratchet
-regression before reaching AccuracyCoin.
+The latest checks were run on the pinned aarch64-darwin host. The measured
+times were 48 s in the test check phase, 63 s in coverage, 8.60 s for frontend
+tests, 12.95 s for docs, and 6.43 s for the recursive paredit scan. The ROM
+suite took 499.09 s real and 481 s in its
+check phase, and reached AccuracyCoin. The benchmark app took 24.63 s real;
+its frame medians are recorded below.
+
+The combined `nix flake check` gate remains above the provisional five-minute
+target because of the bounded ROM suite and its AccuracyCoin run.
 
 To repeat the measurement, use `/usr/bin/time -p nix flake check
 --print-build-logs` and retain the per-check `checkPhase completed` lines.
@@ -54,8 +54,8 @@ ten samples, normalized to one frame.
 
 | workload | median | minimum | maximum |
 | --- | ---: | ---: | ---: |
-| NROM rendering | 12.872 ms/frame | 12.622 ms/frame | 13.135 ms/frame |
-| MMC3 bank switching and scanline IRQ | 14.109 ms/frame | 13.860 ms/frame | 14.268 ms/frame |
+| NROM rendering | 12.276 ms/frame | 12.065 ms/frame | 12.594 ms/frame |
+| MMC3 bank switching and scanline IRQ | 13.277 ms/frame | 13.057 ms/frame | 13.519 ms/frame |
 
 Both workloads reported 0.000 bytes consed per frame for the median, minimum,
 and maximum allocation samples.

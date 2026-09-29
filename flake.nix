@@ -170,7 +170,7 @@
         in
         {
           checks = {
-            # run-coverage.lisp asserts its own measured 95.64%/91.49% floor and errors
+            # run-coverage.lisp asserts its own measured 96.22%/92.22% floor and errors
             # (non-zero exit) below it, so this check needs no separate
             # threshold script -- unlike cl-host-kit, which scrapes raw
             # sb-cover HTML because its run-coverage.lisp has no such

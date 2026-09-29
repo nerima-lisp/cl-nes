@@ -25,8 +25,8 @@
     (frame-count &key (samples 10) (maximum-ratio 3.0))
   "Return the median 2N/N allocation ratio and assert its upper bound.
 
-The measurement and decision live in this helper so it can later delegate to
-CL-WEAVE's BENCHMARK-SCALING-WITHIN-P without changing the test contract."
+The measurement and decision live in this helper so the test contract remains
+explicit."
   (labels ((median (values)
              (let ((sorted (sort (copy-seq values) #'<)))
                (elt sorted (floor (length sorted) 2))))

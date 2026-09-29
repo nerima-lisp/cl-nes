@@ -38,27 +38,25 @@ check and requires its recorded baseline to be updated.
 
 The table is the ROM-by-ROM verdict: `:pass` rows are required to pass, and
 `:known-fail` rows are expected to fail until their recorded limitation is
-fixed. The current table contains 101 bounded ROM contracts. Its category
+fixed. The current table contains 100 bounded ROM contracts. Its category
 counts are derived from the `:category` and `:state` fields in
 `t/rom-suite/protocols.lisp`:
 
 | category | expected pass | expected known-fail | total |
 | --- | ---: | ---: | ---: |
 | CPU | 28 | 10 | 38 |
-| PPU | 16 | 19 | 35 |
+| PPU | 20 | 15 | 35 |
 | APU | 8 | 6 | 14 |
 | DMA | 0 | 2 | 2 |
-| mapper | 8 | 4 | 12 |
-| total | 60 | 41 | 101 |
+| mapper | 8 | 3 | 11 |
+| total | 64 | 37 | 101 |
 
 The per-ROM rows in `*rom-contract-data*` are the source of truth for the
 individual verdicts. They contain the id, category, ROM path, protocol, frame
 bound, ratchet state, and failure diagnostic; there is no second compatibility
 list. The same table is checked first by `run-rom-suite.lisp`. In the current
-measured run, all 200 declarative table checks passed, then execution stopped
-at `sprite-hit-11`: it is marked `:pass` but did not complete within its 360
-frame bound. This is a current ratchet regression, not evidence that the
-contract row passes.
+measured run, all 200 declarative table checks passed and `sprite-hit-11`
+completed within its 360 frame bound.
 
 AccuracyCoin is a separate contract with 146 expected result cells and a
 1200-frame bound. Its `:known-fail` state is enforced by the same ratchet. The
@@ -67,9 +65,13 @@ fail, skipped, or running, and prints pass/fail counts followed by counts for
 the categories declared in `*accuracy-coin-item-specs*`. The category names
 currently include CPU behavior, CPU instructions, unofficial opcode groups,
 CPU interrupts, DMA, APU, CPU behavior 2, PPU, PPU vblank, sprite, PPU misc,
-advanced background, and advanced sprite. AccuracyCoin was not reached in the
-measured run above because the ROM suite stopped at `sprite-hit-11`; no
-AccuracyCoin pass count is asserted here.
+advanced background, and advanced sprite. The current run measured 86 passing
+cells, 58 failing cells, and no skipped or running cells. Category counts were
+CPU behavior 8, CPU instructions 6, unofficial SLO 7, unofficial RLA 7,
+unofficial SRE 7, unofficial RRA 7, unofficial AX 10, unofficial DCP 7,
+unofficial ISC 7, unofficial SH 1, unofficial immediate 7, CPU interrupts 1,
+DMA 1, APU 5, CPU behavior 2 3, and PPU 2. PPU vblank, sprite, PPU misc,
+advanced background, and advanced sprite each measured 0.
 
 To reproduce the complete harness with legally obtained ROM inputs, use the
 flake check:
@@ -98,13 +100,12 @@ External validation artifacts are kept outside the checkout. Their records
 include the source revision, per-file SHA-256, and available license or
 permission metadata; ROM binaries are not part of the repository.
 
-The current measured run therefore establishes only that the declarative table
-checks load and that the runtime reaches the reported `sprite-hit-11` ratchet
-failure. It does not establish a passing ROM suite, AccuracyCoin counts,
-nestest results, reference framebuffer output, interactive controls, audio
-fidelity, exact cycle traces, or compatibility with every NES game. PPU
-scanline/dot fields in nestest remain excluded because the public core API does
-not expose them.
+The current measured run establishes the declarative table checks,
+`sprite-hit-11`, and the AccuracyCoin counts above. It does not establish a
+fully passing ROM suite, complete nestest results, reference framebuffer
+output, interactive controls, audio fidelity, exact cycle traces, or
+compatibility with every NES game. PPU scanline/dot fields in nestest remain
+excluded because the public core API does not expose them.
 
 ## Mapper 4
 
