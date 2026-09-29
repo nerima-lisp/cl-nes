@@ -27,7 +27,7 @@
     (let ((ppu (make-ppu)))
       (setf (ppu-status ppu) #x80)
       (ppu-write-register! ppu 0 #x80)
-      (expect (cl-nes::ppu-nmi-delay-p ppu) :to-be t)
+      (expect (cl-nes::ppu-nmi-delay-p ppu) :to-be 3)
       (ppu-write-register! ppu 0 0)
       (expect (cl-nes::ppu-nmi-delay-p ppu) :to-be nil)))
 
@@ -49,7 +49,7 @@
       (setf (ppu-status ppu) #x80)
       (ppu-write-register! ppu 0 #x80)
       (expect (cl-nes::ppu-nmi-pending-p ppu) :to-be t)
-      (expect (cl-nes::ppu-nmi-delay-p ppu) :to-be t)
+      (expect (cl-nes::ppu-nmi-delay-p ppu) :to-be 3)
       (ppu-write-register! ppu 0 0)
       (expect (cl-nes::ppu-nmi-pending-p ppu) :to-be nil)
       (expect (cl-nes::ppu-nmi-delay-p ppu) :to-be nil))))

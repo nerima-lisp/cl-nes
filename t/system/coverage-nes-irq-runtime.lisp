@@ -39,8 +39,9 @@
       (setf (cl-nes::apu-frame-irq-pending-p (nes-apu nes)) nil)
       (expect (cl-nes::%nes-take-nmi! nes) :to-be nil)
       (setf (cl-nes::ppu-nmi-pending-p (nes-ppu nes)) t
-            (cl-nes::ppu-nmi-delay-p (nes-ppu nes)) t)
+            (cl-nes::ppu-nmi-delay-p (nes-ppu nes)) 3)
       (expect (cl-nes::%nes-take-nmi! nes) :to-be nil)
+      (ppu-tick! (nes-ppu nes) 3)
       (cl-nes::%nes-poll-nmi-during-operation! nes)
       (expect (cl-nes::ppu-nmi-pending-p (nes-ppu nes)) :to-be nil)
       (setf (cl-nes::ppu-nmi-pending-p (nes-ppu nes)) t)

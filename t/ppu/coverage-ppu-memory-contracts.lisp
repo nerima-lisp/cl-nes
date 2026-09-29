@@ -26,9 +26,10 @@
         (ppu-write-register! ppu 0 #x80)
         (expect (ppu-nmi-pending-p ppu) :to-be t)
         (expect (ppu-take-nmi! ppu) :to-be nil)
+        (ppu-tick! ppu 3)
         (expect (ppu-take-nmi! ppu) :to-be t)
         (setf (ppu-nmi-pending-p ppu) t
-              (cl-nes::ppu-nmi-delay-p ppu) t)
+              (cl-nes::ppu-nmi-delay-p ppu) 3)
         (cl-nes::%request-nmi! ppu)
         (setf (ppu-oam-address ppu) #x12
               (aref (ppu-oam ppu) #x12) #xA6)

@@ -6,7 +6,7 @@
            (nes (make-nes :cartridge cartridge)))
       (set-fixture-vector! cartridge #xFFFA #x9000)
       (setf (cl-nes::ppu-nmi-pending-p (nes-ppu nes)) t
-            (cl-nes::ppu-nmi-delay-p (nes-ppu nes)) t)
+            (cl-nes::ppu-nmi-delay-p (nes-ppu nes)) 3)
       (let ((cycles (nes-step/k nes #'identity)))
         (expect cycles :to-be 7)
         (expect (cpu-pc (nes-cpu nes)) :to-be #x9000)
@@ -26,7 +26,7 @@
     (let* ((cartridge (make-fixture-cartridge :program '(#xEA)))
            (nes (make-nes :cartridge cartridge)))
       (setf (cl-nes::ppu-nmi-pending-p (nes-ppu nes)) t
-            (cl-nes::ppu-nmi-delay-p (nes-ppu nes)) t)
+            (cl-nes::ppu-nmi-delay-p (nes-ppu nes)) 100)
       (let ((cycles (nes-step/k nes #'identity)))
         (expect cycles :to-be 2)
         (expect (cpu-pc (nes-cpu nes)) :to-be #x8001)
