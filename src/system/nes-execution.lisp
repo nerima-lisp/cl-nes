@@ -99,10 +99,8 @@ continuation's result."
                             nes :nmi nil cycle-hook nil)))
             (when (and (not nmi-taken-p)
                        (zerop dma-cycles)
-                       (or (not (cpu-irq-poll-delay cpu))
-                           (nes-irq-seen-before-last-p nes))
                        (%nes-irq-eligible-p cpu irq-disabled-at-start)
-                       (nes-irq-seen-p nes))
+                       (nes-irq-seen-before-last-p nes))
               (let ((interrupt-cycles
                       (%nes-run-interrupt!
                        nes :irq t cycle-hook #'%nes-poll-irq-before-cycle!)))
