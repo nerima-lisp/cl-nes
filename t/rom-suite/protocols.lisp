@@ -201,8 +201,8 @@
                 :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 360 :state :pass
                 :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-ppu-vbl-clear-time" :path "blargg_ppu_tests_2005.09.15b/vbl_clear_time.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 360 :state :known-fail
-                :failure-text "result $F0; 2 means VBL flag cleared too soon, 3 too late")
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 360 :state :pass
+                :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-ppu-vram-access" :path "blargg_ppu_tests_2005.09.15b/vram_access.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 360 :state :pass
                 :failure-text "result $F0; 1 means PASSED")))
