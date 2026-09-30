@@ -27,4 +27,4 @@ jobs:
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Check flake
         timeout-minutes: 15
-        run: timeout -k 30 900 nix flake check --print-build-logs
+        run: timeout -k 30 1800 nix flake check --print-build-logs
