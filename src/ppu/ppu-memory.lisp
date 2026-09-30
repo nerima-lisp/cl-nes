@@ -14,6 +14,8 @@
       (- address #x1000)
       address))
 
+(declaim (inline %ppu-address-bus!))
+
 (defun %ppu-read-nametable (ppu address)
   (cartridge-ppu-read-nametable
    (ppu-cartridge ppu)
@@ -29,10 +31,12 @@
 
 (defun %ppu-address-bus! (ppu address)
   (let ((address (%ppu-address address)))
-    (setf (ppu-address-bus ppu) address)
-    (when (ppu-cartridge ppu)
-      (cartridge-clock-ppu-a12! (ppu-cartridge ppu)
-                                 (logbitp 12 address)))))
+    (when (ppu-a12-clock-enabled-p ppu)
+      (let ((previous-address (ppu-address-bus ppu))
+            (a12 (logand address #x1000)))
+        (when (/= (logand previous-address #x1000) a12)
+          (cartridge-clock-ppu-a12! (ppu-cartridge ppu) (plusp a12)))))
+    (setf (ppu-address-bus ppu) address)))
 
 (defun ppu-read-vram (ppu address &optional (sprite-p nil) (bus-access-p nil))
   (when bus-access-p

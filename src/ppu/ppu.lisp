@@ -52,7 +52,11 @@ console reset for callers that want to preserve cartridge-backed state."
   ppu)
 
 (defun ppu-load-cartridge! (ppu cartridge)
-  (setf (ppu-cartridge ppu) cartridge)
+  (setf (ppu-cartridge ppu) cartridge
+        (ppu-a12-clock-enabled-p ppu)
+         (and cartridge
+              (or (= (cartridge-mapper cartridge) 1)
+                  (= (cartridge-mapper cartridge) 4))))
   (when (and cartridge (cartridge-four-screen-p cartridge))
     (unless (= (length (ppu-nametable ppu)) #x1000)
       (setf (ppu-nametable ppu)

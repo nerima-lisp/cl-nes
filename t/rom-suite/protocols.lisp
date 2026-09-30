@@ -270,9 +270,17 @@
                 :protocol :blargg :expected 0 :max-frames 60 :state :pass
                 :failure-text "status 0; 2-details Passed"
                 :mapper4-variant :mmc3)
+               (:id "mmc3-test-2-a12" :path "mmc3_test_2/rom_singles/3-A12_clocking.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :pass
+                :failure-text "status 0; 3-A12_clocking Passed"
+                :mapper4-variant :mmc3)
                (:id "mmc3-test-2-scanline-timing" :path "mmc3_test_2/rom_singles/4-scanline_timing.nes"
                 :protocol :blargg :expected 0 :max-frames 120 :state :known-fail
                 :failure-text "status 128; Scanline 0 IRQ should occur sooner when $2000=$08"
+                :mapper4-variant :mmc3)
+               (:id "mmc3-test-2-mmc3" :path "mmc3_test_2/rom_singles/5-MMC3.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :pass
+                :failure-text "status 0; 5-MMC3 Passed"
                 :mapper4-variant :mmc3)
                (:id "mmc3-test-2-alt" :path "mmc3_test_2/rom_singles/6-MMC3_alt.nes"
                 :protocol :blargg :expected 0 :max-frames 60 :state :pass

@@ -6,6 +6,7 @@
 
 (define-hardware-state ppu
   ((cartridge nil nil)
+   (a12-clock-enabled-p nil nil)
    (control 0 (unsigned-byte 8))
    (mask 0 (unsigned-byte 8))
   ;; PPUMASK writes reach the rendering pipeline after a short propagation

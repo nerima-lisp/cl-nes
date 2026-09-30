@@ -24,6 +24,8 @@
              (plusp cycles))
     (incf (cartridge-mapper4-a12-low-m2-cycles cartridge) cycles)))
 
+(declaim (inline cartridge-clock-ppu-a12!))
+
 (defun cartridge-clock-ppu-a12! (cartridge high-p)
   (when cartridge
     (when (= (cartridge-mapper cartridge) 1)
