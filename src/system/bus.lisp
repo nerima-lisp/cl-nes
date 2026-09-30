@@ -69,6 +69,7 @@
     (t nil)))
 
 (defun bus-read (bus address)
+  (declare (optimize (speed 3) (safety 1) (debug 1)))
   (let ((address (logand address #xFFFF)))
     (setf (bus-last-cpu-access-kind bus) :read
           (bus-last-cpu-access-address bus) address
@@ -159,6 +160,7 @@
     (setf (bus-dma-stall-cycles bus) 0)))
 
 (defun bus-write! (bus address value)
+  (declare (optimize (speed 3) (safety 1) (debug 1)))
   (let ((address (logand address #xFFFF))
         (value (logand value #xFF))
         (ppu-ticks 3)

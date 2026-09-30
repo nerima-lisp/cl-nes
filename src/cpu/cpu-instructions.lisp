@@ -107,6 +107,7 @@
   2)
 
 (defun cpu-step! (cpu bus &optional nmi-poll)
+  (declare (optimize (speed 3) (safety 1) (debug 1)))
   (if (cpu-stopped-p cpu)
       0
       (let ((opcode (%fetch-byte cpu bus)))

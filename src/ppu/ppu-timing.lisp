@@ -255,7 +255,8 @@
         (%ppu-evaluate-sprites! ppu (if (< scanline 240) scanline 0))))))
 
 (defun ppu-tick! (ppu &optional (ticks 1))
-  (declare (type ppu ppu) (type fixnum ticks))
+  (declare (type ppu ppu) (type fixnum ticks)
+           (optimize (speed 3) (safety 1) (debug 1)))
   (loop repeat ticks do
     (when (and (numberp (ppu-nmi-delay-p ppu))
                (plusp (ppu-nmi-delay-p ppu)))
