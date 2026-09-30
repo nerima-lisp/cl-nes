@@ -47,12 +47,12 @@
 
 (defun nes-initialize! (nes &key pc)
   "Reset NES and optionally select the CPU entry point for a ROM harness."
-  (nes-reset! nes)
+  (nes-reset! nes nil)
   (when pc
     (setf (cpu-pc (nes-cpu nes)) pc))
   nes)
 
-(defun nes-reset! (nes)
+(defun nes-reset! (nes &optional (preserve-registers-p t))
   (let ((bus (nes-bus nes)))
     (setf (bus-dma-stall-cycles bus) 0
           (bus-oam-dma-active-p bus) nil
@@ -66,7 +66,7 @@
     (cartridge-reset! (bus-cartridge (nes-bus nes))))
   (ppu-reset! (nes-ppu nes))
   (apu-console-reset! (nes-apu nes))
-  (%nes-reset-cpu-and-clock! nes t)
+  (%nes-reset-cpu-and-clock! nes preserve-registers-p)
   nes)
 
 (defun %nes-tick! (nes cycles)
