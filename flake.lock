@@ -157,19 +157,19 @@
         "treefmt-nix": "treefmt-nix_11"
       },
       "locked": {
-        "lastModified": 1790678469,
+        "lastModified": 1790730468,
         "narHash": "sha256-Lle4KJkmyCRy2SH7Rm2+F9EWRTvz7fT1XQJEVvvwuPE=",
-        "ref": "takeokunn-p6a-nes-frontend-api",
-        "rev": "b609852e750819b96121e3c4dd56f609576923b1",
-        "revCount": 12,
+        "ref": "v0.2.0",
+        "rev": "455dd70ed657a3e9a5c985c978073aeb439e8801",
+        "revCount": 13,
         "type": "git",
-        "url": "file:///Users/take/ghq/github.com/nerima-lisp/cl-glfw3-kit.git"
+        "url": "https://github.com/nerima-lisp/cl-glfw3-kit.git"
       },
       "original": {
-        "ref": "takeokunn-p6a-nes-frontend-api",
-        "rev": "b609852e750819b96121e3c4dd56f609576923b1",
-        "type": "git",
-        "url": "file:///Users/take/ghq/github.com/nerima-lisp/cl-glfw3-kit.git"
+        "owner": "nerima-lisp",
+        "ref": "v0.2.0",
+        "repo": "cl-glfw3-kit",
+        "type": "github"
       }
     },
     "cl-host-kit": {
@@ -662,10 +662,11 @@
       "locked": {
         "lastModified": 1785915502,
         "narHash": "sha256-NhwWewIatjblEBVJcY5b6YRBGxiowBjRDlHXJ7crCuU=",
-        "owner": "nerima-lisp",
-        "repo": "cl-weave",
-        "rev": "29bba54f1d711b07cc6244990d0ceff0faeec832",
-        "type": "github"
+        "ref": "v1.3.0",
+        "rev": "2c29c8951790cb1121d500f7c27378a279125258",
+        "revCount": 382,
+        "type": "git",
+        "url": "https://github.com/nerima-lisp/cl-weave.git"
       },
       "original": {
         "owner": "nerima-lisp",

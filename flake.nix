@@ -30,9 +30,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # Temporary local pin until the frontend API is released by cl-glfw3-kit.
     cl-glfw3-kit = {
-      url = "git+file:///Users/take/ghq/github.com/nerima-lisp/cl-glfw3-kit.git?ref=takeokunn-p6a-nes-frontend-api&rev=b609852e750819b96121e3c4dd56f609576923b1";
+      url = "github:nerima-lisp/cl-glfw3-kit/v0.2.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
