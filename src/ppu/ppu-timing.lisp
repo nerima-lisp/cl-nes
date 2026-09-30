@@ -35,6 +35,16 @@
          (or (logbitp 3 mask)
              (logbitp 4 mask)))))
 
+(defun %ppu-odd-frame-skip-enabled-p (ppu)
+  "Return whether the pre-render line's odd-frame dot is skipped.
+
+  The skip decision observes the PPUMASK value at the edge itself.  The
+  delayed mask is used by the rendering pipeline, but using it here shifts
+  the skip edge when rendering is enabled or disabled near the edge."
+  (let ((mask (ppu-mask ppu)))
+    (or (logbitp 3 mask)
+        (logbitp 4 mask))))
+
 (defun %ppu-clock-render-a12! (ppu high-p &optional (low-cycles 1))
   (when (and (ppu-cartridge ppu)
              (%ppu-rendering-scanline-p ppu))
@@ -219,7 +229,7 @@
                      (let* ((base (* sprite 4))
                             (tile (aref (ppu-secondary-oam ppu) (+ base 1)))
                             (attributes (aref (ppu-secondary-oam ppu) (+ base 2)))
-                            (row (- scanline
+                            (row (- (if (= scanline 261) 0 scanline)
                                     (1+ (aref (ppu-secondary-oam ppu) base)))))
                        (%sprite-pattern-address ppu tile attributes row))
                      (if (logbitp 3 (ppu-control ppu)) #x1000 0))))
@@ -229,12 +239,18 @@
               (setf (aref (ppu-sprite-shift-low ppu) sprite)
                     (ppu-read-vram ppu address t)
                     (aref (ppu-sprite-shift-high ppu) sprite)
-                    (ppu-read-vram ppu (+ address 8) t))
+                    (ppu-read-vram ppu (+ address 8) t)
+                    (aref (ppu-sprite-x-counter ppu) sprite)
+                    (aref (ppu-secondary-oam ppu) (+ base 3))
+                    (aref (ppu-sprite-attributes ppu) sprite)
+                    attributes)
               (when (logbitp 6 attributes)
                 (setf (aref (ppu-sprite-shift-low ppu) sprite)
                       (%reverse-byte (aref (ppu-sprite-shift-low ppu) sprite))
                       (aref (ppu-sprite-shift-high ppu) sprite)
                       (%reverse-byte (aref (ppu-sprite-shift-high ppu) sprite)))))
+          (when (= dot 320)
+            (setf (ppu-sprite-evaluation-index ppu) 1))
           ))))))
 
 (defun ppu-tick! (ppu &optional (ticks 1))
@@ -246,6 +262,9 @@
     (%ppu-advance-rendering-mask! ppu)
     (incf (ppu-dot ppu))
     (%ppu-render-dot! ppu)
+    (when (and (%ppu-rendering-scanline-p ppu)
+               (<= 1 (ppu-dot ppu) 256))
+      (%ppu-shift-sprite-registers! ppu))
     (when (%ppu-rendering-scanline-p ppu)
       (%ppu-shift-background-registers! ppu))
     (when (and (= (ppu-scanline ppu) 240)
@@ -261,7 +280,7 @@
     (when (and (= (ppu-scanline ppu) 261)
                (= (ppu-dot ppu) 339)
                (ppu-odd-frame-p ppu)
-               (%ppu-rendering-scanline-p ppu))
+               (%ppu-odd-frame-skip-enabled-p ppu))
       (setf (ppu-dot ppu) 340))
     (when (>= (ppu-dot ppu) 341)
       (setf (ppu-dot ppu) 0)

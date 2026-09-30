@@ -112,6 +112,21 @@
       (expect (cl-nes::ppu-scanline ppu) :to-be 0)
       (expect (cl-nes::ppu-dot ppu) :to-be 0)
       (expect (cl-nes::ppu-odd-frame-p ppu) :to-be nil)))
+  (it "uses the PPUMASK edge value for the odd-frame skip"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (cl-nes::ppu-scanline ppu) 261
+            (cl-nes::ppu-dot ppu) 338
+            (cl-nes::ppu-odd-frame-p ppu) t
+            (ppu-mask ppu) #x08
+            (cl-nes::ppu-rendering-mask  ppu) 0
+            (cl-nes::ppu-rendering-mask-pending ppu) #x08
+            (cl-nes::ppu-rendering-mask-delay ppu) 1
+            (cl-nes::ppu-rendering-mask-valid-p ppu) t)
+      (ppu-tick! ppu)
+      (expect (cl-nes::ppu-dot ppu) :to-be 340)
+      (ppu-tick! ppu)
+      (expect (cl-nes::ppu-scanline ppu) :to-be 0)
+      (expect (cl-nes::ppu-dot ppu) :to-be 0)))
   (it-each ((256 0 #x7000 #x0021)
             (257 12 #x041F #x7FFF)
             (280 261 #x7BE0 #x7FFF)
