@@ -1,11 +1,11 @@
 (in-package #:cl-nes)
 
-(defun %nes-reset-cpu-and-clock! (nes &optional preserve-registers-p)
+(defun %nes-reset-cpu-and-clock! (nes)
   ;; The CPU reset sequence consumes seven clocks before fetching the reset
   ;; vector.  The APU's power/reset phase must include those clocks, and the
   ;; PPU must advance three dots for each of them.  Direct PPU reset still
   ;; starts at dot zero; this phase belongs to the complete NES reset.
-  (cpu-reset! (nes-cpu nes) (nes-bus nes) preserve-registers-p)
+  (cpu-reset! (nes-cpu nes) (nes-bus nes))
   (setf (bus-cpu-cycle-phase (nes-bus nes))
         (mod (cpu-cycles (nes-cpu nes)) 2))
   (ppu-tick! (nes-ppu nes) 21)
@@ -47,12 +47,12 @@
 
 (defun nes-initialize! (nes &key pc)
   "Reset NES and optionally select the CPU entry point for a ROM harness."
-  (nes-reset! nes nil)
+  (nes-reset! nes)
   (when pc
     (setf (cpu-pc (nes-cpu nes)) pc))
   nes)
 
-(defun nes-reset! (nes &optional (preserve-registers-p t))
+(defun nes-reset! (nes)
   (let ((bus (nes-bus nes)))
     (setf (bus-dma-stall-cycles bus) 0
           (bus-oam-dma-active-p bus) nil
@@ -66,7 +66,7 @@
     (cartridge-reset! (bus-cartridge (nes-bus nes))))
   (ppu-reset! (nes-ppu nes))
   (apu-console-reset! (nes-apu nes))
-  (%nes-reset-cpu-and-clock! nes preserve-registers-p)
+  (%nes-reset-cpu-and-clock! nes)
   nes)
 
 (defun %nes-tick! (nes cycles)

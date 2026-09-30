@@ -94,6 +94,7 @@
       ];
 
       testTimeoutSeconds = 300;
+      coverageTimeoutSeconds = 600;
       benchmarkTimeoutSeconds = 120;
       timeoutGraceSeconds = 15;
 
@@ -178,7 +179,7 @@
               drv = ctx.package;
               entryPoint = "run-coverage.lisp";
               name = "cl-nes-coverage";
-              timeoutSeconds = testTimeoutSeconds;
+              timeoutSeconds = coverageTimeoutSeconds;
               killAfterSeconds = timeoutGraceSeconds;
             };
             frontend =
