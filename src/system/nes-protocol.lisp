@@ -76,7 +76,7 @@ button.  The returned plist contains :RESULTS for $0400-$04FF and
           :results (protocol-bus-range bus #x0400 #x04ff)
           :shared-draw (bus-read bus #x03ff))))
 
-(defun run-blargg-protocol (path max-frames &key mapper4-variant)
+(defun run-blargg-protocol (path max-frames &key mapper4-variant reset-frame)
   "Run PATH using the Blargg $6000 status/signature protocol."
   (let* ((load-args (if mapper4-variant
                         (list :mapper4-variant mapper4-variant)
@@ -84,12 +84,16 @@ button.  The returned plist contains :RESULTS for $0400-$04FF and
          (nes (make-nes :cartridge (apply #'load-cartridge path load-args)))
          (last-text "")
          (running-observed nil)
+         (reset-done nil)
          (frames nil))
     (setf frames
           (protocol-run-frames-until
            nes max-frames
            (lambda (frame)
-             (declare (ignore frame))
+             (when (and reset-frame (= frame reset-frame) (not reset-done))
+               (setf reset-done t
+                     running-observed nil)
+               (nes-reset! nes))
              (let* ((bus (nes-bus nes))
                     (signature-p (equal '(222 176 97)
                                         (protocol-bus-range bus #x6001 #x6003)))
@@ -99,9 +103,10 @@ button.  The returned plist contains :RESULTS for $0400-$04FF and
                (setf last-text
                      (protocol-ascii-result
                       (protocol-bus-range bus #x6004 #x60ff)))
-               (or (protocol-blargg-complete-p status signature-p
-                                               running-observed)
-                   (search "FAILED" (string-upcase last-text)))))))
+               (and (or (null reset-frame) reset-done)
+                    (or (protocol-blargg-complete-p status signature-p
+                                                    running-observed)
+                        (search "FAILED" (string-upcase last-text))))))))
     (let* ((bus (nes-bus nes))
            (signature-ok (equal '(222 176 97)
                                 (protocol-bus-range bus #x6001 #x6003)))

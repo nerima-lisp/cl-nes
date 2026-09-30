@@ -32,12 +32,17 @@
     (setf (cpu-pc cpu) (logior low (ash high 8)))
     5))
 
-(defun cpu-reset! (cpu bus)
-  (setf (cpu-a cpu) 0
-        (cpu-x cpu) 0
-        (cpu-y cpu) 0
-        (cpu-p cpu) #x24
-        (cpu-sp cpu) #xFD
+(defun cpu-reset! (cpu bus &optional preserve-registers-p)
+  (unless preserve-registers-p
+    (setf (cpu-a cpu) 0
+          (cpu-x cpu) 0
+          (cpu-y cpu) 0
+          (cpu-p cpu) #x24
+          (cpu-sp cpu) #xFD))
+  (when preserve-registers-p
+    (setf (cpu-p cpu) (logior (cpu-p cpu) +flag-interrupt-disable+)
+          (cpu-sp cpu) (logand (- (cpu-sp cpu) 3) #xFF)))
+  (setf
         (cpu-pc cpu) (logior (bus-read bus #xFFFC)
                             (ash (bus-read bus #xFFFD) 8))
         (cpu-cycles cpu) 0

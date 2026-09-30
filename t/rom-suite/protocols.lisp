@@ -3,9 +3,9 @@
 (defstruct (rom-contract (:constructor make-rom-contract
                               (id category path protocol expected max-frames state
                                failure-text &optional mapper4-variant suite
-                               result-address running-value)))
+                               result-address running-value reset-frame)))
   id category path protocol expected max-frames state failure-text mapper4-variant suite
-  result-address running-value)
+  result-address running-value reset-frame)
 
 (defparameter *rom-root-environment* "CL_NES_TEST_ROMS")
 (defparameter *accuracy-coin-environment* "CL_NES_ACCURACY_COIN")
@@ -100,9 +100,11 @@
        :max-frames 120 :state :pass
        :failure-text "status $6000; 0 means PASSED")
       (:id "cpu-reset-ram" :path "cpu_reset/ram_after_reset.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+       :protocol :blargg :expected 0 :max-frames 360 :state :pass
+       :reset-frame 180 :failure-text "status 0; ram_after_reset..Passed")
       (:id "cpu-reset-registers" :path "cpu_reset/registers.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")))
+       :protocol :blargg :expected 0 :max-frames 360 :state :pass
+       :reset-frame 180 :failure-text "status 0; registers..Passed")))
     (:suite "ppu" :category :ppu
      :subroms ((:id "ppu-vbl-nmi" :path "ppu_vbl_nmi/ppu_vbl_nmi.nes"
                  :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
@@ -524,7 +526,8 @@
                                    (getf subrom :failure-text)
                                    (getf subrom :mapper4-variant)
                                    (getf subrom :result-address)
-                                   (getf subrom :running-value)))))
+                                   (getf subrom :running-value)
+                                   (getf subrom :reset-frame)))))
 
 (defun rom-contract-table ()
   (loop for suite in *rom-contract-data*
@@ -538,7 +541,8 @@
                               (getf subrom :failure-text)
                               (getf subrom :mapper4-variant) suite-name
                               (getf subrom :result-address)
-                              (getf subrom :running-value)))))
+                              (getf subrom :running-value)
+                              (getf subrom :reset-frame)))))
 
 (defun env-path (name)
   (uiop:getenv name))
@@ -558,7 +562,8 @@
 (defun run-blargg-contract (path contract)
   (run-blargg-protocol path (rom-contract-max-frames contract)
                        :mapper4-variant
-                       (rom-contract-mapper4-variant contract)))
+                       (rom-contract-mapper4-variant contract)
+                       :reset-frame (rom-contract-reset-frame contract)))
 
 (defun run-ram-result-contract (path contract)
   (run-ram-result-protocol path (rom-contract-max-frames contract)
