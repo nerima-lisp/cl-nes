@@ -250,6 +250,7 @@
           (setf (ppu-sprite-evaluation-index ppu) 1))))))
 
 (defun ppu-tick! (ppu &optional (ticks 1))
+  (declare (type ppu ppu) (type fixnum ticks))
   (loop repeat ticks do
     (when (and (numberp (ppu-nmi-delay-p ppu))
                (plusp (ppu-nmi-delay-p ppu)))
