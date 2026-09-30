@@ -52,8 +52,4 @@
                     nil))
               (unless (= step (1- (length events)))
                 (incf (apu-frame-step apu))))))))
-    (when (plusp (apu-frame-irq-clear-delay apu))
-      (decf (apu-frame-irq-clear-delay apu))
-      (when (zerop (apu-frame-irq-clear-delay apu))
-        (setf (apu-frame-irq-pending-p apu) nil)))
   apu)

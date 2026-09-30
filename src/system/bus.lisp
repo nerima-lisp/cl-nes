@@ -59,8 +59,7 @@
      (ppu-read-register (bus-ppu bus) (logand address 7) t))
     ((and (<= #x4000 address #x4015)
           (not (= address #x4014)))
-          (apu-read-register (bus-apu bus) address
-                             (bus-cpu-cycle-phase bus)))
+     (apu-read-register (bus-apu bus) address))
     ((= address #x4016)
      (controller-read (bus-controller-1 bus)))
     ((= address #x4017)

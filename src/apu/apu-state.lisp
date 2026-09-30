@@ -82,7 +82,6 @@
    (frame-last-five-step-p nil nil apu-frame-last-five-step-p)
    (frame-irq-inhibit-p nil nil apu-frame-irq-inhibit-p)
    (frame-irq-pending-p nil nil apu-frame-irq-pending-p)
-   (frame-irq-clear-delay 0 fixnum apu-frame-irq-clear-delay)
    (frame-event-offset 0 fixnum apu-frame-event-offset)
    (frame-irq-repeat-count 0 fixnum apu-frame-irq-repeat-count)
    (frame-tail-step 0 fixnum apu-frame-tail-step)
