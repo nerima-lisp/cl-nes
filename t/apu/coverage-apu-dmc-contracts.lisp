@@ -47,4 +47,22 @@
             (cl-nes::apu-dmc-bytes-remaining dmc) 1)
       (cl-nes::%apu-dmc-fetch! apu)
       (expect (cl-nes::apu-dmc-sample-buffer dmc) :to-be 0)
-      (expect (cl-nes::apu-dmc-sample-buffer-empty-p dmc) :to-be nil))))
+      (expect (cl-nes::apu-dmc-sample-buffer-empty-p dmc) :to-be nil)))
+
+  (it "restarts a looping DMC sample after its final fetch"
+    (let* ((apu (make-apu :memory-reader (lambda (address)
+                                           (declare (ignore address))
+                                           #x3C)))
+           (dmc (cl-nes::apu-dmc apu)))
+      (setf (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-sample-address dmc) #xC000
+            (cl-nes::apu-dmc-current-address dmc) #xC123
+            (cl-nes::apu-dmc-sample-length dmc) 1
+            (cl-nes::apu-dmc-bytes-remaining dmc) 1
+            (cl-nes::apu-dmc-loop-p dmc) t)
+      (cl-nes::%apu-dmc-fetch! apu)
+      (expect (cl-nes::apu-dmc-sample-buffer dmc) :to-be #x3C)
+      (expect (cl-nes::apu-dmc-current-address dmc) :to-be #xC000)
+      (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 1)
+      (expect (cl-nes::apu-dmc-irq-pending-p dmc) :to-be nil))))

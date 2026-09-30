@@ -37,6 +37,13 @@
       (expect (logand (ppu-status ppu) #x80) :to-be #x80)
       (ppu-read-register ppu 2 t)
       (expect (cl-nes::ppu-nmi-pending-p ppu) :to-be nil)))
+  (it "clears vblank suppression without starting vblank"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (cl-nes::ppu-vblank-suppression-p ppu) t
+            (ppu-status ppu) 0)
+      (cl-nes::%start-vblank! ppu)
+      (expect (cl-nes::ppu-vblank-suppression-p ppu) :to-be nil)
+      (expect (ppu-status ppu) :to-be 0)))
   (it "advances dots across scanline and frame boundaries"
     (dolist (case '((:name :ordinary-dot
                      :scanline 12 :dot 7 :odd-frame-p nil :mask 0

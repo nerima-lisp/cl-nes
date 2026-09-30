@@ -57,6 +57,35 @@
       (cl-nes::%ppu-clock-pipeline! ppu)
       (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be #xA5)
       (expect (aref (cl-nes::ppu-sprite-shift-high ppu) 0) :to-be #x5A)))
+
+  (it "evaluates 8x8 sprites and selects the alternate pattern table"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (ppu-control ppu) #x08
+            (cl-nes::ppu-scanline ppu) 1
+            (cl-nes::ppu-dot ppu) 257)
+      (setf (aref (ppu-oam ppu) 0) 0
+            (aref (ppu-oam ppu) 1) 1
+      (aref (ppu-oam ppu) 2) 0)
+      (cl-nes::%ppu-evaluate-sprites! ppu 1)
+      (expect (cl-nes::ppu-secondary-oam-count ppu) :to-be 8)
+      (setf (cl-nes::ppu-secondary-oam-count ppu) 0)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (expect (cl-nes::ppu-secondary-oam-count ppu) :to-be 0)))
+
+  (it "flags overflow when a ninth 8x8 sprite is on the scanline"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (dotimes (sprite 9)
+        (setf (aref (ppu-oam ppu) (* sprite 4)) 0))
+      (cl-nes::%ppu-evaluate-sprites! ppu 1)
+      (expect (logand (ppu-status ppu) #x20) :to-be #x20)))
+
+  (it "evaluates 8x16 sprites and detects 8x16 overflow"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (ppu-control ppu) #x20)
+      (dotimes (sprite 9)
+        (setf (aref (ppu-oam ppu) (* sprite 4)) 0))
+      (cl-nes::%ppu-evaluate-sprites! ppu 1)
+      (expect (logand (ppu-status ppu) #x20) :to-be #x20)))
   (it "sets sprite zero hit on the dot where opaque pixels overlap"
     (let ((ppu (make-ppu (make-fixture-cartridge))))
       (ppu-write-register! ppu #x01 #x1A)

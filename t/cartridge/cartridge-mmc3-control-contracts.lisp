@@ -1,5 +1,7 @@
 (in-package #:cl-nes/test)
 
+(declaim (notinline cl-nes::cartridge-clock-ppu-a12!))
+
 (describe "MMC3 control contracts"
   (it "controls mirroring, PRG-RAM, and A12 IRQ filtering"
     (with-mmc3-cartridge (cartridge)
@@ -45,7 +47,7 @@
       (cl-nes::cartridge-clock-ppu-a12! cartridge nil)
       (cl-nes::cartridge-clock-cpu! cartridge 3)
       (cl-nes::cartridge-clock-ppu-a12! cartridge t)
-      (expect (cl-nes::cartridge-irq-pending-p cartridge) :to-be t)))
+      (expect (cl-nes::cartridge-irq-pending-p cartridge) :to-be t))))
   (it "distinguishes MMC6 zero-counter reload behavior"
     (with-mmc3-cartridge (cartridge :mapper4-variant :mmc6)
       (cartridge-write-prg! cartridge #xC000 0)
@@ -58,4 +60,31 @@
       (cl-nes::cartridge-clock-ppu-a12! cartridge nil)
       (cl-nes::cartridge-clock-cpu! cartridge 3)
       (cl-nes::cartridge-clock-ppu-a12! cartridge t)
-      (expect (cl-nes::cartridge-irq-pending-p cartridge) :to-be t))))
+      (expect (cl-nes::cartridge-irq-pending-p cartridge) :to-be t)))
+
+  (it "returns control write values and records A12 filter boundary state"
+    (with-mmc3-cartridge (cartridge)
+      (expect (cartridge-write-prg! cartridge #x8000 #x86) :to-be #x86)
+      (expect (cl-nes::cartridge-mapper4-bank-select cartridge) :to-be #x86)
+      (expect (cartridge-write-prg! cartridge #x8001 #x2a) :to-be #x2a)
+      (expect (aref (cl-nes::cartridge-mapper4-registers cartridge) 6)
+              :to-be #x2a)
+      (expect (cartridge-write-prg! cartridge #xC000 #xff) :to-be #xff)
+      (expect (cartridge-write-prg! cartridge #xC001 #x01) :to-be #x01)
+      (expect (cl-nes::cartridge-mapper4-irq-latch cartridge) :to-be #xff)
+      (expect (cl-nes::cartridge-mapper4-irq-reload-p cartridge) :to-be t)
+
+      (cartridge-write-prg! cartridge #xC000 0)
+      (cartridge-write-prg! cartridge #xC001 0)
+      (cartridge-write-prg! cartridge #xE001 0)
+
+      (expect (funcall #'cl-nes::cartridge-clock-ppu-a12! cartridge nil)
+              :to-be cartridge)
+      (cl-nes::cartridge-clock-cpu! cartridge 24)
+      (expect (funcall #'cl-nes::cartridge-clock-ppu-a12! cartridge t)
+              :to-be cartridge)
+      (expect (cl-nes::cartridge-mapper4-a12-low-m2-cycles cartridge)
+              :to-be 0)
+      (expect (cl-nes::cartridge-mapper4-a12-low-m2-cycles cartridge)
+              :to-be 0)
+      (expect (cl-nes::cartridge-irq-pending-p cartridge) :to-be t)))

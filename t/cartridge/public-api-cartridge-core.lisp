@@ -24,4 +24,16 @@
             (aref image 5) 1)
       (expect (lambda ()
                 (load-cartridge image))
-              :to-throw 'error))))
+              :to-throw 'error)))
+
+  (it "rejects invalid sources and headers with invalid-rom conditions"
+    (let ((invalid-source (captured-condition
+                           (lambda () (load-cartridge 42))))
+          (invalid-header (captured-condition
+                           (lambda ()
+                             (load-cartridge
+                              (make-array 16
+                                          :element-type '(unsigned-byte 8)
+                                          :initial-element 0))))))
+      (expect (typep invalid-source 'invalid-rom) :to-be t)
+      (expect (typep invalid-header 'invalid-rom) :to-be t))))

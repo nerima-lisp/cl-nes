@@ -48,4 +48,25 @@
       (expect (cartridge-write-chr! writable 0 #x1FF) :to-be #x1FF)
       (expect (cartridge-read-chr writable 0) :to-be #xFF)
       (expect (cartridge-read-chr writable #x2000) :to-be nil)
-      (expect (cartridge-write-chr! writable #x2000 #x77) :to-be #x77))))
+      (expect (cartridge-write-chr! writable #x2000 #x77) :to-be #x77)))
+
+  (it "routes CPU and PPU memory through cartridge windows"
+    (let* ((cartridge (make-patterned-cartridge
+                       :mapper 0 :prg-banks 2 :chr-banks 8))
+           (ciram (make-array #x800
+                             :element-type '(unsigned-byte 8)
+                             :initial-element 0)))
+      (expect (cl-nes::cartridge-cpu-read nil #x8000) :to-be nil)
+      (expect (cl-nes::cartridge-cpu-write! nil #x8000 #xA5) :to-be #xA5)
+      (expect (cl-nes::cartridge-cpu-read cartridge #x5000) :to-be nil)
+      (expect (cl-nes::cartridge-cpu-read cartridge #x4000) :to-be nil)
+      (expect (cl-nes::cartridge-cpu-write! cartridge #x4000 #x5A) :to-be #x5A)
+      (expect (cl-nes::cartridge-ppu-write-nametable!
+               cartridge ciram #x2000 #xA5)
+              :to-be #xA5)
+      (expect (cl-nes::cartridge-ppu-read-nametable cartridge ciram #x2400)
+              :to-be #xA5)
+      (expect (cl-nes::cartridge-ppu-write-nametable!
+               nil ciram #x2000 #x5A)
+              :to-be #x5A)
+      (expect (aref ciram 0) :to-be #x5A))))
