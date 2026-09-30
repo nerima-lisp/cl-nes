@@ -303,6 +303,7 @@
                              color)))))))
 
 (defun %ppu-render-dot! (ppu)
+  (declare (type ppu ppu))
   (when (and (< (ppu-scanline ppu) +ppu-height+)
              (<= 1 (ppu-dot ppu) 256))
     (let ((x (1- (ppu-dot ppu)))
