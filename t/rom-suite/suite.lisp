@@ -67,6 +67,24 @@
                             (getf result :completed-count))))))
   result)
 
+(defun run-contracts-parallel (contracts)
+  (let* ((results (make-array (length contracts)))
+         (threads
+           (loop for contract in contracts
+                 for index from 0
+                 collect
+                 (let ((worker-index index)
+                       (worker-contract contract))
+                   (sb-thread:make-thread
+                    (lambda ()
+                      (setf (aref results worker-index)
+                            (run-contract worker-contract))))))))
+    (dolist (thread threads)
+      (sb-thread:join-thread thread))
+    (loop for contract in contracts
+          for index from 0
+          collect (cons contract (aref results index)))))
+
 (defun run-accuracy-contract ()
   (let ((path (accuracy-coin-path)))
     (unless (and path (probe-file path))
@@ -84,8 +102,9 @@
 
 (defun run-rom-suite ()
   (let ((results nil))
-    (dolist (contract (rom-contract-table))
-      (let ((result (enforce-ratchet contract (run-contract contract))))
+    (dolist (entry (run-contracts-parallel (rom-contract-table)))
+      (let* ((contract (car entry))
+             (result (enforce-ratchet contract (cdr entry))))
         (push result results)
         (format t "~A~%" (result-summary contract result))))
     (run-accuracy-contract)
