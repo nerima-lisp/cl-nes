@@ -950,6 +950,32 @@
         "type": "github"
       }
     },
+    "retrobrews-nes-games": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1554884597,
+        "narHash": "sha256-TFORWO/L84o++Ln44nBAzCn+VpvJtbqvXG0kz1HNaNY=",
+        "type": "tarball",
+        "url": "https://github.com/retrobrews/nes-games/archive/d20061bf9917e8bb8b947d4dba8c59372f5762a0.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://github.com/retrobrews/nes-games/archive/d20061bf9917e8bb8b947d4dba8c59372f5762a0.tar.gz"
+      }
+    },
+    "goro-nes-homebrew": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1785111318,
+        "narHash": "sha256-3G2wLt2eCMESJHZcIemo0fo7qSMeKDApztWjyz2FSWk=",
+        "type": "tarball",
+        "url": "https://github.com/GOROman/calude-famicom-game/archive/576a0c249d017e4d339410a2c19739d31778ec6b.tar.gz"
+      },
+      "original": {
+        "type": "tarball",
+        "url": "https://github.com/GOROman/calude-famicom-game/archive/576a0c249d017e4d339410a2c19739d31778ec6b.tar.gz"
+      }
+    },
     "root": {
       "inputs": {
         "accuracy-coin": "accuracy-coin",
@@ -961,6 +987,8 @@
         "nes-test-roms": "nes-test-roms",
         "nixpkgs": "nixpkgs",
         "paredit-cli": "paredit-cli_6",
+      "retrobrews-nes-games": "retrobrews-nes-games",
+      "goro-nes-homebrew": "goro-nes-homebrew",
         "treefmt-nix": "treefmt-nix_22"
       }
     },

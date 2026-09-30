@@ -235,3 +235,13 @@
                               :reporter :spec
                               :pass-with-no-tests nil)
       (error "cl-nes ROM contract tests failed."))))
+
+(defsystem "cl-nes/compat"
+  :description "Headless compatibility corpus harness for freely distributable homebrew ROMs."
+  :author "nerima-lisp"
+  :license "MIT"
+  :version "0.2.0"
+  :depends-on ("cl-nes")
+  :pathname "t/compat"
+  :serial t
+  :components ((:file "package") (:file "corpus") (:file "runner")))
