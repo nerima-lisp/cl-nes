@@ -111,7 +111,10 @@
     (when (and (not was-enabled)
                (logbitp 7 value)
                (logbitp 7 (ppu-status ppu)))
-      (%request-nmi! ppu (if cpu-access-p 6 3)))
+      (%request-nmi! ppu (if (and cpu-access-p
+                                   (= (ppu-scanline ppu) 241))
+                              6
+                              3)))
     (when (and was-enabled (not (logbitp 7 value)))
       (%cancel-nmi-delay! ppu))))
 
