@@ -30,6 +30,39 @@ The controller strobe and serial reads are driven through bus writes and reads
 at the normal controller addresses. The first eight reads return the latched
 button bits; subsequent reads return the controller's post-shift value.
 
+## Save and restore a machine
+
+Save states are deterministic octet vectors and can be restored into the same
+machine instance:
+
+~~~lisp
+(let ((state (cl-nes:nes-save-state nes)))
+  ;; Store STATE as binary data, then later:
+  (cl-nes:nes-load-state nes state))
+~~~
+
+`invalid-savestate` is signaled for truncated data, an unknown magic, an
+unsupported version, or malformed sections.
+
+## Drive controller input at frame boundaries
+
+The `:input-continuation` keyword of `nes-run-frame/k` and `nes-run-frames/k`
+is called once per frame, before that frame's first CPU step, with the nes
+instance:
+
+~~~lisp
+(cl-nes:nes-run-frames/k
+ nes 60
+ (lambda (framebuffer)
+   (write-frame-to-your-backend framebuffer))
+ :input-continuation
+ (lambda (nes)
+   (cl-nes:controller-set-buttons! controller-1 (next-input-frame))))
+~~~
+
+This lets a caller update live controller state each frame during a headless
+run, without stepping the CPU manually between frames.
+
 ## Connect DMC memory reads
 
 An APU that is not connected through make-bus can receive a reader directly:
@@ -64,8 +97,22 @@ zero-counter reload suppression behavior.
 The command-line wrapper handles the framebuffer-to-PPM conversion:
 
 ~~~sh
-sbcl --script run-nes.lisp game.nes 10 frame
+cl-nes render game.nes --frames 10 --prefix frame --format ppm
 ~~~
 
 It writes frame-0001.ppm through frame-0010.ppm using the standard 64-entry
 NES palette.
+
+Library callers can use the same formatters directly. `nes-framebuffer-rgb-octets`
+returns packed RGB data, and `nes-write-ppm` writes a framebuffer to a binary
+P6 image:
+
+~~~lisp
+(cl-nes:nes-write-ppm "frame.ppm" framebuffer)
+~~~
+
+To save audio, create one reusable buffer and pass it with
+`:audio-buffer`/`:audio-continuation` to `nes-run-frames/k`. The continuation
+receives a full single-float buffer in `[-1,1]`; pass copied buffers to
+`nes-write-wav` when a file is desired. The optional `:sample-rate` keyword
+controls the output rate and defaults to 44100 Hz.

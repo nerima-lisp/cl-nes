@@ -1,0 +1,20 @@
+(in-package #:cl-nes/test)
+
+(describe "Coverage: PPU background pixel contracts"
+  (it "covers background pixel visibility gates"
+    (with-fixture-ppu (background-ppu (make-fixture-cartridge))
+      (ppu-write-register! background-ppu 1 0)
+      (multiple-value-bind (color present)
+          (cl-nes::%background-pixel background-ppu 0 0)
+        (expect color :to-be 0)
+        (expect present :to-be nil))
+      (ppu-write-register! background-ppu 1 #x02)
+      (multiple-value-bind (color present)
+          (cl-nes::%background-pixel background-ppu 0 0)
+        (expect color :to-be 0)
+        (expect present :to-be nil))
+      (ppu-write-register! background-ppu 1 #x06)
+      (multiple-value-bind (color present)
+          (cl-nes::%background-pixel background-ppu 0 0)
+        (expect color :to-be 0)
+        (expect present :to-be nil)))))

@@ -7,7 +7,7 @@ audio, input, and process control to the caller.
 ## What it provides
 
 - iNES 1.0 and the supported subset of NES 2.0 cartridge headers.
-- Mappers 0, 1, 2, 3, 4, 5, 7, 11, 22, 28, and 34.
+- Mappers 0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28, 34, 66, 71, and 87.
 - 6502/2A03 execution with reset, IRQ, NMI, stack operations, page-crossing
   cycles, and documented unofficial opcodes used by common test ROMs.
 - CPU RAM and PPU register mirroring, controllers, and OAM DMA.
