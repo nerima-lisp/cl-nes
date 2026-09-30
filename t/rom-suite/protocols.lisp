@@ -307,8 +307,8 @@
                 :failure-text "status 0; 5-MMC3 Passed"
                 :mapper4-variant :mmc3)
                (:id "mmc3-test-legacy-mmc6" :path "mmc3_test/6-MMC6.nes"
-                :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                :failure-text "status 128; MMC6 IRQ reload behavior failure"
+                :protocol :blargg :expected 0 :max-frames 60 :state :pass
+                :failure-text "status 0; 6-MMC6 Passed"
                 :mapper4-variant :mmc6)
                (:id "mmc1-a12" :path "MMC1_A12/mmc1_a12.nes"
                 :protocol :mmc1-a12 :expected 1 :max-frames 60 :state :pass
