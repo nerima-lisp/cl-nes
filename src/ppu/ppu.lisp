@@ -14,6 +14,7 @@ console reset for callers that want to preserve cartridge-backed state."
         (ppu-status ppu) 0
         (ppu-oam-address ppu) 0
         (ppu-vram-address ppu) 0
+        (ppu-address-bus ppu) 0
         (ppu-temporary-address ppu) 0
         (ppu-fine-x ppu) 0
         (ppu-write-toggle ppu) nil
@@ -69,14 +70,3 @@ console reset for callers that want to preserve cartridge-backed state."
   (let ((ppu (%make-ppu)))
     (ppu-load-cartridge! ppu cartridge)
     ppu))
-
-(defun %ppu-address-a12-high-p (address)
-  (logbitp 12 (logand address #x3FFF)))
-
-(defun %ppu-clock-address-a12! (ppu &optional (low-cycles 24))
-  "Expose a CPU-visible PPU address change to the cartridge A12 detector."
-  (when (ppu-cartridge ppu)
-    (cartridge-clock-ppu-a12! (ppu-cartridge ppu)
-                               (%ppu-address-a12-high-p
-                                (ppu-vram-address ppu))
-                               low-cycles)))

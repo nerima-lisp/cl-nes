@@ -4,32 +4,26 @@
   (it "clocks mapper A12 from CPU-visible address and data accesses"
     (with-mmc3-cartridge (cartridge)
       (let ((ppu (make-ppu cartridge)))
-        (setf (cl-nes::cartridge-mapper4-ppu-a12-low-cycles cartridge) 24
+        (setf (cl-nes::cartridge-mapper4-a12-low-m2-cycles cartridge) 3
               (cl-nes::cartridge-mapper4-ppu-a12-high-p cartridge) nil)
         (ppu-write-register! ppu 6 #x10)
-        (expect (cl-nes::cartridge-mapper4-ppu-a12-low-cycles cartridge)
-                :to-be 24)
         (expect (cl-nes::cartridge-mapper4-ppu-a12-high-p cartridge)
                 :to-be nil)
         (ppu-write-register! ppu 6 #x00)
         (expect (cl-nes::ppu-vram-address ppu) :to-be #x1000)
         (expect (cl-nes::cartridge-mapper4-ppu-a12-high-p cartridge)
                 :to-be t)
-        (expect (cl-nes::cartridge-mapper4-ppu-a12-low-cycles cartridge)
-                :to-be 0)
         (ppu-write-register! ppu 6 #x20)
         (ppu-write-register! ppu 6 #x00)
         (expect (cl-nes::ppu-vram-address ppu) :to-be #x2000)
         (expect (cl-nes::cartridge-mapper4-ppu-a12-high-p cartridge)
                 :to-be nil)
-        (expect (cl-nes::cartridge-mapper4-ppu-a12-low-cycles cartridge)
-                :to-be 24)
         (ppu-write-register! ppu 7 #x12)
         (expect (cl-nes::ppu-vram-address ppu) :to-be #x2001)
         (expect (cl-nes::cartridge-mapper4-ppu-a12-high-p cartridge)
                 :to-be nil)
-        (expect (cl-nes::cartridge-mapper4-ppu-a12-low-cycles cartridge)
-                :to-be 25)))))
+        (expect (cl-nes::cartridge-mapper4-a12-low-m2-cycles cartridge)
+                :to-be 0)))))
 
   (it "clocks MMC3 A12 on the final CPU cycle of a $2007 write"
     (with-mmc3-cartridge (cartridge)
@@ -52,7 +46,8 @@
           ;; Match result 6's preceding clock: the first A12 edge reloads
           ;; the cleared counter, leaving the $2007 edge to decrement it.
           (cl-nes::cartridge-clock-ppu-a12! cartridge t)
-          (cl-nes::cartridge-clock-ppu-a12! cartridge nil 24)
+          (cl-nes::cartridge-clock-ppu-a12! cartridge nil)
+          (cl-nes::cartridge-clock-cpu! cartridge 3)
           (sta-absolute! #x2007 #xAA)
           (expect cycle-count :to-be 12)
           (expect (cl-nes::ppu-vram-address ppu) :to-be #x1000)

@@ -45,13 +45,15 @@
     (let ((ppu (make-ppu (make-fixture-cartridge))))
       (setf (ppu-control ppu) #x20
             (cl-nes::ppu-scanline ppu) 1
-            (cl-nes::ppu-dot ppu) 257
+            (cl-nes::ppu-dot ppu) 261
             (cl-nes::ppu-secondary-oam-count ppu) 1)
       (setf (aref (cl-nes::ppu-secondary-oam ppu) 0) 0
             (aref (cl-nes::ppu-secondary-oam ppu) 1) 3
             (aref (cl-nes::ppu-secondary-oam ppu) 2) #x80)
       (ppu-write-vram! ppu #x1037 #xA5)
       (ppu-write-vram! ppu #x103F #x5A)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (setf (cl-nes::ppu-dot ppu) 263)
       (cl-nes::%ppu-clock-pipeline! ppu)
       (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be #xA5)
       (expect (aref (cl-nes::ppu-sprite-shift-high ppu) 0) :to-be #x5A)))

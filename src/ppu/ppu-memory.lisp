@@ -27,7 +27,16 @@
    (%ppu-nametable-address address)
    value))
 
-(defun ppu-read-vram (ppu address &optional (sprite-p nil))
+(defun %ppu-address-bus! (ppu address)
+  (let ((address (%ppu-address address)))
+    (setf (ppu-address-bus ppu) address)
+    (when (ppu-cartridge ppu)
+      (cartridge-clock-ppu-a12! (ppu-cartridge ppu)
+                                 (logbitp 12 address)))))
+
+(defun ppu-read-vram (ppu address &optional (sprite-p nil) (bus-access-p nil))
+  (when bus-access-p
+    (%ppu-address-bus! ppu address))
   (let ((address (%ppu-address address)))
     (cond
       ((< address #x2000)
@@ -39,7 +48,9 @@
       (t
        (aref (ppu-palette ppu) (%palette-index address))))))
 
-(defun ppu-write-vram! (ppu address value)
+(defun ppu-write-vram! (ppu address value &optional (bus-access-p nil))
+  (when bus-access-p
+    (%ppu-address-bus! ppu address))
   (let ((address (%ppu-address address))
         (value (logand value #xFF)))
     (cond

@@ -24,6 +24,7 @@
    (palette (make-array 32 :element-type '(unsigned-byte 8) :initial-element 0)
             vector)
    (vram-address 0 fixnum)
+   (address-bus 0 fixnum)
    (temporary-address 0 fixnum)
    (fine-x 0 fixnum)
    (write-toggle nil nil)
