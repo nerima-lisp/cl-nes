@@ -30,3 +30,33 @@
                 :to-be nil)
         (expect (cl-nes::cartridge-mapper4-ppu-a12-low-cycles cartridge)
                 :to-be 25)))))
+
+  (it "clocks MMC3 A12 on the final CPU cycle of a $2007 write"
+    (with-mmc3-cartridge (cartridge)
+      (let* ((nes (make-nes :cartridge cartridge))
+             (bus (cl-nes::nes-bus nes))
+             (ppu (cl-nes::nes-ppu nes))
+             (cycle-count 0))
+        (setf (cl-nes::ppu-scanline ppu) 240)
+        (flet ((sta-absolute! (address value)
+                 (cl-nes::with-nes-cpu-operation
+                     (nes (lambda () (incf cycle-count)))
+                   (bus-write! bus address value)
+                   4)))
+          (sta-absolute! #x2006 #x0F)
+          (sta-absolute! #x2006 #xFF)
+          (expect (cl-nes::ppu-vram-address ppu) :to-be #x0FFF)
+          (cartridge-write-prg! cartridge #xC000 1)
+          (cartridge-write-prg! cartridge #xC001 0)
+          (cartridge-write-prg! cartridge #xE001 0)
+          ;; Match result 6's preceding clock: the first A12 edge reloads
+          ;; the cleared counter, leaving the $2007 edge to decrement it.
+          (cl-nes::cartridge-clock-ppu-a12! cartridge t)
+          (cl-nes::cartridge-clock-ppu-a12! cartridge nil 24)
+          (sta-absolute! #x2007 #xAA)
+          (expect cycle-count :to-be 12)
+          (expect (cl-nes::ppu-vram-address ppu) :to-be #x1000)
+          (expect (cl-nes::cartridge-mapper4-ppu-a12-high-p cartridge)
+                  :to-be t)
+          (expect (cl-nes::cartridge-irq-pending-p cartridge)
+                  :to-be t)))))
