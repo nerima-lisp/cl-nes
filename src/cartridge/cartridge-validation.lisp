@@ -100,8 +100,10 @@
   (unless (case mapper
             (22 (and (plusp (length chr))
                      (zerop (mod (length chr) +chr-bank-1k-size+))))
-            ((1 3 11 28 66 69 79 87) (and (>= (length chr) +chr-bank-size+)
-                                    (zerop (mod (length chr) +chr-bank-size+))))
+            (3 (and (<= +chr-bank-size+ (length chr) (* 4 +chr-bank-size+))
+                     (zerop (mod (length chr) +chr-bank-size+))))
+            ((1 11 28 66 69 79 87) (and (>= (length chr) +chr-bank-size+)
+                                         (zerop (mod (length chr) +chr-bank-size+))))
             ((4 5) (and (plusp (length chr))
                         (zerop (mod (length chr) +chr-bank-1k-size+))))
             ((9 10) (and (plusp (length chr))

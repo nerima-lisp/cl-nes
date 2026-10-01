@@ -61,7 +61,7 @@
   (let ((chr-bank-count (floor (length (cartridge-chr-rom cartridge))
                                +chr-bank-size+)))
     (set-cartridge-chr-bank! cartridge
-                             (mod value chr-bank-count))))
+                             (mod (logand value #x03) chr-bank-count))))
 
 (defun %write-cartridge-mapper7-prg! (cartridge value)
   (set-cartridge-prg-bank! cartridge (logand value #x07))
