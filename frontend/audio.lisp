@@ -86,6 +86,13 @@
   (setf (audio-queue-opened-p queue) nil)
   queue)
 
+(defun %audio-queue-record-overrun! (queue overrun-p)
+  (if overrun-p
+      (unless (audio-queue-overrun-p queue)
+        (incf (audio-queue-overruns queue))
+        (setf (audio-queue-overrun-p queue) t))
+      (setf (audio-queue-overrun-p queue) nil)))
+
 (defun %audio-queue-record-size! (queue size)
   (setf (audio-queue-queued-bytes queue) size)
   (when (audio-queue-started-p queue)
@@ -94,11 +101,8 @@
           (incf (audio-queue-underruns queue))
           (setf (audio-queue-underrun-p queue) t))
         (setf (audio-queue-underrun-p queue) nil))
-    (if (> size (audio-queue-capacity queue))
-        (unless (audio-queue-overrun-p queue)
-          (incf (audio-queue-overruns queue))
-          (setf (audio-queue-overrun-p queue) t))
-        (setf (audio-queue-overrun-p queue) nil)))
+    (%audio-queue-record-overrun!
+     queue (> size (audio-queue-capacity queue))))
   size)
 
 (defun %audio-sample->s16 (sample)
@@ -118,8 +122,7 @@
       (%audio-queue-record-size! queue queued)
       (if (> (+ queued length) (audio-queue-capacity queue))
           (progn
-            (incf (audio-queue-overruns queue))
-            (setf (audio-queue-overrun-p queue) t))
+            (%audio-queue-record-overrun! queue t))
           (progn
             (loop for sample across samples for i from 0 by 2
                   for value = (%audio-sample->s16 sample)

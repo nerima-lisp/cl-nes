@@ -1,11 +1,11 @@
 (in-package #:cl-nes/test)
 
-(describe "CPU opcode dispatch reachability (40-5F)"
-  (define-opcode-dispatch-reachability-spec
-      "reaches opcode #x~2,'0X through the unified dispatch"
+(describe "CPU opcode dispatch (40-5F)"
+  (define-opcode-dispatch-spec
+      "dispatches opcode #x~2,'0X in ~D cycles"
     ((#x40 6) (#x41 6) (#x43 8) (#x44 3) (#x45 3) (#x46 5) (#x47 5)
      (#x48 3) (#x49 2) (#x4A 2) (#x4B 2) (#x4C 3) (#x4D 4) (#x4E 6) (#x4F 6)
-     (#x50 2) (#x51 5) (#x53 8) (#x54 4) (#x55 4) (#x56 6) (#x57 6)
+     (#x50 3) (#x51 5) (#x53 8) (#x54 4) (#x55 4) (#x56 6) (#x57 6)
      (#x58 2) (#x59 4) (#x5A 2) (#x5B 7) (#x5C 4) (#x5D 4) (#x5E 7) (#x5F 7))))
 
 (define-cpu-semantic-case "RTI restores status and a little-endian PC"

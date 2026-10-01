@@ -1,16 +1,17 @@
 (in-package #:cl-nes/test)
 
 (defmacro expect-cpu-semantic-state
-    ((cpu bus &key a x y sp pc p cycles memory) &body setup)
+    ((cpu bus &key (a nil a-p) (x nil x-p) (y nil y-p) (sp nil sp-p)
+                 (pc nil pc-p) (p nil p-p) cycles memory) &body setup)
   `(progn
      ,@setup
      (expect-cpu-step-cycles ,cpu ,bus ,cycles)
-     ,@(remove nil (list (and a `(expect (cpu-a ,cpu) :to-be ,a))
-                         (and x `(expect (cpu-x ,cpu) :to-be ,x))
-                         (and y `(expect (cpu-y ,cpu) :to-be ,y))
-                         (and sp `(expect (cpu-sp ,cpu) :to-be ,sp))
-                         (and pc `(expect (cpu-pc ,cpu) :to-be ,pc))
-                         (and p `(expect (cpu-p ,cpu) :to-be ,p))))
+     ,@(remove nil (list (and a-p `(expect (cpu-a ,cpu) :to-be ,a))
+                         (and x-p `(expect (cpu-x ,cpu) :to-be ,x))
+                         (and y-p `(expect (cpu-y ,cpu) :to-be ,y))
+                         (and sp-p `(expect (cpu-sp ,cpu) :to-be ,sp))
+                         (and pc-p `(expect (cpu-pc ,cpu) :to-be ,pc))
+                         (and p-p `(expect (cpu-p ,cpu) :to-be ,p))))
      ,@(mapcar (lambda (entry)
                  `(expect (bus-read ,bus ,(first entry)) :to-be ,(second entry)))
                memory)))
