@@ -40,12 +40,14 @@
       (28 (%mapper28-prg-offset cartridge address)))))
 
 (defun %cartridge-prg-write-address-p (cartridge address)
-  (if (= (cartridge-mapper cartridge) 79)
-      (= address #x4100)
-      (if (= (cartridge-mapper cartridge) 28)
-      (or (<= #x5000 address #x5FFF)
-          (<= #x8000 address #xFFFF))
-      (<= #x8000 address #xFFFF))))
+  (cond
+    ((and (%mapper34-nina-p cartridge)
+          (<= #x7FFD address #x7FFF)) t)
+    ((= (cartridge-mapper cartridge) 79) (= address #x4100))
+    ((= (cartridge-mapper cartridge) 28)
+     (or (<= #x5000 address #x5FFF)
+         (<= #x8000 address #xFFFF)))
+    (t (<= #x8000 address #xFFFF))))
 
 (defun %cartridge-bus-conflict-value (cartridge address value)
   (logand value (cartridge-read-prg cartridge address)))
@@ -137,7 +139,24 @@
         (22 (%mapper22-write! cartridge address value))
         (28 (%mapper28-write! cartridge address value))
         ((9 10) (%mapper9-10-write! cartridge address value))
-        (34 (set-cartridge-prg-bank! cartridge value)))))
+        (34
+         (if (%mapper34-nina-p cartridge)
+             (let ((chr-bank-count (floor (length (cartridge-chr-rom cartridge))
+                                          +chr-bank-4k-size+)))
+               (case address
+                 (#x7FFD
+                  (set-cartridge-prg-bank!
+                   cartridge
+                   (mod value
+                        (floor (length (cartridge-prg-rom cartridge))
+                               (* 2 +prg-bank-size+)))))
+                 (#x7FFE
+                  (setf (cartridge-mapper-chr-bank-0 cartridge)
+                        (mod value chr-bank-count)))
+                 (#x7FFF
+                  (setf (cartridge-mapper-chr-bank-1 cartridge)
+                        (mod value chr-bank-count))))))
+             (set-cartridge-prg-bank! cartridge value)))))
   value)
 
 (defun cartridge-read-prg-ram (cartridge address)

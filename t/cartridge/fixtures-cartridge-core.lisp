@@ -12,11 +12,13 @@
     (&key mapper prg-banks chr-banks
           (prg-ram-size (* 8 cl-nes::+prg-ram-bank-size+))
           (mapper4-variant :mmc3)
+          (submapper 0)
           four-screen-p)
   (make-cartridge
    :prg-rom (make-banked-storage prg-banks cl-nes::+prg-bank-8k-size+)
    :chr-rom (make-banked-storage chr-banks cl-nes::+chr-bank-1k-size+)
    :mapper mapper
+   :submapper submapper
    :prg-ram-size prg-ram-size
    :mapper4-variant mapper4-variant
    :four-screen-p four-screen-p))

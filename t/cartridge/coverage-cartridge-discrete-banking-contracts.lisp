@@ -24,6 +24,27 @@
       (expect (cartridge-read-chr mapper-11 0) :to-be 8)
       (cartridge-write-prg! mapper-34 #x8000 1)
       (expect (cartridge-read-prg mapper-34 #x8000) :to-be 4)
+      (let ((nina (make-patterned-cartridge :mapper 34
+                                            :submapper 0
+                                            :prg-banks 8
+                                            :chr-banks 16)))
+        (cartridge-cpu-write! nina #x7FFD 1)
+        (cartridge-cpu-write! nina #x7FFE 2)
+        (cartridge-cpu-write! nina #x7FFF 3)
+        (expect (cartridge-read-prg nina #x8000) :to-be 4)
+        (expect (cartridge-read-chr nina 0) :to-be 8)
+        (expect (cartridge-read-chr nina #x1000) :to-be 12))
+      (let ((nina-submapper (make-patterned-cartridge :mapper 34
+                                                       :submapper 1
+                                                       :prg-banks 8
+                                                       :chr-banks 8)))
+        (cartridge-cpu-write! nina-submapper #x7FFE 1)
+        (expect (cartridge-read-chr nina-submapper 0) :to-be 4))
+      (let ((bnrom-ram (make-cartridge
+                        :mapper 34
+                        :prg-rom (make-banked-storage 8 cl-nes::+prg-bank-8k-size+))))
+        (cartridge-write-chr! bnrom-ram 0 #xA5)
+        (expect (cartridge-read-chr bnrom-ram 0) :to-be #xA5))
       (expect (cartridge-read-prg nrom-368 #x4800) :to-be 0)
       (expect (cartridge-read-prg nrom-368 #x8000) :to-be 2)
       (expect (cartridge-read-prg nrom-368 #xFFFF) :to-be 5)))
