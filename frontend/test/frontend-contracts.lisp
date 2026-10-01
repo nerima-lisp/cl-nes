@@ -108,9 +108,13 @@
              (expect (null (directory
                             (make-pathname :name (format nil ".~A.*"
                                                          (pathname-name pathname))
-                                           :type (pathname-type pathname)
-                                           :defaults pathname)))
-                     :to-be t))
+                                 :type (pathname-type pathname)
+                                 :defaults pathname)))
+                     :to-be t)
+             (handler-case
+                 (atomic-save-octets pathname #(999))
+               (type-error () nil))
+             (expect (equalp (restore-octets pathname) new) :to-be t))
         (when (probe-file pathname) (delete-file pathname))))))
 
 (describe "frontend save-state slots"
