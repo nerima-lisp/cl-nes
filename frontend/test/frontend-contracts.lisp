@@ -20,6 +20,18 @@
         (uiop:delete-directory-tree pathname :validate t)
         (delete-file pathname))))
 
+(defun write-test-rom (pathname)
+  (let ((octets (make-array (+ 16 16384 8192)
+                            :element-type '(unsigned-byte 8)
+                            :initial-element 0)))
+    (replace octets #(78 69 83 26 1 1) :end1 6)
+    (setf (aref octets (+ 16 #x3FFC)) 0
+          (aref octets (+ 16 #x3FFD)) #x80)
+    (with-open-file (stream pathname :direction :output :if-exists :supersede
+                            :if-does-not-exist :create
+                            :element-type '(unsigned-byte 8))
+      (write-sequence octets stream))))
+
 (describe "frontend input masks"
   (it "maps keyboard keys to the NES button bits"
     (let ((pressed '(:z :x :left-shift :kp-enter :up :right)))
@@ -83,6 +95,33 @@
                             :stdout (make-string-output-stream)
                             :stderr (make-string-output-stream))
             :to-be 64)))
+  (it "reports malformed ROMs on stderr with status 70"
+    (let ((stderr (make-string-output-stream)))
+      (expect (cl-cli:run-app (make-cli-app)
+                              :argv '("cl-nes" "render" "missing.nes")
+                              :stdout (make-string-output-stream)
+                              :stderr stderr)
+              :to-be 70)
+      (expect (search "cl-nes render:" (get-output-stream-string stderr))
+              :to-be 0)))
+  (it "writes headless render output and ROM-test output to their streams"
+    (let* ((directory (merge-pathnames
+                       (format nil "cl-nes-cli-~D/" (random most-positive-fixnum))
+                       (uiop:temporary-directory)))
+           (rom (merge-pathnames "test.nes" directory))
+           (prefix (merge-pathnames "frame" directory))
+           (stdout (make-string-output-stream)))
+      (unwind-protect
+           (progn
+             (ensure-directories-exist directory)
+             (write-test-rom rom)
+             (run-render rom 1 (namestring prefix) "ppm")
+             (expect (plusp (file-length (merge-pathnames "frame-0001.ppm" directory)))
+                     :to-be t)
+             (run-rom-test rom 1 stdout)
+             (expect (search "passed=" (get-output-stream-string stdout))
+                     :to-be 0))
+        (delete-test-path directory))))
 
 (describe "frontend battery persistence"
   (it "uses the ROM basename with a sav extension in the state directory"
