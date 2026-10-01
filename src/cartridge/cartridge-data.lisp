@@ -79,6 +79,7 @@
              :mapper4-bank-select 0
              :mapper4-registers mapper4-registers
              :mapper4-variant mapper4-variant
+             :mapper4-mmc6-prg-ram-protect 0
              :mapper4-prg-ram-enabled-p t
              :mapper4-prg-ram-write-protected-p nil
              :mapper4-irq-latch 0

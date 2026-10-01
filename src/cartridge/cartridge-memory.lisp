@@ -121,6 +121,7 @@
           (aref dispatch 34) #'%cartridge-chr-offset-by-mapper
           (aref dispatch 66) #'%cartridge-chr-offset-mapper-66-87
           (aref dispatch 69) #'%cartridge-chr-offset-mapper-69
+          (aref dispatch 79) #'%cartridge-chr-offset-mapper-66-87
           (aref dispatch 87) #'%cartridge-chr-offset-mapper-66-87)
     dispatch))
 

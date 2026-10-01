@@ -62,6 +62,27 @@
       (cl-nes::cartridge-clock-ppu-a12! cartridge t)
       (expect (cl-nes::cartridge-irq-pending-p cartridge) :to-be t)))
 
+  (it "maps MMC6 protected RAM as two mirrored 512-byte banks"
+    (with-mmc3-cartridge (cartridge :mapper4-variant :mmc6)
+      (expect (cartridge-read-prg-ram cartridge #x7000) :to-be nil)
+      (cartridge-write-prg! cartridge #x8000 #x20)
+      (cartridge-write-prg! cartridge #xA001 #xF0)
+      (cartridge-write-prg-ram! cartridge #x7000 #x12)
+      (cartridge-write-prg-ram! cartridge #x7200 #x34)
+      (expect (cartridge-read-prg-ram cartridge #x7000) :to-be #x12)
+      (expect (cartridge-read-prg-ram cartridge #x7400) :to-be #x12)
+      (expect (cartridge-read-prg-ram cartridge #x7200) :to-be #x34)
+      (expect (cartridge-read-prg-ram cartridge #x7600) :to-be #x34)
+      (cartridge-write-prg! cartridge #xA001 #x20)
+      (cartridge-write-prg-ram! cartridge #x7000 #x56)
+      (cartridge-write-prg-ram! cartridge #x7200 #x78)
+      (expect (cartridge-read-prg-ram cartridge #x7000) :to-be #x12)
+      (expect (cartridge-read-prg-ram cartridge #x7200) :to-be nil)
+      (cartridge-write-prg! cartridge #x8000 0)
+      (expect (cl-nes::cartridge-mapper4-mmc6-prg-ram-protect cartridge)
+              :to-be 0)
+      (expect (cartridge-read-prg-ram cartridge #x7000) :to-be nil)))
+
   (it "returns control write values and records A12 filter boundary state"
     (with-mmc3-cartridge (cartridge)
       (expect (cartridge-write-prg! cartridge #x8000 #x86) :to-be #x86)

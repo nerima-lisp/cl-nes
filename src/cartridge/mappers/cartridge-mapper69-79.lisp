@@ -49,10 +49,10 @@
       ((= (logand address #xE000) #x8000)
        (setf (cartridge-mapper69-command cartridge) (logand value #x0F)))
       ((= (logand address #xE000) #xA000)
-       (cond
-         ((<= command 11)
+       (case command
+         ((0 1 2 3 4 5 6 7 8 9 10 11)
           (setf (aref (cartridge-mapper69-registers cartridge) command) value))
-         ((= command 12)
+         (12
           (unless (cartridge-four-screen-p cartridge)
             (set-cartridge-mirroring!
              cartridge
@@ -61,19 +61,19 @@
                (1 :horizontal)
                (2 :single-screen-lower)
                (otherwise :single-screen-upper)))))
-         ((= command 13)
+         (13
           (setf (cartridge-mapper69-irq-counter-enabled-p cartridge) (logbitp 7 value)
                 (cartridge-mapper69-irq-enabled-p cartridge) (logbitp 0 value)
                 (cartridge-mapper69-irq-pending-p cartridge) nil))
-         ((= command 14)
+         (14
           (setf (cartridge-mapper69-irq-counter cartridge)
                 (dpb value (byte 8 0) (cartridge-mapper69-irq-counter cartridge))))
-         ((= command 15)
+         (15
           (setf (cartridge-mapper69-irq-counter cartridge)
-                (dpb value (byte 8 8) (cartridge-mapper69-irq-counter cartridge)))))
+                (dpb value (byte 8 8) (cartridge-mapper69-irq-counter cartridge))))))
       ((= (logand address #xE000) #xC000)
-       (setf (cartridge-mapper69-command cartridge) (logand value #x0F)))))
-  value))
+       (setf (cartridge-mapper69-command cartridge) (logand value #x0F))))
+    value))
 
 (defun cartridge-clock-cpu! (cartridge cycles)
   (when (and cartridge (= (cartridge-mapper cartridge) 4))
