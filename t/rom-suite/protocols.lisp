@@ -270,14 +270,46 @@
                 :protocol :blargg :expected 0 :max-frames 60 :state :pass
                 :failure-text "status 0; 2-details Passed"
                 :mapper4-variant :mmc3)
+               (:id "mmc3-test-2-a12" :path "mmc3_test_2/rom_singles/3-A12_clocking.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :pass
+                :failure-text "status 0; 3-A12_clocking Passed"
+                :mapper4-variant :mmc3)
                (:id "mmc3-test-2-scanline-timing" :path "mmc3_test_2/rom_singles/4-scanline_timing.nes"
                 :protocol :blargg :expected 0 :max-frames 120 :state :known-fail
                 :failure-text "status 128; Scanline 0 IRQ should occur sooner when $2000=$08"
+                :mapper4-variant :mmc3)
+               (:id "mmc3-test-2-mmc3" :path "mmc3_test_2/rom_singles/5-MMC3.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :pass
+                :failure-text "status 0; 5-MMC3 Passed"
                 :mapper4-variant :mmc3)
                (:id "mmc3-test-2-alt" :path "mmc3_test_2/rom_singles/6-MMC3_alt.nes"
                 :protocol :blargg :expected 0 :max-frames 60 :state :pass
                 :failure-text "status 0; 6-MMC3_alt Passed"
                 :mapper4-variant :mmc3-alt)
+               (:id "mmc3-test-legacy-clocking" :path "mmc3_test/1-clocking.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :pass
+                :failure-text "status 0; 1-clocking Passed"
+                :mapper4-variant :mmc3)
+               (:id "mmc3-test-legacy-details" :path "mmc3_test/2-details.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :pass
+                :failure-text "status 0; 2-details Passed"
+                :mapper4-variant :mmc3)
+               (:id "mmc3-test-legacy-a12" :path "mmc3_test/3-A12_clocking.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :pass
+                :failure-text "status 0; 3-A12_clocking Passed"
+                :mapper4-variant :mmc3)
+               (:id "mmc3-test-legacy-scanline" :path "mmc3_test/4-scanline_timing.nes"
+                :protocol :blargg :expected 0 :max-frames 120 :state :known-fail
+                :failure-text "status 128; scanline timing IRQ failure"
+                :mapper4-variant :mmc3)
+               (:id "mmc3-test-legacy-mmc3" :path "mmc3_test/5-MMC3.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :pass
+                :failure-text "status 0; 5-MMC3 Passed"
+                :mapper4-variant :mmc3)
+               (:id "mmc3-test-legacy-mmc6" :path "mmc3_test/6-MMC6.nes"
+                :protocol :blargg :expected 0 :max-frames 60 :state :pass
+                :failure-text "status 0; 6-MMC6 Passed"
+                :mapper4-variant :mmc6)
                (:id "mmc1-a12" :path "MMC1_A12/mmc1_a12.nes"
                 :protocol :mmc1-a12 :expected 1 :max-frames 60 :state :pass
                 :failure-text "$6000 remains the WRAM-gate sentinel; zero means the A12 probe completed")

@@ -47,7 +47,6 @@
           (cartridge-mapper4-irq-enabled-p cartridge) nil
           (cartridge-mapper4-irq-pending-p cartridge) nil
           (cartridge-mapper4-ppu-a12-high-p cartridge) nil
-          (cartridge-mapper4-ppu-a12-low-cycles cartridge) 0
           (cartridge-mapper4-a12-low-m2-cycles cartridge) 0
           (cartridge-mapper5-state-prg-mode mapper5-state) 3
           (cartridge-mapper5-state-chr-mode mapper5-state) 3

@@ -1,5 +1,7 @@
 (in-package #:cl-nes)
 
+(declaim (inline %ppu-address %palette-index %ppu-nametable-address))
+
 (defun %ppu-address (address)
   (mod address +ppu-vram-size+))
 
@@ -14,6 +16,8 @@
       (- address #x1000)
       address))
 
+(declaim (inline %ppu-address-bus!))
+
 (defun %ppu-read-nametable (ppu address)
   (cartridge-ppu-read-nametable
    (ppu-cartridge ppu)
@@ -27,7 +31,19 @@
    (%ppu-nametable-address address)
    value))
 
-(defun ppu-read-vram (ppu address &optional (sprite-p nil))
+(defun %ppu-address-bus! (ppu address)
+  (let ((address (%ppu-address address)))
+    (when (ppu-a12-clock-enabled-p ppu)
+      (let ((previous-address (ppu-address-bus ppu))
+            (a12 (logand address #x1000)))
+        (when (/= (logand previous-address #x1000) a12)
+          (cartridge-clock-ppu-a12! (ppu-cartridge ppu) (plusp a12)))))
+    (setf (ppu-address-bus ppu) address)))
+
+(defun ppu-read-vram (ppu address &optional (sprite-p nil) (bus-access-p nil))
+  (declare (type ppu ppu) (type fixnum address))
+  (when bus-access-p
+    (%ppu-address-bus! ppu address))
   (let ((address (%ppu-address address)))
     (cond
       ((< address #x2000)
@@ -39,7 +55,9 @@
       (t
        (aref (ppu-palette ppu) (%palette-index address))))))
 
-(defun ppu-write-vram! (ppu address value)
+(defun ppu-write-vram! (ppu address value &optional (bus-access-p nil))
+  (when bus-access-p
+    (%ppu-address-bus! ppu address))
   (let ((address (%ppu-address address))
         (value (logand value #xFF)))
     (cond

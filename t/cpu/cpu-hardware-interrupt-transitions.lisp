@@ -43,4 +43,10 @@
       (setf (cpu-p cpu) #x24
             (cpu-pc cpu) #x8123)
       (expect (cpu-interrupt! cpu bus :irq t) :to-be 7)
-      (expect (cpu-pc cpu) :to-be #xA000))))
+      (expect (cpu-pc cpu) :to-be #xA000)
+      (cpu-reset! cpu bus)
+      (set-fixture-vector! cartridge #xFFFA #xB000)
+      (setf (cpu-p cpu) 0
+            (cpu-pc cpu) #x8123)
+      (expect (cpu-interrupt! cpu bus :irq nil (lambda () t)) :to-be 7)
+      (expect (cpu-pc cpu) :to-be #xB000))))

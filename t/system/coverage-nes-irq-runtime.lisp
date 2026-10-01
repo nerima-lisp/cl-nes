@@ -12,6 +12,17 @@
         (expect (cpu-pc (nes-cpu nes)) :to-be #x9000)
         (expect (cl-nes::apu-frame-irq-pending-p (nes-apu nes)) :to-be t))))
 
+  (it "uses the current two-cycle IRQ observation at the poll boundary"
+    (let* ((cartridge (make-fixture-cartridge :program '(#xEA)))
+           (nes (make-nes :cartridge cartridge))
+           (cpu (nes-cpu nes)))
+      (set-fixture-vector! cartridge #xFFFE #x9000)
+      (setf (cpu-p cpu) 0
+            (cl-nes::cpu-irq-poll-delay cpu) nil
+            (cl-nes::apu-frame-irq-pending-p (nes-apu nes)) t)
+      (expect (nes-step/k nes #'identity) :to-be 9)
+      (expect (cpu-pc cpu) :to-be #x9000)))
+
   (it "exercises NES interrupt eligibility and injected components"
     (let* ((cpu (make-cpu))
            (nes (make-nes))

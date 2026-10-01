@@ -17,7 +17,7 @@
     # Test-only (L0): only cl-nes/test loads it. Pulled through
     # lispCheckDependencies below, never lispDependencies.
     cl-weave = {
-      url = "github:nerima-lisp/cl-weave/v1.3.0";
+      url = "github:nerima-lisp/cl-weave/v1.4.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -58,6 +58,16 @@
       flake = false;
     };
 
+    retrobrews-nes-games = {
+      url = "https://github.com/retrobrews/nes-games/archive/d20061bf9917e8bb8b947d4dba8c59372f5762a0.tar.gz";
+      flake = false;
+    };
+
+    goro-nes-homebrew = {
+      url = "https://github.com/GOROman/calude-famicom-game/archive/576a0c249d017e4d339410a2c19739d31778ec6b.tar.gz";
+      flake = false;
+    };
+
     treefmt-nix = {
       url = "github:numtide/treefmt-nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -76,6 +86,8 @@
       paredit-cli,
       nes-test-roms,
       accuracy-coin,
+      retrobrews-nes-games,
+      goro-nes-homebrew,
       treefmt-nix,
       ...
     }:
@@ -167,6 +179,30 @@
         let
           pkgs = ctx.pkgs;
           paredit = paredit-cli.packages.${ctx.system}.default or null;
+          littleThings = pkgs.runCommand "cl-nes-little-things-roms"
+            {
+              nativeBuildInputs = [ pkgs.unzip ];
+              src = pkgs.fetchurl {
+                url = "https://github.com/pinobatch/little-things-nes/releases/download/v20.10/little-things-nes-20.10.zip";
+                hash = "sha256-V0Ko8iDvC6/SzZ7UNsSl+qnxe7JbCKb8JgAaPNMWeb4=";
+              };
+            }
+            ''
+              mkdir -p "$out"
+              unzip -q "$src" -d "$out"
+            '';
+          holyMapperel = pkgs.runCommand "cl-nes-holy-mapperel-roms"
+            {
+              nativeBuildInputs = [ pkgs.p7zip ];
+              src = pkgs.fetchurl {
+                url = "https://github.com/pinobatch/holy-mapperel/releases/download/v0.02/holy-mapperel-bin-0.02.7z";
+                hash = "sha256-cPhWceIfKTWZuuu2YvrrBqTATpyc6yg9ltQZfwnkzno=";
+              };
+            }
+            ''
+              mkdir -p "$out"
+              7z x "$src" -o"$out" >/dev/null
+            '';
         in
         {
           checks = {
@@ -214,6 +250,24 @@
                     CL_NES_ACCURACY_COIN = "${accuracy-coin}/AccuracyCoin.nes";
                     CL_NES_NESTEST_ROM = "${nes-test-roms}/other/nestest.nes";
                     CL_NES_NESTEST_LOG = "${nes-test-roms}/other/nestest.log";
+                  };
+                });
+            compat =
+              (ctx.cl.mkScriptCheck {
+                drv = ctx.package;
+                entryPoint = "run-compat.lisp";
+                name = "cl-nes-compat";
+                timeoutSeconds = 1800;
+                killAfterSeconds = timeoutGraceSeconds;
+              }).overrideAttrs
+                (old: {
+                  env = (old.env or { }) // {
+                    CL_NES_COMPAT_ROOT = "${retrobrews-nes-games}";
+                    CL_NES_COMPAT_ROOT_GORO = "${goro-nes-homebrew}/roms";
+                    CL_NES_COMPAT_ROOT_LITTLE = "${littleThings}";
+                    CL_NES_COMPAT_ROOT_HOLY = "${holyMapperel}";
+                    CL_NES_COMPAT_ARTIFACTS = "compat-artifacts";
+                    CL_NES_COMPAT_FRAMES = "1800";
                   };
                 });
           }

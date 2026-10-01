@@ -1,6 +1,24 @@
 (in-package #:cl-nes/test)
 
 (describe "Bus routing transitions"
+  (it "mirrors internal RAM and preserves the open bus value"
+    (let ((bus (make-bus)))
+      (bus-write! bus #x17FF #xA6)
+      (expect (bus-read bus #x07FF) :to-be #xA6)
+      (expect (bus-read bus #x17FF) :to-be #xA6)
+      (bus-write! bus #x5000 #xD9)
+      (expect (bus-read bus #x5001) :to-be #xD9)))
+
+  (it "copies a direct OAM DMA page and reports its stall cost"
+    (let ((bus (make-bus)))
+      (dotimes (offset 256)
+        (bus-write! bus (+ #x0200 offset) offset))
+      (bus-write! bus #x4014 #x02)
+      (expect (cl-nes::bus-take-dma-stall-cycles! bus) :to-be 513)
+      (expect (aref (ppu-oam (cl-nes::bus-ppu bus)) 0) :to-be 0)
+      (expect (aref (ppu-oam (cl-nes::bus-ppu bus)) 127) :to-be 127)
+      (expect (aref (ppu-oam (cl-nes::bus-ppu bus)) 255) :to-be 255)))
+
   (it "routes CPU windows to PPU, APU, controllers, and cartridge memory"
     (let* ((cartridge (make-fixture-cartridge :program '(#xEA)))
            (ppu (make-ppu cartridge))

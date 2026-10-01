@@ -75,7 +75,6 @@
    (mapper4-irq-enabled-p nil nil)
    (mapper4-irq-pending-p nil nil)
    (mapper4-ppu-a12-high-p nil nil)
-   (mapper4-ppu-a12-low-cycles 0 nil)
    (mapper4-a12-low-m2-cycles 0 nil))
   :constructor %make-cartridge-mapper4-state-instance
   :reset %reset-cartridge-mapper4-state!)

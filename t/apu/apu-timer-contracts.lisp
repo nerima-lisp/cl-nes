@@ -32,4 +32,34 @@
             (cl-nes::apu-noise-shift-register noise) #x41
             (cl-nes::apu-noise-mode-p noise) t)
       (cl-nes::%apu-clock-noise-timer! noise)
-      (expect (cl-nes::apu-noise-shift-register noise) :to-be #x20))))
+      (expect (cl-nes::apu-noise-shift-register noise) :to-be #x20)))
+
+  (it "clocks DMC output from buffered and silent bits"
+    (with-fixture-apu (apu nil nil nil nil dmc)
+      (declare (ignore apu))
+      (setf (cl-nes::apu-dmc-timer dmc) 0
+            (cl-nes::apu-dmc-timer-period dmc) 3
+            (cl-nes::apu-dmc-sample-buffer dmc) 1
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) nil
+            (cl-nes::apu-dmc-bits-remaining dmc) 0
+            (cl-nes::apu-dmc-output dmc) 125
+            (cl-nes::apu-dmc-silence-p dmc) t)
+      (cl-nes::%apu-clock-dmc! dmc)
+      (expect (cl-nes::apu-dmc-timer dmc) :to-be 2)
+      (expect (cl-nes::apu-dmc-shift-register dmc) :to-be 0)
+      (expect (cl-nes::apu-dmc-sample-buffer-empty-p dmc) :to-be t)
+      (expect (cl-nes::apu-dmc-bits-remaining dmc) :to-be 7)
+      (expect (cl-nes::apu-dmc-output dmc) :to-be 127)
+      (expect (cl-nes::apu-dmc-silence-p dmc) :to-be nil)
+      (setf (cl-nes::apu-dmc-timer dmc) 0
+            (cl-nes::apu-dmc-shift-register dmc) 0
+            (cl-nes::apu-dmc-bits-remaining dmc) 1
+            (cl-nes::apu-dmc-output dmc) 1)
+      (cl-nes::%apu-clock-dmc! dmc)
+      (expect (cl-nes::apu-dmc-output dmc) :to-be 0)
+      (expect (cl-nes::apu-dmc-bits-remaining dmc) :to-be 0)
+      (setf (cl-nes::apu-dmc-timer dmc) 0
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bits-remaining dmc) 0)
+      (cl-nes::%apu-clock-dmc! dmc)
+      (expect (cl-nes::apu-dmc-silence-p dmc) :to-be t))))

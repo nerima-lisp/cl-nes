@@ -6,6 +6,7 @@
 
 (define-hardware-state ppu
   ((cartridge nil nil)
+   (a12-clock-enabled-p nil nil)
    (control 0 (unsigned-byte 8))
    (mask 0 (unsigned-byte 8))
   ;; PPUMASK writes reach the rendering pipeline after a short propagation
@@ -24,6 +25,7 @@
    (palette (make-array 32 :element-type '(unsigned-byte 8) :initial-element 0)
             vector)
    (vram-address 0 fixnum)
+   (address-bus 0 fixnum)
    (temporary-address 0 fixnum)
    (fine-x 0 fixnum)
    (write-toggle nil nil)

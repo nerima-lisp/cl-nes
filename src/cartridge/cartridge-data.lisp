@@ -87,7 +87,6 @@
              :mapper4-irq-enabled-p nil
              :mapper4-irq-pending-p nil
              :mapper4-ppu-a12-high-p nil
-             :mapper4-ppu-a12-low-cycles 0
              :mapper4-a12-low-m2-cycles 0)))
       (let ((cartridge
               (%make-cartridge :prg-rom prg

@@ -10,7 +10,8 @@
                (linear-reload-value nil linear-reload-value-p)
                (linear-reload-p nil linear-reload-p-p)
                (control-p nil control-p-p)
-               (sequence nil sequence-p))
+               (sequence nil sequence-p)
+               (dac-output nil dac-output-p))
   "Apply selected triangle-channel state in one place."
   `(setf
     ,@(%present-setf-pairs
@@ -35,4 +36,6 @@
          ((cl-nes::apu-triangle-control-p ,triangle) ,control-p
           ,control-p-p)
          ((cl-nes::apu-triangle-sequence ,triangle) ,sequence
-          ,sequence-p)))))
+          ,sequence-p)
+         ((cl-nes::apu-triangle-dac-output ,triangle) ,dac-output
+          ,dac-output-p)))))

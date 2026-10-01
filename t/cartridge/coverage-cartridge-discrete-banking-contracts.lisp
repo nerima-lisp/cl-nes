@@ -38,4 +38,27 @@
       (expect (cartridge-read-prg mapper-71 #xC000) :to-be 6)
       (cartridge-write-prg-ram! mapper-87 #x6000 1)
       (expect (cartridge-read-chr mapper-87 0) :to-be 8)
-      (expect (cartridge-read-prg-ram mapper-87 #x6000) :to-be nil))))
+      (expect (cartridge-read-prg-ram mapper-87 #x6000) :to-be nil)))
+
+  (it "maps mapper 79 CPU writes to patterned PRG and CHR banks"
+    (let ((cartridge (make-patterned-cartridge :mapper 79
+                                               :prg-banks 8
+                                               :chr-banks 64)))
+      (expect (cartridge-write-prg! cartridge #x4100 #x11)
+              :to-be #x11)
+      (expect (cartridge-read-prg cartridge #x8000) :to-be 4)
+      (expect (cartridge-read-chr cartridge 0) :to-be 0)
+      (expect (cl-nes::cartridge-prg-bank cartridge) :to-be 1)
+      (expect (cl-nes::cartridge-chr-bank cartridge) :to-be 1)
+      (expect (cartridge-write-prg! cartridge #x4101 #x22)
+              :to-be #x22)
+      (expect (cl-nes::cartridge-prg-bank cartridge) :to-be 1)))
+
+  (it "applies mapper bus conflicts before bank selection"
+    (let ((cartridge (make-patterned-cartridge :mapper 2
+                                               :prg-banks 8
+                                               :chr-banks 8)))
+      (cl-nes::set-cartridge-bus-conflict-p! cartridge t)
+      (expect (cartridge-write-prg! cartridge #x8000 #xFF) :to-be #xFF)
+      (expect (cl-nes::cartridge-prg-bank cartridge) :to-be 0)
+      (expect (cartridge-read-prg cartridge #x8000) :to-be 0))))

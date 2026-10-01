@@ -33,26 +33,6 @@
           (cl-nes::%ppu-evaluate-sprites! ppu 1)
           (expect (logand (ppu-status ppu) #x20) :to-be #x20)))))
 
-  (it "selects background and sprite A12 fetch phases"
-    (let ((ppu (make-ppu)))
-      (setf (cl-nes::ppu-scanline ppu) 0
-            (ppu-control ppu) #x10
-            (cl-nes::ppu-dot ppu) 10)
-      (expect (cl-nes::%ppu-a12-high-p ppu) :to-be t)
-      (setf (cl-nes::ppu-dot ppu) 14)
-      (expect (cl-nes::%ppu-a12-high-p ppu) :to-be nil)
-      (setf (cl-nes::ppu-dot ppu) 330)
-      (expect (cl-nes::%ppu-a12-high-p ppu) :to-be t)
-      (setf (cl-nes::ppu-dot ppu) 334)
-      (expect (cl-nes::%ppu-a12-high-p ppu) :to-be nil)
-      (setf (ppu-control ppu) #x08
-            (cl-nes::ppu-dot ppu) 266)
-      (expect (cl-nes::%ppu-a12-high-p ppu) :to-be t)
-      (setf (cl-nes::ppu-dot ppu) 270)
-      (expect (cl-nes::%ppu-a12-high-p ppu) :to-be nil)
-      (setf (ppu-control ppu) 0)
-      (expect (cl-nes::%ppu-a12-high-p ppu) :to-be nil)))
-
   (it "covers dot renderer visibility and render-mode branches"
     (with-fixture-ppu (ppu (make-fixture-cartridge))
       (setf (ppu-mask ppu) #x08)

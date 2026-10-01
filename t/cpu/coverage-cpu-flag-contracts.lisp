@@ -1,6 +1,49 @@
 (in-package #:cl-nes/test)
 
 (describe "Coverage: CPU flag contracts"
+  (it "observes ADC, SBC, and compare boundary flags"
+    (let ((cpu (make-cpu)))
+      (setf (cpu-a cpu) #x7F
+            (cpu-p cpu) 0)
+      (expect (cl-nes::%adc! cpu 1) :to-be #x80)
+      (expect (logand (cpu-p cpu) cl-nes::+flag-overflow+)
+              :to-be cl-nes::+flag-overflow+)
+      (expect (logand (cpu-p cpu) cl-nes::+flag-negative+)
+              :to-be cl-nes::+flag-negative+)
+      (expect (logand (cpu-p cpu) cl-nes::+flag-carry+) :to-be 0)
+      (setf (cpu-a cpu) 0
+            (cpu-p cpu) cl-nes::+flag-carry+)
+      (expect (cl-nes::%sbc! cpu 1) :to-be #xFF)
+      (expect (logand (cpu-p cpu) cl-nes::+flag-carry+) :to-be 0)
+      (setf (cpu-x cpu) #x10
+            (cpu-p cpu) 0)
+      (cl-nes::%cmp-x! cpu #x20)
+      (expect (logand (cpu-p cpu) cl-nes::+flag-carry+) :to-be 0)
+      (expect (logand (cpu-p cpu) cl-nes::+flag-negative+)
+              :to-be cl-nes::+flag-negative+)
+      (setf (cpu-x cpu) #x20)
+      (cl-nes::%cmp-x! cpu #x20)
+      (expect (logand (cpu-p cpu) cl-nes::+flag-zero+)
+              :to-be cl-nes::+flag-zero+)
+      (expect (logand (cpu-p cpu) cl-nes::+flag-carry+)
+              :to-be cl-nes::+flag-carry+)))
+
+  (it "composes the undocumented read-modify-write ALU operations"
+    (let ((cpu (make-cpu)))
+      (setf (cpu-a cpu) #x01
+            (cpu-p cpu) 0)
+      (expect (cl-nes::%slo-value! cpu #x80) :to-be 0)
+      (expect (cpu-a cpu) :to-be 1)
+      (expect (logand (cpu-p cpu) cl-nes::+flag-carry+)
+              :to-be cl-nes::+flag-carry+)
+      (setf (cpu-a cpu) #x80
+            (cpu-p cpu) cl-nes::+flag-carry+)
+      (expect (cl-nes::%rla-value! cpu 0) :to-be 1)
+      (expect (cpu-a cpu) :to-be 0)
+      (expect (cl-nes::%dcp-value! cpu 2) :to-be 1)
+      (expect (logand (cpu-p cpu) cl-nes::+flag-zero+)
+              :to-be 0)))
+
   (it "covers BIT and shift flag transitions"
     (let ((cpu (make-cpu)))
       (setf (cpu-a cpu) #xFF)
@@ -46,3 +89,16 @@
       (setf (cpu-p cpu) 0)
       (expect (cl-nes::%ror-value! cpu 2) :to-be 1)
       (expect (logand (cpu-p cpu) cl-nes::+flag-carry+) :to-be 0))))
+
+  (it "performs the crossed indirect-Y dummy read for SHA"
+    (let* ((cartridge (make-fixture-cartridge :program '(0)))
+           (bus (make-bus :cartridge cartridge))
+           (cpu (make-cpu)))
+      (setf (cpu-pc cpu) #x8000
+            (cpu-y cpu) 1
+            (cpu-a cpu) #xFF
+            (cpu-x cpu) #x0F)
+      (bus-write! bus 0 #xFF)
+      (bus-write! bus 1 #x20)
+      (expect (cl-nes::%sha-mode-op! cpu bus :indy 5) :to-be 5)
+      (expect (cpu-a cpu) :to-be #xFF)))

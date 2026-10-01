@@ -1,6 +1,13 @@
 (in-package #:cl-nes/test)
 
 (describe "Coverage: NES lifecycle surface"
+  (it "initializes a requested program counter after reset clocks"
+    (let ((nes (make-nes :cartridge (make-fixture-cartridge))))
+      (expect (nes-initialize! nes :pc #x8123) :to-be nes)
+      (expect (cpu-pc (nes-cpu nes)) :to-be #x8123)
+      (expect (cpu-cycles (nes-cpu nes)) :to-be 7)
+      (expect (cl-nes::ppu-dot (nes-ppu nes)) :to-be 21)))
+
   (it "loads and resets cartridges through the public NES lifecycle"
     (let ((nes (make-nes))
           (cartridge (make-fixture-cartridge)))

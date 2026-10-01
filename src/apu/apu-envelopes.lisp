@@ -24,23 +24,28 @@
           (decf (apu-envelope-divider envelope)))))
 
 (defun %apu-clock-length! (channel halt-p)
-  (when (not halt-p)
-    (typecase channel
-      (apu-pulse
-       (if (apu-pulse-length-reload-p channel)
-           (setf (apu-pulse-length-reload-p channel) nil)
-           (when (plusp (apu-pulse-length-counter channel))
-             (decf (apu-pulse-length-counter channel)))))
-      (apu-triangle
-       (if (apu-triangle-length-reload-p channel)
-           (setf (apu-triangle-length-reload-p channel) nil)
-           (when (plusp (apu-triangle-length-counter channel))
-             (decf (apu-triangle-length-counter channel)))))
-      (apu-noise
-       (if (apu-noise-length-reload-p channel)
-           (setf (apu-noise-length-reload-p channel) nil)
-           (when (plusp (apu-noise-length-counter channel))
-             (decf (apu-noise-length-counter channel))))))))
+  (typecase channel
+    (apu-pulse
+     (cond
+       ((apu-pulse-length-reload-p channel)
+        (setf (apu-pulse-length-reload-p channel) nil))
+       ((and (not halt-p)
+             (plusp (apu-pulse-length-counter channel)))
+        (decf (apu-pulse-length-counter channel)))))
+    (apu-triangle
+     (cond
+       ((apu-triangle-length-reload-p channel)
+        (setf (apu-triangle-length-reload-p channel) nil))
+       ((and (not halt-p)
+             (plusp (apu-triangle-length-counter channel)))
+        (decf (apu-triangle-length-counter channel)))))
+    (apu-noise
+     (cond
+       ((apu-noise-length-reload-p channel)
+        (setf (apu-noise-length-reload-p channel) nil))
+       ((and (not halt-p)
+             (plusp (apu-noise-length-counter channel)))
+        (decf (apu-noise-length-counter channel)))))))
 
 (defun %apu-pulse-sweep-target (pulse first-p)
   (let* ((timer (apu-pulse-timer-period pulse))

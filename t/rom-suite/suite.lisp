@@ -67,6 +67,50 @@
                             (getf result :completed-count))))))
   result)
 
+(defun rom-worker-count ()
+  (let ((requested (uiop:getenv "CL_NES_ROM_WORKERS")))
+    (or (and requested
+             (ignore-errors
+               (max 1 (parse-integer requested :junk-allowed nil))))
+        (ignore-errors
+          (max 1
+               (parse-integer
+                (uiop:run-program '("getconf" "_NPROCESSORS_ONLN")
+                                  :output :string)
+                :junk-allowed t)))
+        1)))
+
+(defun run-contracts-parallel (contracts)
+  (let* ((count (length contracts))
+         (worker-count (min count (rom-worker-count)))
+         (results (make-array count))
+         (next-index 0)
+         (lock (sb-thread:make-mutex :name "rom-suite-work-queue"))
+         (threads
+           (loop repeat worker-count
+                 collect
+                 (sb-thread:make-thread
+                  (lambda ()
+                    (loop
+                      (let ((index
+                              (sb-thread:with-mutex (lock)
+                                (when (< next-index count)
+                                  (prog1 next-index
+                                    (incf next-index))))))
+                        (unless index (return))
+                        (setf (aref results index)
+                              (handler-case
+                                  (run-contract (nth index contracts))
+                                (error (condition)
+                                  (list :passed nil
+                                        :error (princ-to-string condition)
+                                        :text "worker condition")))))))))))
+    (dolist (thread threads)
+      (sb-thread:join-thread thread))
+    (loop for contract in contracts
+          for index from 0
+          collect (cons contract (aref results index)))))
+
 (defun run-accuracy-contract ()
   (let ((path (accuracy-coin-path)))
     (unless (and path (probe-file path))
@@ -83,10 +127,18 @@
       result)))
 
 (defun run-rom-suite ()
-  (let ((results nil))
-    (dolist (contract (rom-contract-table))
-      (let ((result (enforce-ratchet contract (run-contract contract))))
+  (let ((results nil)
+        (contracts (rom-contract-table)))
+    (format t "rom-suite workers=~D contracts=~D~%"
+            (min (length contracts) (rom-worker-count))
+            (length contracts))
+    (dolist (entry (run-contracts-parallel contracts))
+      (let* ((contract (car entry))
+             (result (enforce-ratchet contract (cdr entry))))
         (push result results)
+        (unless (getf result :passed)
+          (format *error-output* "ROM failed: ~A~%"
+                  (result-summary contract result)))
         (format t "~A~%" (result-summary contract result))))
     (run-accuracy-contract)
     (nreverse results)))

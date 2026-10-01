@@ -27,11 +27,9 @@
     (if (apu-dmc-enabled-p dmc)
         (when (zerop (apu-dmc-bytes-remaining dmc))
           (%apu-dmc-restart! dmc))
-        (setf (apu-dmc-bytes-remaining dmc) 0
-              (apu-dmc-sample-buffer dmc) 0
-              (apu-dmc-sample-buffer-empty-p dmc) t
-              (apu-dmc-bits-remaining dmc) 0
-              (apu-dmc-silence-p dmc) t))))
+        ;; Disabling the reader does not discard a prefetched byte or stop
+        ;; the output unit before its current byte has finished playing.
+        (setf (apu-dmc-bytes-remaining dmc) 0))))
 
 (defun %apu-write-frame-counter! (apu value)
   (setf (apu-frame-last-five-step-p apu) (logbitp 7 value)
@@ -55,9 +53,7 @@
                           (if (plusp (apu-pulse-length-counter (apu-pulse-2 apu))) 2 0)
                           (if (plusp (apu-triangle-length-counter (apu-triangle apu))) 4 0)
                           (if (plusp (apu-noise-length-counter (apu-noise apu))) 8 0)
-                          (if (or (plusp (apu-dmc-bytes-remaining (apu-dmc apu)))
-                                  (and (plusp (apu-dmc-bits-remaining (apu-dmc apu)))
-                                       (not (apu-dmc-silence-p (apu-dmc apu)))))
+                          (if (plusp (apu-dmc-bytes-remaining (apu-dmc apu)))
                               16
                               0)
                           (if (apu-frame-irq-pending-p apu) #x40 0)

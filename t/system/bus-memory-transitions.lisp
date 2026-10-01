@@ -1,6 +1,60 @@
 (in-package #:cl-nes/test)
 
 (describe "Bus memory transitions"
+  (it "charges the PPU status read at the end of an active CPU access"
+    (let* ((nes (make-nes))
+           (bus (nes-bus nes))
+           (ppu (nes-ppu nes)))
+      (setf (cl-nes::ppu-dot ppu) 10
+            (ppu-status ppu) #x80
+            (cl-nes::bus-cpu-access-active-p bus) t
+            (cl-nes::bus-cpu-access-nes bus) nes)
+      (expect (bus-read bus #x2002) :to-be #x80)
+      (expect (cl-nes::ppu-dot ppu) :to-be 13)
+      (expect (cl-nes::bus-cpu-access-count bus) :to-be 1)))
+
+  (it "replays an open-bus CPU read after a DMC fetch"
+    (let* ((nes (make-nes))
+           (bus (nes-bus nes))
+           (apu (nes-apu nes))
+           (dmc (cl-nes::apu-dmc apu)))
+      (setf (cl-nes::bus-open-bus bus) #xA7
+            (cl-nes::bus-cpu-access-active-p bus) t
+            (cl-nes::bus-cpu-access-nes bus) nes
+            (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bytes-remaining dmc) 1
+            (cl-nes::apu-dmc-timer dmc) 0)
+      (expect (bus-read bus #x5000) :to-be #xA7)
+      (expect (cl-nes::bus-dmc-read-replay-p bus) :to-be nil)
+      (expect (cl-nes::bus-dma-stall-cycles bus) :to-be 4)))
+
+  (it "uses open bus data when an OAM DMA source is unmapped"
+    (let ((bus (make-bus)))
+      (setf (cl-nes::bus-open-bus bus) #x5A
+            (cl-nes::bus-oam-dma-active-p bus) t
+            (cl-nes::bus-oam-dma-page bus) #x50
+            (cl-nes::bus-oam-dma-index bus) 0
+            (cl-nes::bus-oam-dma-stage bus) :get)
+      (cl-nes::%bus-advance-dma-cycle! bus)
+      (expect (cl-nes::bus-open-bus bus) :to-be #x5A)
+      (expect (cl-nes::bus-oam-dma-stage bus) :to-be :put)
+      (cl-nes::%bus-advance-dma-cycle! bus)
+      (expect (aref (ppu-oam (cl-nes::bus-ppu bus)) 0) :to-be #x5A)
+      (expect (cl-nes::bus-oam-dma-index bus) :to-be 1)))
+
+  (it "uses cycle phase when repeated controller strobe writes are high"
+    (let ((bus (make-bus))
+          (controller (make-controller)))
+      (setf (cl-nes::bus-controller-1 bus) controller
+            (cl-nes::bus-last-cpu-access-address bus) #x4016
+            (cl-nes::bus-cpu-cycle-phase bus) 1)
+      (expect (bus-write! bus #x4016 1) :to-be 1)
+      (expect (cl-nes::controller-strobe controller) :to-be nil)
+      (setf (cl-nes::bus-cpu-cycle-phase bus) 0)
+      (expect (bus-write! bus #x4016 1) :to-be 1)
+      (expect (cl-nes::controller-strobe controller) :to-be t)))
+
   (it "mirrors internal RAM and retains the open-bus value"
     (let ((bus (make-bus :cartridge (make-fixture-cartridge))))
       (bus-write! bus #x0000 #xA5)
@@ -110,3 +164,42 @@
       (expect (cl-nes::bus-oam-dma-active-p bus) :to-be nil)
       (expect (cl-nes::bus-dmc-dma-remaining bus) :to-be 0)
       (expect clock-count :to-be 516))))
+
+  (it "charges DMC and OAM DMA competition at the CPU instruction boundary"
+    (let* ((cartridge (make-fixture-cartridge
+                       :program '(#xA9 #x07 #x8D #x14 #x40)))
+           (nes (make-nes :cartridge cartridge))
+           (bus (nes-bus nes))
+           (apu (nes-apu nes))
+           (dmc (cl-nes::apu-dmc apu)))
+      (dotimes (offset 256)
+        (setf (aref (cl-nes::bus-ram bus) offset) offset))
+      (setf (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bytes-remaining dmc) 1
+            ;; The fetch occurs on the STA write cycle, after OAM DMA starts.
+            (cl-nes::apu-dmc-timer dmc) 5)
+      ;; LDA immediate is two CPU cycles.  The empty DMC buffer is filled
+      ;; during its first cycle, adding a standalone four-cycle get.
+      (let ((instruction-cycles (nes-step/k nes #'identity)))
+        (expect instruction-cycles :to-be (+ 2 4)))
+      (let* ((sta-cycles 4)
+             ;; OAM DMA has one halt cycle, 256 get/put pairs, and no
+             ;; alignment cycle when the write lands on the even phase.
+             (oam-halt-cycles 1)
+             (oam-get-put-cycles (* 256 2))
+             ;; STA abs writes on its fourth cycle, so its write-phase is
+             ;; the opposite of the phase before the instruction.
+             (oam-write-phase (logxor (cl-nes::bus-cpu-cycle-phase bus) 1))
+             (oam-alignment-cycles (if (= oam-write-phase 1) 1 0))
+             (expected-cycles (+ sta-cycles
+                                 oam-halt-cycles
+                                 oam-get-put-cycles
+                                 oam-alignment-cycles))
+             (cycles (nes-step/k nes #'identity)))
+        (expect cycles :to-be expected-cycles)
+        (expect (cpu-pc (nes-cpu nes)) :to-be #x8005)
+        (expect (cl-nes::bus-oam-dma-active-p bus) :to-be nil)
+        (expect (cl-nes::bus-oam-dma-index bus) :to-be 256)
+        (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 0)
+        (expect (cl-nes::bus-dmc-dma-remaining bus) :to-be 0))))

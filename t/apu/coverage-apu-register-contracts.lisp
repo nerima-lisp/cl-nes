@@ -27,7 +27,14 @@
             (cl-nes::apu-dmc-silence-p dmc) t)
       (expect (logbitp 4 (apu-read-register apu #x4015)) :to-be nil)
       (setf (cl-nes::apu-dmc-silence-p dmc) nil)
+      (expect (logbitp 4 (apu-read-register apu #x4015)) :to-be nil)
+      (setf (cl-nes::apu-dmc-bytes-remaining dmc) 1)
       (expect (logbitp 4 (apu-read-register apu #x4015)) :to-be t)
+      (setf (cl-nes::apu-dmc-irq-pending-p dmc) t)
+      (apu-write-register! apu #x4010 #x80)
+      (expect (cl-nes::apu-dmc-irq-pending-p dmc) :to-be t)
+      (apu-write-register! apu #x4010 0)
+      (expect (cl-nes::apu-dmc-irq-pending-p dmc) :to-be nil)
       (setf (cl-nes::apu-frame-irq-repeat-count apu) 1
             (cl-nes::apu-frame-irq-inhibit-p apu) t
             (cl-nes::apu-frame-irq-pending-p apu) nil)
@@ -37,7 +44,16 @@
       (setf (cl-nes::apu-frame-irq-inhibit-p apu) nil)
       (apu-tick! apu 1)
       (expect (cl-nes::apu-frame-irq-repeat-count apu) :to-be 0)
-      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be t)))
+      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be t)
+      (setf (cl-nes::apu-frame-tail-step apu) 1
+            (cl-nes::apu-frame-irq-inhibit-p apu) t
+            (cl-nes::apu-frame-irq-pending-p apu) nil)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be nil)
+      (setf (cl-nes::apu-frame-tail-step apu) 2
+            (cl-nes::apu-frame-irq-inhibit-p apu) t)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-frame-tail-step apu) :to-be 0)))
 
   (it "does not load a pulse length while the channel is disabled"
     (with-fixture-apu (apu pulse pulse-2)

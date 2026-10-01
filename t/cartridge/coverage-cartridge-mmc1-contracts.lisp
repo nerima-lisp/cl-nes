@@ -38,4 +38,21 @@
       (write-mmc1-registers! cartridge
         (#xE000 0))
       (cartridge-write-prg-ram! cartridge #x6000 #x5A)
-      (expect (cartridge-read-prg-ram cartridge #x6000) :to-be #x5A))))
+      (expect (cartridge-read-prg-ram cartridge #x6000) :to-be #x5A)
+      (setf (cl-nes::cartridge-mapper-chr-bank-1 cartridge) #x10)
+      (expect (cl-nes::%mapper1-clock-ppu-a12! cartridge t) :to-be cartridge)
+      (expect (cl-nes::cartridge-clock-ppu-a12! cartridge t) :to-be cartridge)
+      (expect (cartridge-read-prg-ram cartridge #x6000) :to-be nil)
+      (expect (cl-nes::%mapper1-clock-ppu-a12! cartridge nil) :to-be cartridge)
+      (expect (cartridge-write-prg-ram! cartridge #x6000 #x6B) :to-be #x6B)
+      (expect (cartridge-read-prg-ram cartridge #x6000) :to-be #x6B)))
+
+  (it "ignores MMC1 writes on the immediately following CPU cycle"
+    (let ((cartridge (make-patterned-cartridge
+                      :mapper 1 :prg-banks 4 :chr-banks 8)))
+      (expect (cartridge-write-prg! cartridge #x8000 1 10) :to-be 1)
+      (expect (cl-nes::cartridge-mapper-shift cartridge) :to-be #x18)
+      (expect (cartridge-write-prg! cartridge #x8000 1 11) :to-be 1)
+      (expect (cl-nes::cartridge-mapper-shift cartridge) :to-be #x18)
+      (expect (cartridge-write-prg! cartridge #x8000 1 12) :to-be 1)
+      (expect (cl-nes::cartridge-mapper-shift cartridge) :to-be #x1C))))
