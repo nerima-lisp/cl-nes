@@ -179,6 +179,24 @@
         let
           pkgs = ctx.pkgs;
           paredit = paredit-cli.packages.${ctx.system}.default or null;
+          romSuiteShards = [ "cpu" "ppu" "apu-test" "apu-dmc" "apu-timing" "dma" "mapper" ];
+          romSuiteCheck = shard:
+            (ctx.cl.mkScriptCheck {
+              drv = ctx.package;
+              entryPoint = "run-rom-suite.lisp";
+              name = "cl-nes-rom-suite-${shard}";
+              timeoutSeconds = 600;
+              killAfterSeconds = timeoutGraceSeconds;
+            }).overrideAttrs
+              (old: {
+                env = (old.env or { }) // {
+                  CL_NES_TEST_ROMS = "${nes-test-roms}";
+                  CL_NES_ACCURACY_COIN = "${accuracy-coin}/AccuracyCoin.nes";
+                  CL_NES_NESTEST_ROM = "${nes-test-roms}/other/nestest.nes";
+                  CL_NES_NESTEST_LOG = "${nes-test-roms}/other/nestest.log";
+                  CL_NES_ROM_SUITE_SHARD = shard;
+                };
+              });
           littleThings =
             pkgs.runCommand "cl-nes-little-things-roms"
               {
@@ -238,22 +256,6 @@
                         "${pkgs.SDL2}/lib/libSDL2-2.0.so";
                   };
                 });
-            rom-suite =
-              (ctx.cl.mkScriptCheck {
-                drv = ctx.package;
-                entryPoint = "run-rom-suite.lisp";
-                name = "cl-nes-rom-suite";
-                timeoutSeconds = 600;
-                killAfterSeconds = timeoutGraceSeconds;
-              }).overrideAttrs
-                (old: {
-                  env = (old.env or { }) // {
-                    CL_NES_TEST_ROMS = "${nes-test-roms}";
-                    CL_NES_ACCURACY_COIN = "${accuracy-coin}/AccuracyCoin.nes";
-                    CL_NES_NESTEST_ROM = "${nes-test-roms}/other/nestest.nes";
-                    CL_NES_NESTEST_LOG = "${nes-test-roms}/other/nestest.log";
-                  };
-                });
             compat =
               (ctx.cl.mkScriptCheck {
                 drv = ctx.package;
@@ -273,6 +275,10 @@
                   };
                 });
           }
+          // builtins.listToAttrs (map (shard: {
+            name = "rom-suite-${shard}";
+            value = romSuiteCheck shard;
+          }) romSuiteShards)
           // pkgs.lib.optionalAttrs (paredit != null) {
             paredit =
               pkgs.runCommand "cl-nes-paredit"
