@@ -179,9 +179,25 @@
             (cl-nes::apu-dmc-bytes-remaining dmc) 1
             ;; The fetch occurs on the STA write cycle, after OAM DMA starts.
             (cl-nes::apu-dmc-timer dmc) 5)
-      (expect (nes-step/k nes #'identity) :to-be 2)
-      (let ((cycles (nes-step/k nes #'identity)))
-        (expect cycles :to-be 520)
+      ;; LDA immediate is two CPU cycles.  The empty DMC buffer is filled
+      ;; during its first cycle, adding a standalone four-cycle get.
+      (let ((instruction-cycles (nes-step/k nes #'identity)))
+        (expect instruction-cycles :to-be (+ 2 4)))
+      (let* ((sta-cycles 4)
+             ;; OAM DMA has one halt cycle, 256 get/put pairs, and no
+             ;; alignment cycle when the write lands on the even phase.
+             (oam-halt-cycles 1)
+             (oam-get-put-cycles (* 256 2))
+             ;; STA abs writes on its fourth cycle, so its write-phase is
+             ;; the opposite of the phase before the instruction.
+             (oam-write-phase (logxor (cl-nes::bus-cpu-cycle-phase bus) 1))
+             (oam-alignment-cycles (if (= oam-write-phase 1) 1 0))
+             (expected-cycles (+ sta-cycles
+                                 oam-halt-cycles
+                                 oam-get-put-cycles
+                                 oam-alignment-cycles))
+             (cycles (nes-step/k nes #'identity)))
+        (expect cycles :to-be expected-cycles)
         (expect (cpu-pc (nes-cpu nes)) :to-be #x8005)
         (expect (cl-nes::bus-oam-dma-active-p bus) :to-be nil)
         (expect (cl-nes::bus-oam-dma-index bus) :to-be 256)
