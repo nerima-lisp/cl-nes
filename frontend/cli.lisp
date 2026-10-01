@@ -20,13 +20,15 @@
                            (positional-value invocation :rom)
                            (option-value invocation :max-frames)
                            :mapper4-variant (intern (string-upcase variant) :keyword))))
-              (format t "passed=~A frames=~A status=~A signature=~A text=~A~%"
+              (format (cl-cli:invocation-stdout invocation)
+                      "passed=~A frames=~A status=~A signature=~A text=~A~%"
                       (getf result :passed) (getf result :frames)
                       (getf result :status) (getf result :signature)
                       (getf result :text))
               (if (getf result :passed) 0 1))
             (run-rom-test (positional-value invocation :rom)
-                          (option-value invocation :max-frames))))
+                          (option-value invocation :max-frames)
+                          (cl-cli:invocation-stdout invocation))))
     (error (condition)
       (format (cl-cli:invocation-stderr invocation) "cl-nes rom-test: ~A~%" condition)
       70)))

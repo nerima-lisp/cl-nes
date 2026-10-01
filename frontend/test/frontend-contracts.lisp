@@ -20,6 +20,18 @@
         (uiop:delete-directory-tree pathname :validate t)
         (delete-file pathname))))
 
+(defun write-test-rom (pathname)
+  (let ((octets (make-array (+ 16 16384 8192)
+                            :element-type '(unsigned-byte 8)
+                            :initial-element 0)))
+    (replace octets #(78 69 83 26 1 1) :end1 6)
+    (setf (aref octets (+ 16 #x3FFC)) 0
+          (aref octets (+ 16 #x3FFD)) #x80)
+    (with-open-file (stream pathname :direction :output :if-exists :supersede
+                            :if-does-not-exist :create
+                            :element-type '(unsigned-byte 8))
+      (write-sequence octets stream))))
+
 (describe "frontend input masks"
   (it "maps keyboard keys to the NES button bits"
     (let ((pressed '(:z :x :left-shift :kp-enter :up :right)))
@@ -83,18 +95,51 @@
                             :stdout (make-string-output-stream)
                             :stderr (make-string-output-stream))
             :to-be 64)))
+  (it "reports malformed ROMs on stderr with status 70"
+    (let ((stderr (make-string-output-stream)))
+      (expect (cl-cli:run-app (make-cli-app)
+                              :argv '("cl-nes" "render" "missing.nes")
+                              :stdout (make-string-output-stream)
+                              :stderr stderr)
+              :to-be 70)
+      (expect (search "cl-nes render:" (get-output-stream-string stderr))
+              :to-be 0)))
+  (it "writes headless render output and ROM-test output to their streams"
+    (let* ((directory (merge-pathnames
+                       (format nil "cl-nes-cli-~D/" (random most-positive-fixnum))
+                       (uiop:temporary-directory)))
+           (rom (merge-pathnames "test.nes" directory))
+           (prefix (merge-pathnames "frame" directory))
+           (stdout (make-string-output-stream)))
+      (unwind-protect
+           (progn
+             (ensure-directories-exist directory)
+             (write-test-rom rom)
+             (run-render rom 1 (namestring prefix) "ppm")
+             (with-open-file (stream (merge-pathnames "frame-0001.ppm" directory)
+                                     :element-type '(unsigned-byte 8))
+               (expect (plusp (file-length stream)) :to-be t))
+             (run-rom-test rom 1 stdout)
+             (expect (search "passed=" (get-output-stream-string stdout))
+                     :to-be 0))
+        (delete-test-path directory))))
 
 (describe "frontend battery persistence"
   (it "uses the ROM basename with a sav extension in the state directory"
-    (let* ((state-directory (uiop:temporary-directory))
-           (rom-path (merge-pathnames "zelda.nes" state-directory))
-           (battery-path (merge-pathnames
-                          (make-pathname :name (pathname-name rom-path)
-                                         :type "sav")
-                          state-directory)))
-      (expect (namestring battery-path)
-              :to-be
-              (namestring (merge-pathnames "zelda.sav" state-directory)))))
+    (let* ((directory (merge-pathnames
+                       (format nil "cl-nes-battery-~D/" (random most-positive-fixnum))
+                       (uiop:temporary-directory)))
+           (rom-path (merge-pathnames "zelda.nes" directory)))
+      (unwind-protect
+           (progn
+             (atomic-save-octets rom-path #(1 2 3))
+             (let ((state-path (rom-state-directory
+                                rom-path :state-directory directory)))
+               (expect (pathname-directory state-path)
+                       :to-equal
+                       (append (pathname-directory directory)
+                               (list "cl-nes" (rom-identity rom-path))))))
+        (delete-test-path directory))))
   (it "writes and restores bytes through an atomic replacement"
     (let* ((pathname (test-pathname "battery" "sav"))
            (old #(1 2 3))
@@ -185,4 +230,82 @@
                            nil)
                        (condition (condition) condition))))
                (expect (typep condition 'invalid-savestate) :to-be t)))
+        (delete-test-path directory)))))
+
+(describe "frontend startup review contracts"
+  (it "writes rom-test success output to the CLI invocation stdout"
+    (let* ((directory (merge-pathnames
+                       (format nil "cl-nes-cli-rom-test-~D/"
+                               (random most-positive-fixnum))
+                       (uiop:temporary-directory)))
+           (rom (merge-pathnames "test.nes" directory))
+           (stdout (make-string-output-stream))
+           (stderr (make-string-output-stream)))
+      (unwind-protect
+           (progn
+             (ensure-directories-exist directory)
+             (write-test-rom rom)
+             (cl-cli:run-app
+              (make-cli-app)
+              :argv (list "cl-nes" "rom-test" (namestring rom) "--max-frames" "1")
+              :stdout stdout
+              :stderr stderr)
+             (expect (search "passed=" (get-output-stream-string stdout))
+                     :to-be 0)
+             (expect (get-output-stream-string stderr) :to-equal ""))
+        (delete-test-path directory))))
+  (it "writes invalid ROM errors to the CLI invocation stderr"
+    (let* ((directory (merge-pathnames
+                       (format nil "cl-nes-cli-invalid-~D/"
+                               (random most-positive-fixnum))
+                       (uiop:temporary-directory)))
+           (rom (merge-pathnames "invalid.nes" directory))
+           (stdout (make-string-output-stream))
+           (stderr (make-string-output-stream)))
+      (unwind-protect
+           (progn
+             (ensure-directories-exist directory)
+             (atomic-save-octets rom #(0))
+             (expect (cl-cli:run-app
+                      (make-cli-app)
+                      :argv (list "cl-nes" "rom-test" (namestring rom))
+                      :stdout stdout
+                      :stderr stderr)
+                     :to-be 70)
+             (expect (get-output-stream-string stdout) :to-equal "")
+             (expect (search "cl-nes rom-test:"
+                             (get-output-stream-string stderr))
+                     :to-be 0))
+        (delete-test-path directory))))
+  (it "increments the audio queue overrun statistic once per overrun burst"
+    (let ((queue (cl-nes/frontend:make-audio-queue :capacity 8)))
+      (setf (cl-nes/frontend::audio-queue-started-p queue) t)
+      (cl-nes/frontend::%audio-queue-record-size! queue 9)
+      (expect (cl-nes/frontend:audio-queue-overruns queue) :to-be 1)
+      (cl-nes/frontend::%audio-queue-record-size! queue 10)
+      (expect (cl-nes/frontend:audio-queue-overruns queue) :to-be 1)
+      (cl-nes/frontend::%audio-queue-record-size! queue 8)
+      (cl-nes/frontend::%audio-queue-record-size! queue 9)
+      (expect (cl-nes/frontend:audio-queue-overruns queue) :to-be 2)))
+  (it "uses the production battery path and persists bytes there"
+    (let* ((directory (merge-pathnames
+                       (format nil "cl-nes-battery-path-~D/"
+                               (random most-positive-fixnum))
+                       (uiop:temporary-directory)))
+           (rom (merge-pathnames "zelda.nes" directory)))
+      (unwind-protect
+           (progn
+             (ensure-directories-exist directory)
+             (atomic-save-octets rom #(1 2 3))
+             (let* ((state-directory (rom-state-directory
+                                      rom :state-directory directory))
+                    (battery-path (merge-pathnames
+                                   (make-pathname :name "battery" :type "sav")
+                                   state-directory)))
+               (expect (namestring battery-path)
+                       :to-equal
+                       (format nil "~Abattery.sav" (namestring state-directory)))
+               (atomic-save-octets battery-path #(9 8 7))
+               (expect (equalp (restore-octets battery-path) #(9 8 7))
+                       :to-be t)))
         (delete-test-path directory)))))

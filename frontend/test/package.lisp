@@ -14,7 +14,10 @@
                 #:rate-controller-delay
                 #:rate-controller-update!
                 #:restore-octets
+                #:run-render
+                #:run-rom-test
                 #:rom-identity
+                #:rom-state-directory
                 #:save-state-slot
                 #:savestate-path
                 #:savestate-load-key

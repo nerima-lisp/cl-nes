@@ -27,9 +27,11 @@
              (cl-glfw3-kit:make-context-current window)
              (let ((framebuffer (make-gl-framebuffer))
                    (rate (make-rate-controller)))
-               (audio-queue-open! audio)
                (unwind-protect
-                    (labels ((save-battery-if-dirty ()
+                    (progn
+                      (audio-queue-open! audio)
+                      (unwind-protect
+                           (labels ((save-battery-if-dirty ()
                                (when (and (cl-nes:cartridge-battery-backed-p cartridge)
                                           (cl-nes:cartridge-battery-dirty-p cartridge)
                                           (>= (- (get-internal-real-time)
@@ -44,11 +46,11 @@
                              (audio-continuation (buffer)
                                (audio-queue-push!
                                 audio (cl-nes:nes-audio-buffer-samples buffer))))
-                      (cl-nes:nes-run-frames/k
-                       nes 8 #'frame-continuation
-                       :audio-buffer audio-buffer
-                       :audio-continuation #'audio-continuation)
-                      (cl-glfw3-kit:for-each-frame (frame window)
+                             (cl-nes:nes-run-frames/k
+                              nes 8 #'frame-continuation
+                              :audio-buffer audio-buffer
+                              :audio-continuation #'audio-continuation)
+                             (cl-glfw3-kit:for-each-frame (frame window)
                         (declare (ignore frame))
                           (let ((p (cl-glfw3-kit:key-pressed-p window :p))
                               (r (cl-glfw3-kit:key-pressed-p window :r))
@@ -98,8 +100,9 @@
                         (rate-controller-update! rate (audio-queue-size audio))
                         (when (plusp (rate-controller-delay rate))
                           (sleep (rate-controller-delay rate)))
-                        (save-battery-if-dirty)))
-                 (audio-queue-close! audio)))))
+                               (save-battery-if-dirty)))
+                        (audio-queue-close! audio)))
+                 (destroy-gl-framebuffer framebuffer)))))
       (when (and (cl-nes:cartridge-battery-backed-p cartridge)
                  (cl-nes:cartridge-battery-dirty-p cartridge))
         (atomic-save-octets battery-path

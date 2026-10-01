@@ -44,26 +44,40 @@
           (error "Could not load SDL2 (~A): ~A" library condition))))
     (unless (zerop (%sdl-init +sdl-init-audio+))
       (error "SDL audio initialization failed."))
-    ;; SDL_AudioSpec is intentionally supplied as raw storage: this keeps the
-    ;; frontend independent of an SDL Lisp package while retaining QueueAudio.
-    (let ((spec (make-array 64 :element-type '(unsigned-byte 8) :initial-element 0)))
-      (loop for shift from 0 below 32 by 8
-            for index from 0
-            do (setf (aref spec index)
-                     (ldb (byte 8 shift) (audio-queue-sample-rate queue))))
-      ;; SDL_AudioSpec: freq, format=S16LSB, channels=1, samples=1024.
-      (setf (aref spec 4) (ldb (byte 8 0) +sdl-audio-s16lsb+)
-            (aref spec 5) (ldb (byte 8 8) +sdl-audio-s16lsb+)
-            (aref spec 6) 1 (aref spec 8) 0 (aref spec 9) 4)
-      (sb-sys:with-pinned-objects (spec)
-        (let ((device (%sdl-open-audio
-                       (sb-sys:int-sap 0) 0 (sb-sys:vector-sap spec)
-                       (sb-sys:int-sap 0) +sdl-audio-allow-frequency-change+)))
-          (when (zerop device) (error "SDL audio device could not be opened."))
-          (setf (audio-queue-device queue) device
-                (audio-queue-opened-p queue) t)
-          (%sdl-pause-audio device 0)))))
-  #-sbcl (error "The frontend requires SBCL for SDL2 audio."))
+    (let ((opened-p nil))
+      (unwind-protect
+           (progn
+             ;; SDL_AudioSpec is intentionally supplied as raw storage: this
+             ;; keeps the frontend independent of an SDL Lisp package while
+             ;; retaining QueueAudio.
+             (let ((spec (make-array 64 :element-type '(unsigned-byte 8)
+                                     :initial-element 0)))
+               (loop for shift from 0 below 32 by 8
+                     for index from 0
+                     do (setf (aref spec index)
+                              (ldb (byte 8 shift)
+                                   (audio-queue-sample-rate queue))))
+               ;; SDL_AudioSpec: freq, format=S16LSB, channels=1, samples=1024.
+               (setf (aref spec 4) (ldb (byte 8 0) +sdl-audio-s16lsb+)
+                     (aref spec 5) (ldb (byte 8 8) +sdl-audio-s16lsb+)
+                     (aref spec 6) 1 (aref spec 8) 0 (aref spec 9) 4)
+               (sb-sys:with-pinned-objects (spec)
+                 (let ((device (%sdl-open-audio
+                                (sb-sys:int-sap 0) 0 (sb-sys:vector-sap spec)
+                                (sb-sys:int-sap 0)
+                                +sdl-audio-allow-frequency-change+)))
+                   (when (zerop device)
+                     (error "SDL audio device could not be opened."))
+                   (setf (audio-queue-device queue) device
+                         (audio-queue-opened-p queue) t)
+                   (%sdl-pause-audio device 0)
+                   (setf opened-p t))))
+        (unless opened-p
+          (when (audio-queue-opened-p queue)
+            (%sdl-close-audio (audio-queue-device queue))
+            (setf (audio-queue-opened-p queue) nil))
+          (%sdl-quit +sdl-init-audio+))))
+  #-sbcl (error "The frontend requires SBCL for SDL2 audio."))))
 
 (defun audio-queue-close! (queue)
   #+sbcl (when (audio-queue-opened-p queue)
@@ -96,21 +110,30 @@
   (unless (audio-queue-opened-p queue) (error "Audio queue is not open."))
   #+sbcl
   (let ((octets (audio-queue-octets queue)))
-    (when (> (* 2 (length samples)) (length octets))
-      (error "Audio queue capacity is too small for ~D samples."
-             (length samples)))
-    (loop for sample across samples for i from 0 by 2
-          for value = (%audio-sample->s16 sample)
-          do (setf (aref octets i) (ldb (byte 8 0) value)
-                   (aref octets (1+ i)) (ldb (byte 8 8) value)))
-    (sb-sys:with-pinned-objects (octets)
-      (unless (zerop (%sdl-queue-audio (audio-queue-device queue)
-                                       (sb-sys:vector-sap octets)
-                                       (* 2 (length samples))))
-        (error "SDL audio queue failed.")))
-    (%audio-queue-record-size!
-     queue (%sdl-queued-audio-size (audio-queue-device queue)))
-    (setf (audio-queue-started-p queue) t))
+    (let* ((length (* 2 (length samples)))
+           (queued (%sdl-queued-audio-size (audio-queue-device queue))))
+      (when (> length (length octets))
+        (error "Audio queue capacity is too small for ~D samples."
+               (length samples)))
+      (%audio-queue-record-size! queue queued)
+      (if (> (+ queued length) (audio-queue-capacity queue))
+          (progn
+            (incf (audio-queue-overruns queue))
+            (setf (audio-queue-overrun-p queue) t))
+          (progn
+            (loop for sample across samples for i from 0 by 2
+                  for value = (%audio-sample->s16 sample)
+                  do (setf (aref octets i) (ldb (byte 8 0) value)
+                           (aref octets (1+ i)) (ldb (byte 8 8) value)))
+            (sb-sys:with-pinned-objects (octets)
+              (unless (zerop (%sdl-queue-audio (audio-queue-device queue)
+                                               (sb-sys:vector-sap octets)
+                                               length))
+                (error "SDL audio queue failed.")))
+            (%audio-queue-record-size!
+             queue (%sdl-queued-audio-size (audio-queue-device queue)))
+            (setf (audio-queue-started-p queue) t))))
+    (audio-queue-queued-bytes queue))
   (audio-queue-queued-bytes queue))
 
 (defun audio-queue-size (queue)
