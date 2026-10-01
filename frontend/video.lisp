@@ -4,6 +4,8 @@
 (progn
   (sb-alien:define-alien-routine ("glGenTextures" %gl-gen-textures) sb-alien:void
     (count sb-alien:int) (textures (* sb-alien:unsigned-int)))
+  (sb-alien:define-alien-routine ("glDeleteTextures" %gl-delete-textures) sb-alien:void
+    (count sb-alien:int) (textures (* sb-alien:unsigned-int)))
   (sb-alien:define-alien-routine ("glBindTexture" %gl-bind-texture) sb-alien:void
     (target sb-alien:unsigned-int) (texture sb-alien:unsigned-int))
   (sb-alien:define-alien-routine ("glTexParameteri" %gl-tex-parameteri) sb-alien:void
@@ -50,6 +52,15 @@
                        (sb-sys:int-sap 0))
       (%make-gl-framebuffer id rgb)))
   #-sbcl (error "The frontend requires SBCL for its OpenGL FFI."))
+
+(defun destroy-gl-framebuffer (framebuffer)
+  "Release the OpenGL texture owned by FRAMEBUFFER."
+  #+sbcl
+  (let ((texture (sb-alien:make-alien sb-alien:unsigned-int 1)))
+    (setf (sb-alien:deref texture) (gl-framebuffer-texture framebuffer))
+    (%gl-delete-textures 1 texture)
+    (sb-alien:free-alien texture))
+  framebuffer)
 
 (defun gl-framebuffer-upload! (framebuffer palette-index-frame)
   "Convert and upload one NES framebuffer to the bound texture."
