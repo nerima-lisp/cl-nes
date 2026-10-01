@@ -15,6 +15,7 @@
                 #:rate-controller-update!
                 #:restore-octets
                 #:rom-identity
+                #:rom-state-directory
                 #:save-state-slot
                 #:savestate-path
                 #:savestate-load-key

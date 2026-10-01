@@ -86,15 +86,20 @@
 
 (describe "frontend battery persistence"
   (it "uses the ROM basename with a sav extension in the state directory"
-    (let* ((state-directory (uiop:temporary-directory))
-           (rom-path (merge-pathnames "zelda.nes" state-directory))
-           (battery-path (merge-pathnames
-                          (make-pathname :name (pathname-name rom-path)
-                                         :type "sav")
-                          state-directory)))
-      (expect (namestring battery-path)
-              :to-be
-              (namestring (merge-pathnames "zelda.sav" state-directory)))))
+    (let* ((directory (merge-pathnames
+                       (format nil "cl-nes-battery-~D/" (random most-positive-fixnum))
+                       (uiop:temporary-directory)))
+           (rom-path (merge-pathnames "zelda.nes" directory)))
+      (unwind-protect
+           (progn
+             (atomic-save-octets rom-path #(1 2 3))
+             (let ((state-path (rom-state-directory
+                                rom-path :state-directory directory)))
+               (expect (pathname-directory state-path)
+                       :to-equal
+                       (append (pathname-directory directory)
+                               (list "cl-nes" (rom-identity rom-path))))))
+        (delete-test-path directory))))
   (it "writes and restores bytes through an atomic replacement"
     (let* ((pathname (test-pathname "battery" "sav"))
            (old #(1 2 3))
