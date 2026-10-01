@@ -27,6 +27,8 @@
             (cl-nes::apu-dmc-silence-p dmc) t)
       (expect (logbitp 4 (apu-read-register apu #x4015)) :to-be nil)
       (setf (cl-nes::apu-dmc-silence-p dmc) nil)
+      (expect (logbitp 4 (apu-read-register apu #x4015)) :to-be nil)
+      (setf (cl-nes::apu-dmc-bytes-remaining dmc) 1)
       (expect (logbitp 4 (apu-read-register apu #x4015)) :to-be t)
       (setf (cl-nes::apu-dmc-irq-pending-p dmc) t)
       (apu-write-register! apu #x4010 #x80)
