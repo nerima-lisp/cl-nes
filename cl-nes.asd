@@ -123,6 +123,7 @@
     :depends-on ("core")
     :components
     ((:file "fixtures-cpu-core") (:file "cpu-opcode-fixtures")
+     (:file "cpu-opcode-semantics")
      (:file "cpu-transition-fixtures") (:file "cpu-state-transitions")
      (:file "cpu-hardware-interrupt-transitions") (:file "cpu-flag-transitions")
      (:file "cpu-addressing-transitions") (:file "cpu-opcodes-00-1f")
