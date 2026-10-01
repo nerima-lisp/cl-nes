@@ -317,8 +317,10 @@
       (expect (cl-nes/frontend:audio-queue-overruns queue) :to-be 2)))
   (it "does not count a push twice when the queue is already over capacity"
     (let* ((queue (cl-nes/frontend:make-audio-queue :capacity 8))
-           (queued-audio-size (cl-nes/frontend::%sdl-queued-audio-size))
-           (queue-audio (cl-nes/frontend::%sdl-queue-audio)))
+           (queued-audio-size
+             (symbol-function 'cl-nes/frontend::%sdl-queued-audio-size))
+           (queue-audio
+             (symbol-function 'cl-nes/frontend::%sdl-queue-audio)))
       (unwind-protect
            (progn
              (setf (cl-nes/frontend::audio-queue-device queue) 1
