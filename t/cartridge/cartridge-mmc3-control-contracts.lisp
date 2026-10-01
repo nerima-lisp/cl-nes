@@ -77,11 +77,27 @@
       (cartridge-write-prg-ram! cartridge #x7000 #x56)
       (cartridge-write-prg-ram! cartridge #x7200 #x78)
       (expect (cartridge-read-prg-ram cartridge #x7000) :to-be #x12)
-      (expect (cartridge-read-prg-ram cartridge #x7200) :to-be nil)
+      (expect (cartridge-read-prg-ram cartridge #x7200) :to-be 0)
       (cartridge-write-prg! cartridge #x8000 0)
       (expect (cl-nes::cartridge-mapper4-mmc6-prg-ram-protect cartridge)
               :to-be 0)
       (expect (cartridge-read-prg-ram cartridge #x7000) :to-be nil)))
+
+  (it "returns zero for a read-disabled MMC6 bank and open bus when both are disabled"
+    (with-mmc3-cartridge (cartridge :mapper4-variant :mmc6)
+      (let ((bus (make-bus :cartridge cartridge)))
+        (cartridge-write-prg! cartridge #x8000 #x20)
+        (cartridge-write-prg! cartridge #xA001 #x30)
+        (cartridge-write-prg-ram! cartridge #x7000 #x12)
+        (expect (bus-read bus #x7000) :to-be #x12)
+        (expect (bus-read bus #x7200) :to-be 0)
+        (cartridge-write-prg! cartridge #xA001 #xC0)
+        (cartridge-write-prg-ram! cartridge #x7200 #x34)
+        (expect (bus-read bus #x7000) :to-be 0)
+        (expect (bus-read bus #x7200) :to-be #x34)
+        (setf (cl-nes::bus-open-bus bus) #xA7)
+        (cartridge-write-prg! cartridge #xA001 0)
+        (expect (bus-read bus #x7000) :to-be #xA7))))
 
   (it "returns control write values and records A12 filter boundary state"
     (with-mmc3-cartridge (cartridge)

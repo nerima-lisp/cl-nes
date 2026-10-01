@@ -88,6 +88,19 @@
       (cartridge-write-prg! cartridge #x8000 2)
       (expect (cartridge-read-prg cartridge #x8000) :to-be 4)))
 
+  (it "masks mapper 71 bank writes to the board's connected bits"
+    (let ((standard (make-patterned-cartridge :mapper 71
+                                              :prg-banks 64
+                                              :chr-banks 8))
+          (fire-hawk (make-patterned-cartridge :mapper 71
+                                                :submapper 1
+                                                :prg-banks 64
+                                                :chr-banks 8)))
+      (cartridge-write-prg! standard #xC000 #x2F)
+      (expect (cartridge-read-prg standard #x8000) :to-be 30)
+      (cartridge-write-prg! fire-hawk #xC000 #x0F)
+      (expect (cartridge-read-prg fire-hawk #x8000) :to-be 14)))
+
   (it "maps mapper 79 CPU writes to patterned PRG and CHR banks"
     (let ((cartridge (make-patterned-cartridge :mapper 79
                                                :prg-banks 8
@@ -112,6 +125,14 @@
       (expect (cartridge-read-chr cartridge 0) :to-be 16)
       (expect (cl-nes::cartridge-prg-bank cartridge) :to-be 1)
       (expect (cl-nes::cartridge-chr-bank cartridge) :to-be 2)))
+
+  (it "ignores mapper 79 control bits above bit 4"
+    (let ((cartridge (make-patterned-cartridge :mapper 79
+                                               :prg-banks 16
+                                               :chr-banks 64)))
+      (cartridge-write-prg! cartridge #x4100 #xF1)
+      (expect (cartridge-read-prg cartridge #x8000) :to-be 4)
+      (expect (cartridge-read-chr cartridge 0) :to-be 8)))
 
   (it "applies mapper bus conflicts before bank selection"
     (let ((cartridge (make-patterned-cartridge :mapper 2
