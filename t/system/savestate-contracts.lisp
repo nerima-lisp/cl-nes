@@ -100,12 +100,61 @@
                        'invalid-savestate)
                 :to-be t))
       (expect (typep (captured-condition
-                      (lambda ()
+              (lambda ()
                         (cl-nes::%state-check-collection-length
                          (1+ cl-nes::+max-state-collection-length+)
                          #(0) 0 1)))
                      'invalid-savestate)
+                :to-be t)))
+
+  (it "does not let a section reader consume later section bytes"
+    (let ((input #(1 0 0 0 42 99)))
+      (expect (typep (captured-condition
+                      (lambda ()
+                        (cl-nes::%savestate-read-section
+                         (lambda (section position)
+                           (cl-nes::%state-read-byte
+                            section
+                            (nth-value 1
+                                       (cl-nes::%state-read-byte section position)))
+                           (values :state 5))
+                         input 0)))
+                     'invalid-savestate)
               :to-be t)))
+
+  (it "rejects a shortened section without changing the machine"
+    (let* ((nes (make-nes))
+           (before (nes-save-state nes))
+           (broken (copy-seq before)))
+      (decf (aref broken 8) 1)
+      (expect (typep (captured-condition
+                      (lambda () (nes-load-state nes broken)))
+                     'invalid-savestate)
+              :to-be t)
+      (expect (equalp (nes-save-state nes) before) :to-be t)))
+
+  (it "rejects invalid Unicode scalar values in symbols"
+    (dolist (code '(#xD800 #x110000))
+      (let ((input (vector 3 1 0 0 0
+                           (ldb (byte 8 0) code)
+                           (ldb (byte 8 8) code)
+                           (ldb (byte 8 16) code)
+                           (ldb (byte 8 24) code))))
+        (expect (typep (captured-condition
+                        (lambda ()
+                          (cl-nes::%state-read-value input 0)))
+                       'invalid-savestate)
+                :to-be t))))
+
+  (it "accepts zero and maximum collection lengths"
+    (expect (cl-nes::%state-check-collection-length 0 #(0) 0 1)
+            :to-be 0)
+    (let ((input (make-array cl-nes::+max-state-collection-length+
+                             :element-type '(unsigned-byte 8)
+                             :initial-element 0)))
+      (expect (cl-nes::%state-check-collection-length
+               cl-nes::+max-state-collection-length+ input 0 1)
+              :to-be cl-nes::+max-state-collection-length+)))
 
   (it "keeps generated state slots symmetric"
     (dolist (state (list (make-apu) (make-cpu) (make-controller)

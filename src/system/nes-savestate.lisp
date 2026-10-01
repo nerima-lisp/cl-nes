@@ -17,11 +17,12 @@
     (let ((end (+ position length)))
       (when (> end (length input))
         (error 'invalid-savestate :reason :truncated))
-      (multiple-value-bind (state state-position)
-          (funcall reader input position)
-        (unless (= state-position end)
-          (error 'invalid-savestate :reason :invalid-section))
-        (values state end)))))
+      (let ((section (subseq input position end)))
+        (multiple-value-bind (state state-position)
+            (funcall reader section 0)
+          (unless (= state-position length)
+            (error 'invalid-savestate :reason :invalid-section))
+          (values state end))))))
 
 (defun nes-save-state (nes)
   "Return a deterministic octet vector containing the complete machine state."
