@@ -10,7 +10,7 @@ documentation in separate areas.
   opcode dispatch, APU channel units, frame sequencing, and cycle orchestration
   are kept in separate source components. The APU components are loaded in
   `cl-nes.asd` order: `apu-data.lisp`, `apu-state.lisp`,
-  `apu-construction.lisp`, `apu.lisp`, `apu-lifecycle.lisp`,
+  `apu-construction.lisp`, `apu.lisp`,
   `apu-envelopes.lisp`, `apu-timers.lisp`, `apu-frame.lisp`,
   `apu-timing.lisp`, `apu-status.lisp`, `apu-registers.lisp`, and
   `apu-output.lisp`.
