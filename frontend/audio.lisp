@@ -44,7 +44,8 @@
           (error "Could not load SDL2 (~A): ~A" library condition))))
     (unless (zerop (%sdl-init +sdl-init-audio+))
       (error "SDL audio initialization failed."))
-    (unwind-protect
+    (let ((opened-p nil))
+      (unwind-protect
            (progn
              ;; SDL_AudioSpec is intentionally supplied as raw storage: this
              ;; keeps the frontend independent of an SDL Lisp package while
@@ -69,10 +70,14 @@
                      (error "SDL audio device could not be opened."))
                    (setf (audio-queue-device queue) device
                          (audio-queue-opened-p queue) t)
-                   (%sdl-pause-audio device 0)))))
-        (unless (audio-queue-opened-p queue)
+                   (%sdl-pause-audio device 0)
+                   (setf opened-p t))))
+        (unless opened-p
+          (when (audio-queue-opened-p queue)
+            (%sdl-close-audio (audio-queue-device queue))
+            (setf (audio-queue-opened-p queue) nil))
           (%sdl-quit +sdl-init-audio+))))
-  #-sbcl (error "The frontend requires SBCL for SDL2 audio."))
+  #-sbcl (error "The frontend requires SBCL for SDL2 audio."))))
 
 (defun audio-queue-close! (queue)
   #+sbcl (when (audio-queue-opened-p queue)
