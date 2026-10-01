@@ -164,3 +164,26 @@
       (expect (cl-nes::bus-oam-dma-active-p bus) :to-be nil)
       (expect (cl-nes::bus-dmc-dma-remaining bus) :to-be 0)
       (expect clock-count :to-be 516))))
+
+  (it "charges DMC and OAM DMA competition at the CPU instruction boundary"
+    (let* ((cartridge (make-fixture-cartridge
+                       :program '(#xA9 #x07 #x8D #x14 #x40)))
+           (nes (make-nes :cartridge cartridge))
+           (bus (nes-bus nes))
+           (apu (nes-apu nes))
+           (dmc (cl-nes::apu-dmc apu)))
+      (dotimes (offset 256)
+        (setf (aref (cl-nes::bus-ram bus) offset) offset))
+      (setf (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bytes-remaining dmc) 1
+            ;; The fetch occurs on the STA write cycle, after OAM DMA starts.
+            (cl-nes::apu-dmc-timer dmc) 5)
+      (expect (nes-step/k nes #'identity) :to-be 2)
+      (let ((cycles (nes-step/k nes #'identity)))
+        (expect cycles :to-be 520)
+        (expect (cpu-pc (nes-cpu nes)) :to-be #x8005)
+        (expect (cl-nes::bus-oam-dma-active-p bus) :to-be nil)
+        (expect (cl-nes::bus-oam-dma-index bus) :to-be 256)
+        (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 0)
+        (expect (cl-nes::bus-dmc-dma-remaining bus) :to-be 0))))
