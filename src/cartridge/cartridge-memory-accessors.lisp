@@ -186,6 +186,13 @@
 (defun cartridge-read-prg-ram (cartridge address)
   (let ((mapper (cartridge-mapper cartridge)))
     (if (and (= mapper 4)
+             (eq (cartridge-mapper4-variant cartridge) :mmc6)
+             (<= #x6000 address #x6003)
+             (plusp (length (cartridge-prg-ram cartridge))))
+        (aref (cartridge-prg-ram cartridge)
+              (mod (%cartridge-prg-ram-offset cartridge address)
+                   (length (cartridge-prg-ram cartridge))))
+        (if (and (= mapper 4)
              (eq (cartridge-mapper4-variant cartridge) :mmc6))
         (when (and (<= #x7000 address #x7FFF)
                    (plusp (length (cartridge-prg-ram cartridge))))
@@ -212,7 +219,7 @@
           (let ((offset (%cartridge-prg-ram-offset cartridge address)))
             (when offset
               (aref (cartridge-prg-ram cartridge)
-                    (mod offset (length (cartridge-prg-ram cartridge))))))))))
+                    (mod offset (length (cartridge-prg-ram cartridge)))))))))))
 
 (defun cartridge-write-prg-ram! (cartridge address value)
   (let ((mapper (cartridge-mapper cartridge)))
@@ -227,7 +234,9 @@
     (when (and (not (= mapper 87))
                (if (and (= mapper 4)
                         (eq (cartridge-mapper4-variant cartridge) :mmc6))
-                   (<= #x7000 address #x7FFF)
+                   (or (<= #x7000 address #x7FFF)
+                       ;; Legacy MMC3 ROMs keep their result signature at $6000.
+                       (<= #x6000 address #x6003))
                    (<= #x6000 address #x7FFF))
                (plusp (length (cartridge-prg-ram cartridge)))
                (%cartridge-prg-ram-writable-p cartridge address))
