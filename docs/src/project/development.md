@@ -84,7 +84,7 @@ are retained for removed APIs.
 
 The organization repository was reviewed for additional dependencies. The
 current pins are the latest release tags: cl-host-kit v0.3.1, cl-weave
-v1.3.0, and paredit-cli v1.6.3. cl-nix-forge is pinned to v0.6.1.
+v1.4.0, and paredit-cli v1.6.3. cl-nix-forge is pinned to v0.6.1.
 `cl-process-kit` was not added: it is an
 SBCL-only process toolkit for launchers and test infrastructure, unrelated to
 cartridge ROM reads, the one runtime need this core has. This keeps package
