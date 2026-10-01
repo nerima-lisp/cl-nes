@@ -70,14 +70,19 @@
            (state (nes-save-state nes))
            (short (subseq state 0 (1- (length state))))
            (bad-magic (copy-seq state))
-           (bad-version (copy-seq state)))
+           (old-version (copy-seq state)))
       (setf (aref bad-magic 0) 0
-            (aref bad-version 4) 2)
-      (dolist (input (list short bad-magic bad-version))
+            (aref old-version 4) 1)
+      (dolist (input (list short bad-magic))
         (expect (typep (captured-condition
                         (lambda () (nes-load-state nes input)))
                 'invalid-savestate)
-                :to-be t))))
+                :to-be t))
+      (let ((condition (captured-condition
+                        (lambda () (nes-load-state nes old-version)))))
+        (expect (typep condition 'invalid-savestate) :to-be t)
+        (expect (invalid-savestate-reason condition)
+                :to-be :unsupported-version))))
 
   (it "does not partially apply a state when a later section is invalid"
     (let* ((nes (make-nes))
