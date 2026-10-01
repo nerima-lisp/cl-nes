@@ -59,6 +59,17 @@
               :to-be #x22)
       (expect (cl-nes::cartridge-prg-bank cartridge) :to-be 1)))
 
+  (it "maps NESdev INES Mapper 079 bit 4 to PRG and bits 0-2 to CHR"
+    (let ((cartridge (make-patterned-cartridge :mapper 79
+                                               :prg-banks 16
+                                               :chr-banks 64)))
+      (expect (cartridge-write-prg! cartridge #x4100 #x12)
+              :to-be #x12)
+      (expect (cartridge-read-prg cartridge #x8000) :to-be 2)
+      (expect (cartridge-read-chr cartridge 0) :to-be 2)
+      (expect (cl-nes::cartridge-prg-bank cartridge) :to-be 1)
+      (expect (cl-nes::cartridge-chr-bank cartridge) :to-be 2)))
+
   (it "applies mapper bus conflicts before bank selection"
     (let ((cartridge (make-patterned-cartridge :mapper 2
                                                :prg-banks 8

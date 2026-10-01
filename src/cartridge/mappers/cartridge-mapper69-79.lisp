@@ -90,11 +90,11 @@
 
 (defun %mapper79-write! (cartridge value)
   (set-cartridge-prg-bank! cartridge
-                           (mod (logand value #x07)
+                           (mod (ash value -4)
                                 (floor (length (cartridge-prg-rom cartridge))
                                        (* 2 +prg-bank-size+))))
   (set-cartridge-chr-bank! cartridge
-                           (mod (ash value -4)
+                           (mod (logand value #x07)
                                 (floor (length (cartridge-chr-rom cartridge))
                                        +chr-bank-size+)))
   value)
