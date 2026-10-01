@@ -79,6 +79,17 @@
                 'invalid-savestate)
                 :to-be t))))
 
+  (it "does not partially apply a state when a later section is invalid"
+    (let* ((nes (make-nes))
+           (before (nes-save-state nes))
+           (broken (copy-seq before)))
+      (setf (aref broken (1- (length broken))) #xff)
+      (expect (typep (captured-condition
+                      (lambda () (nes-load-state nes broken)))
+                     'invalid-savestate)
+              :to-be t)
+      (expect (equalp (nes-save-state nes) before) :to-be t)))
+
   (it "rejects collection lengths beyond the remaining input"
     (let ((invalid-string (vector 3 #xff #xff #xff #xff))
           (invalid-vector (vector 4 #xff #xff #xff #xff)))
