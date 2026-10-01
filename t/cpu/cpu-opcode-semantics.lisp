@@ -64,6 +64,20 @@
                                       :a #x10 :p #x24)
       (expect-cpu-state cpu bus :a #x10 :pc #x8002 :p #x27 :cycles 2)))
 
+  (it "pushes PHP with B and bit five set and restores PLP status"
+    (with-fixture-cpu-state (cpu bus :program (list #x08) :p #xA5 :sp #xFD)
+      (expect-cpu-state cpu bus :sp #xFC :p #xA5 :pc #x8001 :cycles 3)
+      (expect (bus-read bus #x01FD) :to-be #xB5))
+    (with-fixture-cpu-state (cpu bus :program (list #x28) :p #x24 :sp #xFC)
+      (bus-write! bus #x01FD #xB5)
+      (expect-cpu-state cpu bus :sp #xFD :p #xA5 :pc #x8001 :cycles 4)))
+
+  (it "updates BIT N, V, and Z without changing A"
+    (with-fixture-cpu-state (cpu bus :program (list #x24 #x40)
+                                      :a #x3F :p #x24)
+      (bus-write! bus #x0040 #xC0)
+      (expect-cpu-state cpu bus :a #x3F :p #xE6 :pc #x8002 :cycles 3)))
+
   (it "uses branch timing for taken and not-taken branches"
     (with-fixture-cpu-state (cpu bus :program (list #xD0 2) :p #x24)
       (expect-cpu-state cpu bus :pc #x8004 :p #x24 :cycles 3))
