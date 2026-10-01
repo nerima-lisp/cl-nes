@@ -2,6 +2,14 @@
 
 (defvar *hardware-state-codecs* nil)
 
+(defconstant +max-state-collection-length+ (* 16 1024 1024))
+
+(defun %state-check-collection-length (length input position minimum-bytes)
+  (when (or (> length +max-state-collection-length+)
+            (> length (floor (- (length input) position) minimum-bytes)))
+    (error 'invalid-savestate :reason :invalid-length))
+  length)
+
 (defun %state-write-u32 (value output)
   (dotimes (shift 4)
     (vector-push-extend (ldb (byte 8 (* shift 8)) value) output)))
@@ -64,6 +72,7 @@
            (values (if (oddp value) (- (ash (1+ value) -1)) (ash value -1))
                    position)))
       (3 (multiple-value-bind (length position) (%state-read-u32 input position)
+           (%state-check-collection-length length input position 4)
            (let ((name (make-string length)))
              (dotimes (index length)
                (multiple-value-bind (code next) (%state-read-u32 input position)
@@ -71,6 +80,7 @@
                        position next)))
              (values (intern name '#:cl-nes) position))))
       (4 (multiple-value-bind (length position) (%state-read-u32 input position)
+           (%state-check-collection-length length input position 1)
            (let ((values (make-array length)))
              (dotimes (index length)
                (multiple-value-bind (value next) (%state-read-value input position)

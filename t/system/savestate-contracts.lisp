@@ -76,8 +76,25 @@
       (dolist (input (list short bad-magic bad-version))
         (expect (typep (captured-condition
                         (lambda () (nes-load-state nes input)))
-                       'invalid-savestate)
+                'invalid-savestate)
                 :to-be t))))
+
+  (it "rejects collection lengths beyond the remaining input"
+    (let ((invalid-string (vector 3 #xff #xff #xff #xff))
+          (invalid-vector (vector 4 #xff #xff #xff #xff)))
+      (dolist (input (list invalid-string invalid-vector))
+        (expect (typep (captured-condition
+                        (lambda ()
+                          (cl-nes::%state-read-value input 0)))
+                       'invalid-savestate)
+                :to-be t))
+      (expect (typep (captured-condition
+                      (lambda ()
+                        (cl-nes::%state-check-collection-length
+                         (1+ cl-nes::+max-state-collection-length+)
+                         #(0) 0 1)))
+                     'invalid-savestate)
+              :to-be t)))
 
   (it "keeps generated state slots symmetric"
     (dolist (state (list (make-apu) (make-cpu) (make-controller)
