@@ -24,6 +24,8 @@
 (in-package #:cl-nes/frontend/test)
 
 (import '(cl-nes:invalid-savestate
+          cl-nes:cartridge-prg-ram
+          cl-nes:make-cartridge
           cl-nes:make-nes
           cl-nes:nes-run-frame/k
           cl-nes:nes-save-state))

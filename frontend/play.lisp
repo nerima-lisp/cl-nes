@@ -1,5 +1,15 @@
 (in-package #:cl-nes/frontend)
 
+(defun %restore-battery-file (cartridge battery-path)
+  (handler-case
+      (when (probe-file battery-path)
+        (cl-nes:cartridge-restore-battery! cartridge
+                                           (restore-octets battery-path)))
+    (error (condition)
+      (format *error-output*
+              "Could not load battery file ~A: ~A~%"
+              battery-path condition))))
+
 (defun run-play (rom-path &key state-directory (scale 3))
   "Run a ROM in a GLFW window and pace emulation from the SDL queue."
   (let* ((cartridge (cl-nes:load-cartridge rom-path))
@@ -18,8 +28,8 @@
          (audio-buffer (cl-nes:make-nes-audio-buffer :size 512))
          (last-battery-save (get-internal-real-time))
          (battery-save-interval (* 3 internal-time-units-per-second)))
-    (when (and (cl-nes:cartridge-battery-backed-p cartridge) (probe-file battery-path))
-      (cl-nes:cartridge-restore-battery! cartridge (restore-octets battery-path)))
+    (when (cl-nes:cartridge-battery-backed-p cartridge)
+      (%restore-battery-file cartridge battery-path))
     (unwind-protect
          (cl-glfw3-kit:with-glfw ()
            (cl-glfw3-kit:with-glfw-window

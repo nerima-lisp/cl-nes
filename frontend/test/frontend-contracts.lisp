@@ -95,6 +95,24 @@
       (expect (namestring battery-path)
               :to-be
               (namestring (merge-pathnames "zelda.sav" state-directory)))))
+  (it "keeps initialized RAM and warns when the battery file is invalid"
+    (let* ((pathname (test-pathname "broken-battery" "sav"))
+           (cartridge (make-cartridge
+                       :prg-rom (make-array #x4000 :element-type '(unsigned-byte 8))
+                       :prg-ram-size 4
+                                      :battery-backed-p t))
+           (initial-ram #(0 0 0 0))
+           (stderr (make-string-output-stream)))
+      (unwind-protect
+           (progn
+             (atomic-save-octets pathname #(1 2))
+             (let ((*error-output* stderr))
+               (cl-nes/frontend::%restore-battery-file cartridge pathname))
+             (expect (equalp (cartridge-prg-ram cartridge) initial-ram)
+                     :to-be t)
+             (expect (search "Could not load battery file" (get-output-stream-string stderr))
+                     :to-be-truthy))
+        (when (probe-file pathname) (delete-file pathname)))))
   (it "writes and restores bytes through an atomic replacement"
     (let* ((pathname (test-pathname "battery" "sav"))
            (old #(1 2 3))
