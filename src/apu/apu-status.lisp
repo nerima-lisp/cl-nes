@@ -53,7 +53,10 @@
                           (if (plusp (apu-pulse-length-counter (apu-pulse-2 apu))) 2 0)
                           (if (plusp (apu-triangle-length-counter (apu-triangle apu))) 4 0)
                           (if (plusp (apu-noise-length-counter (apu-noise apu))) 8 0)
-                          (if (plusp (apu-dmc-bytes-remaining (apu-dmc apu)))
+                          (if (or (plusp (apu-dmc-bytes-remaining (apu-dmc apu)))
+                                  (and (apu-dmc-enabled-p (apu-dmc apu))
+                                       (plusp (apu-dmc-bits-remaining (apu-dmc apu)))
+                                       (not (apu-dmc-silence-p (apu-dmc apu)))))
                               16
                               0)
                           (if (apu-frame-irq-pending-p apu) #x40 0)
