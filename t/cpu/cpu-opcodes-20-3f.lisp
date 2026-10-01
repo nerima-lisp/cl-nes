@@ -20,9 +20,9 @@
        (dolist (memory ',expected-memory)
          (expect (bus-read bus (first memory)) :to-be (second memory))))))
 
-(describe "CPU opcode dispatch reachability (20-3F)"
-  (define-opcode-dispatch-reachability-spec
-      "reaches opcode #x~2,'0X through the unified dispatch"
+(describe "CPU opcode dispatch (20-3F)"
+  (define-opcode-dispatch-spec
+      "dispatches opcode #x~2,'0X in ~D cycles"
     ((#x20 6) (#x21 6) (#x23 8) (#x24 3) (#x25 3) (#x26 5) (#x27 5)
      (#x28 4) (#x29 2) (#x2A 2) (#x2B 2) (#x2C 4) (#x2D 4) (#x2E 6) (#x2F 6)
      (#x30 2) (#x31 5) (#x33 8) (#x34 4) (#x35 4) (#x36 6) (#x37 6)

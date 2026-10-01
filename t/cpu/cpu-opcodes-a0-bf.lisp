@@ -18,9 +18,9 @@
        (dolist (write expected-writes)
          (expect (bus-read bus (first write)) :to-be (second write))))))
 
-(describe "CPU opcode dispatch reachability (A0-BF)"
-  (define-opcode-dispatch-reachability-spec
-      "reaches opcode #x~2,'0X through the unified dispatch"
+(describe "CPU opcode dispatch (A0-BF)"
+  (define-opcode-dispatch-spec
+      "dispatches opcode #x~2,'0X in ~D cycles"
     ((#xA0 2)
      (#xA1 6)
      (#xA2 2)

@@ -1,7 +1,7 @@
 (in-package #:cl-nes/test)
-(describe "CPU opcode dispatch reachability (E0-FF)"
-  (define-opcode-dispatch-reachability-spec
-      "reaches opcode #x~2,'0X through the unified dispatch"
+(describe "CPU opcode dispatch (E0-FF)"
+  (define-opcode-dispatch-spec
+      "dispatches opcode #x~2,'0X in ~D cycles"
     ((#xE0 2)
      (#xE1 6)
      (#xE2 2)

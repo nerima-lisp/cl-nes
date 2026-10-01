@@ -16,7 +16,13 @@
         cases)))
 
 (defmacro define-opcode-dispatch-spec (description cases)
-  `(define-opcode-dispatch-reachability-spec ,description ,cases))
+  `(it-each ,cases
+      ,description
+      (opcode expected-cycles)
+    (with-fixture-cpu-system (cpu bus :program (list opcode 0 0))
+      (expect-cpu-step-cycles cpu bus expected-cycles)
+      (expect (<= 0 (cpu-pc cpu) #xFFFF)
+              :to-be t))))
 
 (defmacro define-all-opcode-dispatch-reachability-contract ()
   `(progn
@@ -56,24 +62,6 @@
      (expect (cpu-p cpu) :to-be ,(getf expected :p))
      (dolist (cell ',(getf expected :memory))
        (expect (bus-read bus (first cell)) :to-be (second cell))))))
-
-(defmacro define-cpu-semantics-spec (description cases)
-  (if (keywordp (first (first cases)))
-      `(progn
-         ,@(mapcar
-            (lambda (case)
-              `(it ,(format nil description (getf case :opcode))
-                 (run-cpu-semantic-case (list ,@case))))
-            cases))
-      `(progn
-         ,@(mapcar
-            (lambda (case)
-              `(it ,(format nil description (first case))
-                 (expect-cpu-opcode-semantics ,(first case)
-                                              ,(second case)
-                                              ,(third case)
-                                              ,(fourth case))))
-            cases))))
 
 (describe "CPU ALU reference properties"
   (it-property "ADC matches the binary reference model"

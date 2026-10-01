@@ -1,5 +1,13 @@
 (in-package #:cl-nes/test)
 
+(describe "CPU opcode dispatch (60-7F)"
+  (define-opcode-dispatch-spec
+      "dispatches opcode #x~2,'0X in ~D cycles"
+    ((#x60 6) (#x61 6) (#x63 8) (#x64 3) (#x65 3) (#x66 5) (#x67 5)
+     (#x68 4) (#x69 2) (#x6A 2) (#x6B 2) (#x6C 5) (#x6D 4) (#x6E 6) (#x6F 6)
+     (#x70 2) (#x71 5) (#x73 8) (#x74 4) (#x75 4) (#x76 6) (#x77 6)
+     (#x78 2) (#x79 4) (#x7A 2) (#x7B 7) (#x7C 4) (#x7D 4) (#x7E 7) (#x7F 7))))
+
 (define-cpu-semantic-case "RTS pulls the return address and resumes at PC+1"
   :program (#x60) :sp #xFB :writes ((#x01FC #x34) (#x01FD #x12))
   :expected-a 0 :expected-x 0 :expected-y 0 :expected-sp #xFD
