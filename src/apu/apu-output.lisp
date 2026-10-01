@@ -14,11 +14,9 @@
         (%apu-envelope-output envelope))))
 
 (defun %apu-triangle-output (triangle)
-  (if (or (not (apu-triangle-enabled-p triangle))
-          (zerop (apu-triangle-length-counter triangle))
-          (zerop (apu-triangle-linear-counter triangle)))
-      0
-      (aref +apu-triangle-table+ (apu-triangle-sequence triangle))))
+  ;; The triangle sequencer stops when either counter is zero, but its DAC
+  ;; keeps driving the last sequencer level until the sequencer resumes.
+  (aref +apu-triangle-table+ (apu-triangle-sequence triangle)))
 
 (defun %apu-noise-output (noise)
   (if (or (not (apu-noise-enabled-p noise))

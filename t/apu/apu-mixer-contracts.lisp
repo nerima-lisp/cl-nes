@@ -73,7 +73,11 @@
       (expect (apu-mix apu)
               :to-be (+ (aref cl-nes::+apu-pulse-mixer-table+ 30)
                         (aref cl-nes::+apu-tnd-mixer-table+ 202)))
-      (seed-apu-triangle-channel! triangle :linear-counter 0)
+      (seed-apu-triangle-channel! triangle
+        :enabled-p nil
+        :length-counter 0
+        :linear-counter 0
+        :sequence 7)
       (seed-apu-noise-channel! noise :shift-register 1)
-      (expect (cl-nes::%apu-triangle-output triangle) :to-be 0)
+      (expect (cl-nes::%apu-triangle-output triangle) :to-be 8)
       (expect (cl-nes::%apu-noise-output noise) :to-be 0))))
