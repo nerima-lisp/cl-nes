@@ -38,6 +38,8 @@
                           mapper-state-core-mapper69-registers)
 (%define-mapper-forwarder cartridge-mapper69-irq-counter
                           mapper-state-core-mapper69-irq-counter)
+(%define-mapper-forwarder cartridge-mapper69-irq-counter-enabled-p
+                          mapper-state-core-mapper69-irq-counter-enabled-p)
 (%define-mapper-forwarder cartridge-mapper69-irq-enabled-p
                           mapper-state-core-mapper69-irq-enabled-p)
 (%define-mapper-forwarder cartridge-mapper69-irq-pending-p
@@ -53,6 +55,8 @@
                            cartridge-mapper4-state-mapper4-registers)
 (%define-mapper4-forwarder cartridge-mapper4-variant
                            cartridge-mapper4-state-mapper4-variant)
+(%define-mapper4-forwarder cartridge-mapper4-mmc6-prg-ram-protect
+                           cartridge-mapper4-state-mapper4-mmc6-prg-ram-protect)
 (%define-mapper4-forwarder cartridge-mapper4-prg-ram-enabled-p
                            cartridge-mapper4-state-mapper4-prg-ram-enabled-p)
 (%define-mapper4-forwarder cartridge-mapper4-prg-ram-write-protected-p
