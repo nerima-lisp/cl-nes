@@ -1,9 +1,10 @@
 (in-package #:cl-user)
 
-;;;; PERFORMANCE_STANDARD.md's measurement rule: warmup >= 2, samples >= 10,
-;;;; median/min/max reported together, (sb-ext:gc :full t) outside every
-;;;; measured region. nes-run-frame/k is the dominant-input entry point
-;;;; (frame count decides wall time), so it is what this file measures.
+;;;; Measurement rule (docs/src/benchmarks.md, "Emulator frame time"):
+;;;; warmup >= 2, samples >= 10, median/min/max reported together.
+;;;; (sb-ext:gc :full t) runs outside every measured region here.
+;;;; nes-run-frame/k is the dominant-input entry point (frame count decides
+;;;; wall time), so it is what this file measures.
 
 (defparameter *warmup-frame-batches* 2)
 (defparameter *sample-count* 10)
