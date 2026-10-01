@@ -101,7 +101,7 @@
                         (when (plusp (rate-controller-delay rate))
                           (sleep (rate-controller-delay rate)))
                                (save-battery-if-dirty)))
-                        (audio-queue-close! audio))))
+                        (audio-queue-close! audio)))
                  (destroy-gl-framebuffer framebuffer)))))
       (when (and (cl-nes:cartridge-battery-backed-p cartridge)
                  (cl-nes:cartridge-battery-dirty-p cartridge))

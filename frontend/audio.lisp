@@ -69,7 +69,7 @@
                      (error "SDL audio device could not be opened."))
                    (setf (audio-queue-device queue) device
                          (audio-queue-opened-p queue) t)
-                   (%sdl-pause-audio device 0))))))
+                   (%sdl-pause-audio device 0)))))
         (unless (audio-queue-opened-p queue)
           (%sdl-quit +sdl-init-audio+))))
   #-sbcl (error "The frontend requires SBCL for SDL2 audio."))
