@@ -1,5 +1,7 @@
 # cl-nes
 
+The current release is 0.3.0.
+
 cl-nes is a headless Nintendo Entertainment System core written in Common
 Lisp. It exposes the emulated machine as data and functions, leaving display,
 audio, input, and process control to the caller.
@@ -7,7 +9,8 @@ audio, input, and process control to the caller.
 ## What it provides
 
 - iNES 1.0 and the supported subset of NES 2.0 cartridge headers.
-- Mappers 0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28, 34, 66, 71, and 87.
+- Mappers 0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28, 34, 66, 69, 71, 79, and
+  87.
 - 6502/2A03 execution with reset, IRQ, NMI, stack operations, page-crossing
   cycles, and documented unofficial opcodes used by common test ROMs.
 - CPU RAM and PPU register mirroring, controllers, and OAM DMA.

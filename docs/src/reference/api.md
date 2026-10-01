@@ -10,7 +10,7 @@ definitions.
 | --- | --- |
 | `cartridge` | Cartridge state and mapper interface. |
 | `make-cartridge` | Construct a cartridge from octet sequences. Keywords are `:prg-rom`, `:chr-rom`, `:mapper`, `:mirroring`, `:battery-backed-p`, `:four-screen-p`, `:submapper`, `:bus-conflict-p`, `:chr-writable-p`, `:prg-ram-size`, and `:mapper4-variant`. Defaults are mapper 0, horizontal mirroring, 8 KiB PRG-RAM, and `:mmc3`; absent CHR-ROM creates writable CHR-RAM. |
-| `load-cartridge` | Load iNES/NES 2 data from a pathname, string pathname, or octet vector. It accepts optional `:mapper4-variant` (`:mmc3`, `:mmc6`, or `:mmc3-alt`) and signals `invalid-rom` or `unsupported-mapper` for invalid input. |
+| `load-cartridge` | Load iNES/NES 2 data from a pathname, string pathname, or octet vector. It accepts optional `:mapper4-variant` (`:mmc3`, `:mmc3-rev-a`, `:mmc6`, or `:mmc3-alt`) and signals `invalid-rom` or `unsupported-mapper` for invalid input. |
 | `cartridge-reset!` | Reset mapper state while retaining cartridge RAM. |
 | `cartridge-prg-rom`, `cartridge-chr-rom` | Access the PRG-ROM and CHR storage vectors. |
 | `cartridge-prg-size`, `cartridge-chr-size` | Return PRG and CHR storage sizes in bytes. |
@@ -46,9 +46,9 @@ unless `:mapper4-variant` is supplied explicitly.
 | `nes-run-frame/k` | Run to the next frame boundary, call the continuation with the framebuffer, and return its result. `:cycle-hook` runs per CPU cycle; `:input-continuation` is called once with the NES before the first CPU step. |
 | `nes-run-frames/k` | Run a positive frame count, calling the frame continuation once per frame. Optional `:sample-rate`, `:audio-buffer`, `:audio-continuation`, and `:input-continuation` configure audio and frame-boundary input. Return the NES. |
 
-Save states begin with the `CLNS` magic and version 1. They are portable only
-among implementations that support that format version and the serialized
-mapper/state data.
+Save states begin with the `CLNS` magic and version 2. Older or newer versions
+are rejected as incompatible; states are portable only among implementations
+that support this format version and the serialized mapper/state data.
 
 ## Audio buffers and headless output
 
@@ -177,3 +177,5 @@ to one frame, prefix `frame`, and `ppm`. `rom-test` defaults to 360 frames;
 with `--mapper4-variant` it runs the Blargg `$6000` protocol and reports pass,
 frames, status, signature, and text. Without that option it uses the frontend's
 legacy ROM-test path. The commands require a ROM path and do not download ROMs.
+The CLI currently accepts `mmc3`, `mmc6`, and `mmc3-alt`; the library API also
+accepts `:mmc3-rev-a`.

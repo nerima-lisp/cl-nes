@@ -153,7 +153,8 @@ spelling. Direct `asdf:test-system "cl-nes/test"` execution still runs the
 entire suite with the system's built-in `:spec` reporter.
 
 The coverage runner fails when instrumentation or generated report files are
-empty and enforces a non-regression floor for expression and branch coverage.
+empty and enforces a non-regression floor of 8332/8659 (96.22%) expression
+coverage and 1031/1118 (92.22%) branch coverage.
 The long-term target is 100% for both categories. Constructor and loader
 keyword defaults have explicit coverage contracts. The deterministic
 `coverage-summary.txt` contains aggregate totals followed by one row per
