@@ -179,30 +179,32 @@
         let
           pkgs = ctx.pkgs;
           paredit = paredit-cli.packages.${ctx.system}.default or null;
-          littleThings = pkgs.runCommand "cl-nes-little-things-roms"
-            {
-              nativeBuildInputs = [ pkgs.unzip ];
-              src = pkgs.fetchurl {
-                url = "https://github.com/pinobatch/little-things-nes/releases/download/v20.10/little-things-nes-20.10.zip";
-                hash = "sha256-V0Ko8iDvC6/SzZ7UNsSl+qnxe7JbCKb8JgAaPNMWeb4=";
-              };
-            }
-            ''
-              mkdir -p "$out"
-              unzip -q "$src" -d "$out"
-            '';
-          holyMapperel = pkgs.runCommand "cl-nes-holy-mapperel-roms"
-            {
-              nativeBuildInputs = [ pkgs.p7zip ];
-              src = pkgs.fetchurl {
-                url = "https://github.com/pinobatch/holy-mapperel/releases/download/v0.02/holy-mapperel-bin-0.02.7z";
-                hash = "sha256-cPhWceIfKTWZuuu2YvrrBqTATpyc6yg9ltQZfwnkzno=";
-              };
-            }
-            ''
-              mkdir -p "$out"
-              7z x "$src" -o"$out" >/dev/null
-            '';
+          littleThings =
+            pkgs.runCommand "cl-nes-little-things-roms"
+              {
+                nativeBuildInputs = [ pkgs.unzip ];
+                src = pkgs.fetchurl {
+                  url = "https://github.com/pinobatch/little-things-nes/releases/download/v20.10/little-things-nes-20.10.zip";
+                  hash = "sha256-V0Ko8iDvC6/SzZ7UNsSl+qnxe7JbCKb8JgAaPNMWeb4=";
+                };
+              }
+              ''
+                mkdir -p "$out"
+                unzip -q "$src" -d "$out"
+              '';
+          holyMapperel =
+            pkgs.runCommand "cl-nes-holy-mapperel-roms"
+              {
+                nativeBuildInputs = [ pkgs.p7zip ];
+                src = pkgs.fetchurl {
+                  url = "https://github.com/pinobatch/holy-mapperel/releases/download/v0.02/holy-mapperel-bin-0.02.7z";
+                  hash = "sha256-cPhWceIfKTWZuuu2YvrrBqTATpyc6yg9ltQZfwnkzno=";
+                };
+              }
+              ''
+                mkdir -p "$out"
+                7z x "$src" -o"$out" >/dev/null
+              '';
         in
         {
           checks = {
