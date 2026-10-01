@@ -292,7 +292,7 @@
 
           apps.bench = ctx.cl.mkTestApp {
             pname = "cl-nes-bench";
-            runner = "benchmark/run-benchmarks.lisp";
+            runner = "benchmark/bench.lisp";
             timeoutSeconds = benchmarkTimeoutSeconds;
             killAfterSeconds = timeoutGraceSeconds;
             src = ctx.src;

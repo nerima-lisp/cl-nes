@@ -5,21 +5,9 @@
 ;;;; measured region. nes-run-frame/k is the dominant-input entry point
 ;;;; (frame count decides wall time), so it is what this file measures.
 
-(defparameter *benchmark-root*
-  (make-pathname :name nil
-                 :type nil
-                 :defaults (or *load-truename* *default-pathname-defaults*)))
-
-(defparameter *project-root*
-  (merge-pathnames "../" *benchmark-root*))
-
 (defparameter *warmup-frame-batches* 2)
 (defparameter *sample-count* 10)
 (defparameter *frames-per-sample* 60)
-
-(require :asdf)
-(load (merge-pathnames "cl-nes.asd" *project-root*))
-(asdf:load-system "cl-nes")
 
 (defun %put-bytes! (vector offset bytes)
   (loop for byte in bytes
@@ -155,5 +143,3 @@
                   #'%make-rendering-cartridge)
   (%run-benchmark "MMC3 bank switching + scanline IRQ"
                   #'%make-mmc3-cartridge))
-
-(run-benchmarks)
