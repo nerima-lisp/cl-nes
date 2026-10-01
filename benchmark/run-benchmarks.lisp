@@ -1,25 +1,14 @@
 (in-package #:cl-user)
 
-;;;; PERFORMANCE_STANDARD.md's measurement rule: warmup >= 2, samples >= 10,
-;;;; median/min/max reported together, (sb-ext:gc :full t) outside every
-;;;; measured region. nes-run-frame/k is the dominant-input entry point
-;;;; (frame count decides wall time), so it is what this file measures.
-
-(defparameter *benchmark-root*
-  (make-pathname :name nil
-                 :type nil
-                 :defaults (or *load-truename* *default-pathname-defaults*)))
-
-(defparameter *project-root*
-  (merge-pathnames "../" *benchmark-root*))
+;;;; Measurement rule (docs/src/benchmarks.md, "Emulator frame time"):
+;;;; warmup >= 2, samples >= 10, median/min/max reported together.
+;;;; (sb-ext:gc :full t) runs outside every measured region here.
+;;;; nes-run-frame/k is the dominant-input entry point (frame count decides
+;;;; wall time), so it is what this file measures.
 
 (defparameter *warmup-frame-batches* 2)
 (defparameter *sample-count* 10)
 (defparameter *frames-per-sample* 60)
-
-(require :asdf)
-(load (merge-pathnames "cl-nes.asd" *project-root*))
-(asdf:load-system "cl-nes")
 
 (defun %put-bytes! (vector offset bytes)
   (loop for byte in bytes
@@ -155,5 +144,3 @@
                   #'%make-rendering-cartridge)
   (%run-benchmark "MMC3 bank switching + scanline IRQ"
                   #'%make-mmc3-cartridge))
-
-(run-benchmarks)

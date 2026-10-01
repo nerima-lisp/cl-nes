@@ -48,7 +48,7 @@ explicit."
          (rendered (%minimum-bytes-consed frame-count #x18)))
     (format t "allocation gate: baseline ~D rendered ~D allowance ~D~%"
             baseline rendered ppu-scratch-exception)
-    ;; The baseline follows PERFORMANCE_STANDARD.md.  The dot renderer keeps
+    ;; The baseline follows docs/src/benchmarks.md.  The dot renderer keeps
     ;; its state in the PPU pipeline and allocates no legacy frame scratch.
     (expect (<= rendered
                 (+ baseline (* frame-count ppu-scratch-exception)))
