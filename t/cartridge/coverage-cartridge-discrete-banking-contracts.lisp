@@ -36,8 +36,10 @@
       (cartridge-write-prg! mapper-71 #x8000 2)
       (expect (cartridge-read-prg mapper-71 #x8000) :to-be 4)
       (expect (cartridge-read-prg mapper-71 #xC000) :to-be 6)
-      (cartridge-write-prg-ram! mapper-87 #x6000 1)
-      (expect (cartridge-read-chr mapper-87 0) :to-be 8)
+      (dolist (value '(0 1 2 3))
+        (cartridge-write-prg-ram! mapper-87 #x6000 value)
+        (expect (cartridge-read-chr mapper-87 0)
+                :to-be (* (case value (0 0) (1 2) (2 1) (3 3)) 8)))
       (expect (cartridge-read-prg-ram mapper-87 #x6000) :to-be nil)))
 
   (it "maps mapper 79 CPU writes to patterned PRG and CHR banks"

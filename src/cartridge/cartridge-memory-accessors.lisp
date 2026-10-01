@@ -162,7 +162,9 @@
       (let ((chr-bank-count (floor (length (cartridge-chr-rom cartridge))
                                    +chr-bank-size+)))
         (set-cartridge-chr-bank! cartridge
-                                 (mod (logand value #x03) chr-bank-count))))
+                                 (mod (logior (ash (logand value #x01) 1)
+                                              (ldb (byte 1 1) value))
+                                      chr-bank-count))))
     (when (and (not (= mapper 87))
                (<= #x6000 address #x7FFF)
                (plusp (length (cartridge-prg-ram cartridge)))
