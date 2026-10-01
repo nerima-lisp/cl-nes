@@ -34,6 +34,7 @@
         (cl-nes::cartridge-cpu-write! nina #x7FFE 2)
         (cl-nes::cartridge-cpu-write! nina #x7FFF 3)
         (expect (cartridge-read-prg nina #x8000) :to-be 4)
+        (expect (cl-nes::cartridge-cpu-read nina #x7FFE) :to-be 2)
         (expect (cartridge-read-chr nina 0) :to-be 8)
         (expect (cartridge-read-chr nina #x1000) :to-be 12))
       (let ((nina-submapper (make-patterned-cartridge :mapper 34
@@ -42,6 +43,13 @@
                                                        :chr-banks 8)))
         (cl-nes::cartridge-cpu-write! nina-submapper #x7FFE 1)
         (expect (cartridge-read-chr nina-submapper 0) :to-be 4))
+      (let ((bnrom (make-patterned-cartridge :mapper 34
+                                             :submapper 2
+                                             :prg-banks 8
+                                             :chr-banks 8)))
+        (cl-nes::cartridge-cpu-write! bnrom #x7FFE 1)
+        (expect (cl-nes::cartridge-cpu-read bnrom #x7FFE) :to-be 1)
+        (expect (cartridge-read-chr bnrom 0) :to-be 0))
       (let ((bnrom-ram (make-cartridge
                         :mapper 34
                         :prg-rom (make-banked-storage 8 cl-nes::+prg-bank-8k-size+))))

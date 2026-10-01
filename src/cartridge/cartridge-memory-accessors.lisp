@@ -173,8 +173,9 @@
                         (mod value chr-bank-count)))
                  (#x7FFF
                   (setf (cartridge-mapper-chr-bank-1 cartridge)
-                        (mod value chr-bank-count))))))
-             (set-cartridge-prg-bank! cartridge value)))))
+                        (mod value chr-bank-count))))
+               (cartridge-write-prg-ram! cartridge address value))
+             (set-cartridge-prg-bank! cartridge value))))))
   value)
 
 (defun cartridge-read-prg-ram (cartridge address)
