@@ -6,6 +6,13 @@
 (defun cartridge-chr-size (cartridge)
   (length (cartridge-chr-rom cartridge)))
 
+(defun %mapper34-nina-p (cartridge)
+  (and (= (cartridge-mapper cartridge) 34)
+       (or (= (cartridge-submapper cartridge) 1)
+           (and (/= (cartridge-submapper cartridge) 2)
+                (not (cartridge-chr-writable-p cartridge))
+                (> (cartridge-chr-size cartridge) +chr-bank-size+)))))
+
 (defun %nrom-368-p (cartridge)
   (and (= (cartridge-mapper cartridge) 0)
        (= (length (cartridge-prg-rom cartridge)) (* 48 1024))))
@@ -41,6 +48,14 @@
     ((66 87)
      (+ (* (cartridge-chr-bank cartridge) +chr-bank-size+)
         (mod address +chr-bank-size+)))
+    (34
+     (if (%mapper34-nina-p cartridge)
+         (+ (* (if (< address #x1000)
+                   (cartridge-mapper-chr-bank-0 cartridge)
+                   (cartridge-mapper-chr-bank-1 cartridge))
+                +chr-bank-4k-size+)
+            (mod address +chr-bank-4k-size+))
+         address))
     (69 (%mapper69-chr-offset cartridge address))
     (22
      (let ((slot (floor address +chr-bank-1k-size+)))
@@ -103,8 +118,10 @@
           (aref dispatch 11) #'%cartridge-chr-offset-mapper-3
           (aref dispatch 22) #'%cartridge-chr-offset-mapper-22
           (aref dispatch 28) #'%cartridge-chr-offset-mapper-3
+          (aref dispatch 34) #'%cartridge-chr-offset-by-mapper
           (aref dispatch 66) #'%cartridge-chr-offset-mapper-66-87
           (aref dispatch 69) #'%cartridge-chr-offset-mapper-69
+          (aref dispatch 79) #'%cartridge-chr-offset-mapper-66-87
           (aref dispatch 87) #'%cartridge-chr-offset-mapper-66-87)
     dispatch))
 

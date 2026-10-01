@@ -43,7 +43,11 @@
 
 (defun %mapper4-write! (cartridge address value)
   (case (logand address #xE001)
-    (#x8000 (setf (cartridge-mapper4-bank-select cartridge) value))
+    (#x8000
+     (setf (cartridge-mapper4-bank-select cartridge) value)
+     (when (and (eq (cartridge-mapper4-variant cartridge) :mmc6)
+                (not (logbitp 5 value)))
+       (setf (cartridge-mapper4-mmc6-prg-ram-protect cartridge) 0)))
     (#x8001
      (setf (aref (cartridge-mapper4-registers cartridge)
                  (logand (cartridge-mapper4-bank-select cartridge) 7))
@@ -54,8 +58,14 @@
         cartridge
         (if (zerop (logand value 1)) :vertical :horizontal))))
     (#xA001
-     (setf (cartridge-mapper4-prg-ram-enabled-p cartridge) (logbitp 7 value))
-     (setf (cartridge-mapper4-prg-ram-write-protected-p cartridge) (logbitp 6 value)))
+     (if (eq (cartridge-mapper4-variant cartridge) :mmc6)
+         (setf (cartridge-mapper4-mmc6-prg-ram-protect cartridge)
+               (if (logbitp 5 (cartridge-mapper4-bank-select cartridge))
+                   (logand value #xF0)
+                   0))
+         (progn
+           (setf (cartridge-mapper4-prg-ram-enabled-p cartridge) (logbitp 7 value))
+           (setf (cartridge-mapper4-prg-ram-write-protected-p cartridge) (logbitp 6 value)))))
     (#xC000 (setf (cartridge-mapper4-irq-latch cartridge) value))
     (#xC001 (setf (cartridge-mapper4-irq-reload-p cartridge) t))
     (#xE000
