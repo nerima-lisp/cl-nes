@@ -16,7 +16,7 @@
 (defun %apu-triangle-output (triangle)
   ;; The triangle sequencer stops when either counter is zero, but its DAC
   ;; keeps driving the last sequencer level until the sequencer resumes.
-  (aref +apu-triangle-table+ (apu-triangle-sequence triangle)))
+  (apu-triangle-dac-output triangle))
 
 (defun %apu-noise-output (noise)
   (if (or (not (apu-noise-enabled-p noise))

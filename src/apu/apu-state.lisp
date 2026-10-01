@@ -36,7 +36,8 @@
    (linear-reload-value 0 fixnum)
    (linear-reload-p nil nil)
    (control-p nil nil)
-   (sequence 0 fixnum))
+   (sequence 0 fixnum)
+   (dac-output 0 fixnum))
   :constructor %make-apu-triangle)
 
 (define-hardware-state apu-noise

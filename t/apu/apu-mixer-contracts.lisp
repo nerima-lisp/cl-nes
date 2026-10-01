@@ -60,7 +60,8 @@
         :enabled-p t
         :length-counter 1
         :linear-counter 1
-        :sequence 0)
+        :sequence 0
+        :dac-output 15)
       (seed-apu-noise-channel! noise
         :enabled-p t
         :length-counter 1
@@ -77,7 +78,8 @@
         :enabled-p nil
         :length-counter 0
         :linear-counter 0
-        :sequence 7)
+        :sequence 7
+        :dac-output 8)
       (seed-apu-noise-channel! noise :shift-register 1)
       (expect (cl-nes::%apu-triangle-output triangle) :to-be 8)
       (expect (cl-nes::%apu-noise-output noise) :to-be 0))))
