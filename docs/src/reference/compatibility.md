@@ -31,47 +31,31 @@ The automated P2 harness is `cl-nes/rom-suite`. It consumes fixed, flake-only
 inputs for `christopherpow/nes-test-roms` and `100thCoin/AccuracyCoin`; ROM
 bytes are not committed to this repository. The contract table is in
 `t/rom-suite/protocols.lisp` and uses the blargg `$6000` signature/status
-protocol, framebuffer hashes, and AccuracyCoin's `$0400-$04FF` result RAM.
+protocol, runtime framebuffer hashes, and AccuracyCoin's `$0400-$04FF` result
+RAM. These hashes are diagnostics of the emulator's output; they are not
+golden or reference-image hashes.
 Each row has a bounded frame limit and a ratchet state. A passing `:pass` row
 must remain passing, while an unexpectedly passing `:known-fail` row fails the
 check and requires its recorded baseline to be updated.
 
 The table is the ROM-by-ROM verdict: `:pass` rows are required to pass, and
 `:known-fail` rows are expected to fail until their recorded limitation is
-fixed. The current table contains 100 bounded ROM contracts. Its category
-counts are derived from the `:category` and `:state` fields in
-`t/rom-suite/protocols.lisp`:
-
-| category | expected pass | expected known-fail | total |
-| --- | ---: | ---: | ---: |
-| CPU | 28 | 10 | 38 |
-| PPU | 20 | 15 | 35 |
-| APU | 8 | 6 | 14 |
-| DMA | 0 | 2 | 2 |
-| mapper | 8 | 3 | 11 |
-| total | 64 | 37 | 101 |
+fixed. Its category and state counts are derived from the `:category` and
+`:state` fields in `t/rom-suite/protocols.lisp`; that source table is
+authoritative and this page intentionally does not duplicate its counts.
 
 The per-ROM rows in `*rom-contract-data*` are the source of truth for the
 individual verdicts. They contain the id, category, ROM path, protocol, frame
 bound, ratchet state, and failure diagnostic; there is no second compatibility
-list. The same table is checked first by `run-rom-suite.lisp`. In the current
-measured run, all 200 declarative table checks passed and `sprite-hit-11`
-completed within its 360 frame bound.
+list. The same table is checked first by `run-rom-suite.lisp`.
 
-AccuracyCoin is a separate contract with 146 expected result cells and a
-1200-frame bound. Its `:known-fail` state is enforced by the same ratchet. The
-runner reads the result RAM at `$0400-$04FF`, classifies each cell as pass,
-fail, skipped, or running, and prints pass/fail counts followed by counts for
-the categories declared in `*accuracy-coin-item-specs*`. The category names
-currently include CPU behavior, CPU instructions, unofficial opcode groups,
-CPU interrupts, DMA, APU, CPU behavior 2, PPU, PPU vblank, sprite, PPU misc,
-advanced background, and advanced sprite. The current run measured 86 passing
-cells, 58 failing cells, and no skipped or running cells. Category counts were
-CPU behavior 8, CPU instructions 6, unofficial SLO 7, unofficial RLA 7,
-unofficial SRE 7, unofficial RRA 7, unofficial AX 10, unofficial DCP 7,
-unofficial ISC 7, unofficial SH 1, unofficial immediate 7, CPU interrupts 1,
-DMA 1, APU 5, CPU behavior 2 3, and PPU 2. PPU vblank, sprite, PPU misc,
-advanced background, and advanced sprite each measured 0.
+AccuracyCoin is a separate contract whose result-cell definition and frame
+bound are in `*accuracy-coin-contract*`. Its `:known-fail` state is enforced
+by the same ratchet. The runner reads the result RAM at `$0400-$04FF`,
+classifies each cell as pass, fail, skipped, or running, and prints counts for
+the categories declared in `*accuracy-coin-item-specs*`. Those declarations
+and the measured output are authoritative; this page intentionally does not
+duplicate their counts.
 
 To reproduce the complete harness with legally obtained ROM inputs, use the
 flake check:
@@ -110,11 +94,12 @@ excluded because the public core API does not expose them.
 ## Mapper 4
 
 Mapper 4 defaults to the MMC3 IRQ reload behavior. NES 2.0 submapper 1 selects
-MMC6 behavior and submapper 2 selects the alternate MMC3 behavior. Some ROMs need the
-zero-counter reload suppression behavior shared by MMC6-compatible revisions;
-select it explicitly with mapper4-variant :mmc6 or :mmc3-alt. The header does
-not select the alternate behavior when an explicit mapper4-variant argument is
-provided.
+MMC6 behavior and submapper 2 selects the alternate MMC3 behavior. The core
+also accepts the explicit `:mmc3-rev-a` variant for the MMC3 revision-A IRQ
+contract. Some ROMs need the zero-counter reload suppression behavior shared
+by MMC6-compatible revisions; select it explicitly with mapper4-variant
+`:mmc3-rev-a`, `:mmc6`, or `:mmc3-alt`. The header does not select the
+alternate behavior when an explicit mapper4-variant argument is provided.
 
 ## CPU and PPU
 
@@ -177,10 +162,12 @@ as MIT, GPL/LGPL, zlib, GNU All-Permissive, or the exact Creative Commons
 variant. Non-commercial and share-alike restrictions are not relabeled as
 plain CC-BY.
 
-For every entry, the check runs 1800 frames twice with the same initial state.
+For every entry, the check runs a bounded number of frames twice with the same initial state.
 It writes a representative PNG image at the final frame and reports exceptions,
 unsupported mappers, frame-boundary CPU progress, framebuffer change, non-zero
-audio samples, and equality of final framebuffer hashes across the two runs.
+audio samples, and whether final framebuffer hashes match across the two runs.
+The final-frame hash comparison checks deterministic reruns of the same ROM;
+it is not a comparison with an external golden framebuffer.
 
 Results are written to `compat-results.tsv` and images to the configured
 compatibility artifact directory. A `pass` result is the ratchet baseline;
