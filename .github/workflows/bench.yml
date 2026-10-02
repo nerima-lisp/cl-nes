@@ -19,12 +19,14 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        timeout-minutes: 5
         with:
           persist-credentials: false
       - uses: ./.github/actions/nix-setup
+        timeout-minutes: 10
         with:
           cachix-cache: ${{ vars.CACHIX_CACHE }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Run benchmark
         timeout-minutes: 15
-        run: timeout -k 30 900 nix run .#bench
+        run: timeout -k 30 840 nix run .#bench
