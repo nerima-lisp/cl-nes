@@ -107,7 +107,15 @@ Enter the pinned environment and run the focused checks:
 nix develop
 sbcl --noinform --non-interactive --eval '(require :asdf)' --load cl-nes.asd --eval '(asdf:compile-system "cl-nes" :force t)' --quit
 sbcl --noinform --non-interactive --load run-tests.lisp --quit
-nix build .#checks.aarch64-darwin.rom-suite --print-build-logs
+nix build \
+  .#checks.aarch64-darwin.rom-suite-cpu \
+  .#checks.aarch64-darwin.rom-suite-ppu \
+  .#checks.aarch64-darwin.rom-suite-apu-test \
+  .#checks.aarch64-darwin.rom-suite-apu-dmc \
+  .#checks.aarch64-darwin.rom-suite-apu-timing \
+  .#checks.aarch64-darwin.rom-suite-dma \
+  .#checks.aarch64-darwin.rom-suite-mapper \
+  --print-build-logs
 nix flake check
 ~~~
 
@@ -128,15 +136,15 @@ sbcl --noinform --non-interactive --load run-coverage.lisp --quit
 ~~~
 
 Performance measurements are documented separately when a reproducible,
-repository-supported benchmark command is available. `ci.yml` is the single
-required GitHub Actions job and runs `nix flake check` on `ubuntu-latest`.
+repository-supported benchmark command is available. The `check` job in
+`.github/workflows/ci.yml` runs `nix flake check` on `ubuntu-latest`.
 
 Focused cl-weave runs use the same launcher and optional environment
 variables:
 
 ~~~sh
 CL_NES_TEST_NAME_FILTER=mmc1 \
-CL_NES_TEST_LOCATION_FILTER=t/coverage-mapper-contracts.lisp \
+CL_NES_TEST_LOCATION_FILTER=t/cartridge/coverage-mapper-contracts.lisp \
 CL_NES_TEST_PATH_FILTER='mapper contracts > mmc1 updates mirroring and chr banks' \
 CL_NES_TEST_INCLUDE_TAGS=mapper,contracts \
 CL_NES_TEST_EXCLUDE_TAGS=slow \
@@ -153,8 +161,7 @@ spelling. Direct `asdf:test-system "cl-nes/test"` execution still runs the
 entire suite with the system's built-in `:spec` reporter.
 
 The coverage runner fails when instrumentation or generated report files are
-empty and enforces a non-regression floor of 8332/8659 (96.22%) expression
-coverage and 1031/1118 (92.22%) branch coverage.
+empty and enforces the non-regression floor declared in `run-coverage.lisp`.
 The long-term target is 100% for both categories. Constructor and loader
 keyword defaults have explicit coverage contracts. The deterministic
 `coverage-summary.txt` contains aggregate totals followed by one row per
@@ -171,7 +178,7 @@ documentation strictly into a temporary site directory.
 The reproducible native-system gate can also be invoked directly:
 
 ~~~sh
-nix build .#checks.aarch64-darwin.cl-nes --print-build-logs
+nix build .#checks.aarch64-darwin.default --print-build-logs
 ~~~
 
 That derivation checks every Lisp source file with `paredit-cli`, rejects an

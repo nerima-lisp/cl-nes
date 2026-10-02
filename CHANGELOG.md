@@ -37,6 +37,13 @@
 
 ### Verification and tooling
 
+- Split the ROM suite into per-shard flake checks so compatibility coverage can
+  run through the same declarative contracts in parallel. The checks are
+  `rom-suite-cpu`, `rom-suite-ppu`, `rom-suite-apu-test`, `rom-suite-apu-dmc`,
+  `rom-suite-apu-timing`, `rom-suite-dma`, and `rom-suite-mapper`; the mapper
+  shard retains the AccuracyCoin and nestest runs. The separate
+  round-robin `compat-shard-*` checks exercise the licensed homebrew corpus and
+  its checked-in status ratchet.
 - Expanded CPU opcode semantics, APU, cartridge, mapper, savestate, frontend,
   and DMA contract coverage (`461d89e`, `6cdc68d`, `b7ef63f`, `593fe22`,
   `3802835`, `2829d1c`).

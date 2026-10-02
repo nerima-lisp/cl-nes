@@ -191,31 +191,44 @@
 (defun %check-baseline (results)
   (let ((path (%baseline-path)))
     (when (probe-file path)
-      (dolist (line (uiop:read-file-lines path))
-        (unless (or (zerop (length line)) (char= (char line 0) #\#))
-          (let* ((fields (uiop:split-string line :separator '(#\Tab)))
-                 (id (first fields))
-                 (status (second fields))
-                 (mapper (third fields))
-                 (result (find id results :key (lambda (item) (getf item :id))
-                               :test #'string=)))
-            (unless (and result
-                         (string= status (string-downcase
-                                          (symbol-name (getf result :status))))
-                         (= (parse-integer mapper) (getf result :mapper)))
-              (error "Compatibility ratchet failed for ~A." id)))))))
-  t)
+      (let ((baseline (make-hash-table :test #'equal)))
+        (dolist (line (uiop:read-file-lines path))
+          (unless (or (zerop (length line)) (char= (char line 0) #\#))
+            (let* ((fields (uiop:split-string line :separator '(#\Tab)))
+                   (id (first fields)))
+              (setf (gethash id baseline) (list (second fields)
+                                                (parse-integer (third fields)))))))
+        (dolist (result results)
+          (let ((expected (gethash (getf result :id) baseline)))
+            (unless (and expected
+                         (string= (first expected)
+                                  (string-downcase
+                                   (symbol-name (getf result :status))))
+                         (= (second expected) (getf result :mapper)))
+              (error "Compatibility ratchet failed for ~A." (getf result :id)))))))
+  t))
 
 (defun %selected-corpus ()
-  (let ((ids (uiop:getenv "CL_NES_COMPAT_IDS")))
-    (if ids
-        (remove-if-not
-         (lambda (entry)
-           (member (getf entry :id)
-                   (uiop:split-string ids :separator '(#\,))
-                   :test #'string=))
-         *compat-corpus*)
-        *compat-corpus*)))
+  (let ((ids (uiop:getenv "CL_NES_COMPAT_IDS"))
+        (root-filter (uiop:getenv "CL_NES_COMPAT_ROOT_FILTER"))
+        (bucket (and (uiop:getenv "CL_NES_COMPAT_BUCKET")
+                     (parse-integer (uiop:getenv "CL_NES_COMPAT_BUCKET"))))
+        (bucket-count (or (and (uiop:getenv "CL_NES_COMPAT_BUCKET_COUNT")
+                               (parse-integer
+                                (uiop:getenv "CL_NES_COMPAT_BUCKET_COUNT")))
+                          1)))
+    (loop for entry in *compat-corpus*
+          for index from 0
+          when (and (or (null ids)
+                        (member (getf entry :id)
+                                (uiop:split-string ids :separator '(#\,))
+                                :test #'string=))
+                    (or (null root-filter)
+                        (string= root-filter
+                                 (or (getf entry :root) "retrobrews")))
+                    (or (null bucket)
+                        (= (mod index bucket-count) bucket)))
+            collect entry)))
 
 (defun compat-main ()
   (let ((corpus (%selected-corpus)))

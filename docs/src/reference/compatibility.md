@@ -57,11 +57,19 @@ the categories declared in `*accuracy-coin-item-specs*`. Those declarations
 and the measured output are authoritative; this page intentionally does not
 duplicate their counts.
 
-To reproduce the complete harness with legally obtained ROM inputs, use the
-flake check:
+To reproduce the complete harness with legally obtained ROM inputs, run all
+ROM-suite shard checks:
 
 ~~~sh
-nix build .#checks.aarch64-darwin.rom-suite --print-build-logs
+nix build \
+  .#checks.aarch64-darwin.rom-suite-cpu \
+  .#checks.aarch64-darwin.rom-suite-ppu \
+  .#checks.aarch64-darwin.rom-suite-apu-test \
+  .#checks.aarch64-darwin.rom-suite-apu-dmc \
+  .#checks.aarch64-darwin.rom-suite-apu-timing \
+  .#checks.aarch64-darwin.rom-suite-dma \
+  .#checks.aarch64-darwin.rom-suite-mapper \
+  --print-build-logs
 ~~~
 
 For a direct run, provide the same four inputs used by the flake:
@@ -145,24 +153,22 @@ the category counts above.
 
 ## Homebrew ROM compatibility corpus
 
-The new compatibility check uses a fixed, non-commercial corpus from the
+The compatibility checks use a fixed, non-commercial corpus from the
 `retrobrews/nes-games` project at commit
 `d20061bf9917e8bb8b947d4dba8c59372f5762a0`. ROM files are fetched by the flake
 input and are not committed to this repository. The complete provenance table
 is `t/compat/corpus.lisp`; it records the source URL, SHA-256, mapper, and the
 license or distribution-permission evidence recorded by the upstream project.
 
-The corpus contains 71 ROMs and covers mappers 0, 1, 2, 3, 4, 7, 28, 30, 66,
-and 113. The mapper-focused portion has 8 MMC1, 6 UxROM, 6 CNROM, 7 MMC3,
-and 4 AxROM ROMs; four AxROM binaries were found in the audited licensed
-homebrew sources. Each entry has a concrete license-source URL and a quoted
-license or distribution-permission note. The Retrobrews entries use the
-project README's per-ROM distribution record; explicit metadata is retained
-as MIT, GPL/LGPL, zlib, GNU All-Permissive, or the exact Creative Commons
-variant. Non-commercial and share-alike restrictions are not relabeled as
-plain CC-BY.
+The corpus composition and mapper coverage are defined by
+`t/compat/corpus.lisp`, which is the source of truth for the checked entries.
+Each entry has a concrete license-source URL and a quoted license or
+distribution-permission note. The Retrobrews entries use the project README's
+per-ROM distribution record; explicit metadata is retained as MIT, GPL/LGPL,
+zlib, GNU All-Permissive, or the exact Creative Commons variant.
+Non-commercial and share-alike restrictions are not relabeled as plain CC-BY.
 
-For every entry, the check runs a bounded number of frames twice with the same initial state.
+For every entry, its compatibility shard runs a bounded number of frames twice with the same initial state.
 It writes a representative PNG image at the final frame and reports exceptions,
 unsupported mappers, frame-boundary CPU progress, framebuffer change, non-zero
 audio samples, and whether final framebuffer hashes match across the two runs.
@@ -170,7 +176,9 @@ The final-frame hash comparison checks deterministic reruns of the same ROM;
 it is not a comparison with an external golden framebuffer.
 
 Results are written to `compat-results.tsv` and images to the configured
-compatibility artifact directory. A `pass` result is the ratchet baseline;
+compatibility artifact directory. The flake exposes round-robin
+`compat-shard-*` checks; together they cover the complete corpus while keeping
+each bounded job independently schedulable. A `pass` result is the ratchet baseline;
 `stopped`, `static`, `silent`, `crash`, and `unsupported-mapper` remain visible
 as compatibility findings. The checked-in ratchet is
 `t/compat/baseline.tsv`; it records the expected status and mapper for every

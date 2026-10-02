@@ -54,7 +54,7 @@
   #-sbcl (error "The frontend requires SBCL for its OpenGL FFI."))
 
 (defun destroy-gl-framebuffer (framebuffer)
-  "Release the OpenGL texture owned by FRAMEBUFFER."
+  "Release FRAMEBUFFER's texture; call while its OpenGL context is current."
   #+sbcl
   (let ((texture (sb-alien:make-alien sb-alien:unsigned-int 1)))
     (setf (sb-alien:deref texture) (gl-framebuffer-texture framebuffer))

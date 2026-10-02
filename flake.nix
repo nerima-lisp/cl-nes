@@ -179,8 +179,17 @@
         let
           pkgs = ctx.pkgs;
           paredit = paredit-cli.packages.${ctx.system}.default or null;
-          romSuiteShards = [ "cpu" "ppu" "apu-test" "apu-dmc" "apu-timing" "dma" "mapper" ];
-          romSuiteCheck = shard:
+          romSuiteShards = [
+            "cpu"
+            "ppu"
+            "apu-test"
+            "apu-dmc"
+            "apu-timing"
+            "dma"
+            "mapper"
+          ];
+          romSuiteCheck =
+            shard:
             (ctx.cl.mkScriptCheck {
               drv = ctx.package;
               entryPoint = "run-rom-suite.lisp";
@@ -195,6 +204,28 @@
                   CL_NES_NESTEST_ROM = "${nes-test-roms}/other/nestest.nes";
                   CL_NES_NESTEST_LOG = "${nes-test-roms}/other/nestest.log";
                   CL_NES_ROM_SUITE_SHARD = shard;
+                };
+              });
+          compatBuckets = builtins.genList (index: toString index) 16;
+          compatCheck =
+            bucket:
+            (ctx.cl.mkScriptCheck {
+              drv = ctx.package;
+              entryPoint = "run-compat.lisp";
+              name = "cl-nes-compat-shard-${bucket}";
+              timeoutSeconds = 1800;
+              killAfterSeconds = timeoutGraceSeconds;
+            }).overrideAttrs
+              (old: {
+                env = (old.env or { }) // {
+                  CL_NES_COMPAT_ROOT = "${retrobrews-nes-games}";
+                  CL_NES_COMPAT_ROOT_GORO = "${goro-nes-homebrew}/roms";
+                  CL_NES_COMPAT_ROOT_LITTLE = "${littleThings}";
+                  CL_NES_COMPAT_ROOT_HOLY = "${holyMapperel}";
+                  CL_NES_COMPAT_BUCKET = bucket;
+                  CL_NES_COMPAT_BUCKET_COUNT = "16";
+                  CL_NES_COMPAT_ARTIFACTS = "compat-artifacts";
+                  CL_NES_COMPAT_FRAMES = "1800";
                 };
               });
           littleThings =
@@ -256,29 +287,19 @@
                         "${pkgs.SDL2}/lib/libSDL2-2.0.so";
                   };
                 });
-            compat =
-              (ctx.cl.mkScriptCheck {
-                drv = ctx.package;
-                entryPoint = "run-compat.lisp";
-                name = "cl-nes-compat";
-                timeoutSeconds = 1800;
-                killAfterSeconds = timeoutGraceSeconds;
-              }).overrideAttrs
-                (old: {
-                  env = (old.env or { }) // {
-                    CL_NES_COMPAT_ROOT = "${retrobrews-nes-games}";
-                    CL_NES_COMPAT_ROOT_GORO = "${goro-nes-homebrew}/roms";
-                    CL_NES_COMPAT_ROOT_LITTLE = "${littleThings}";
-                    CL_NES_COMPAT_ROOT_HOLY = "${holyMapperel}";
-                    CL_NES_COMPAT_ARTIFACTS = "compat-artifacts";
-                    CL_NES_COMPAT_FRAMES = "1800";
-                  };
-                });
           }
-          // builtins.listToAttrs (map (shard: {
-            name = "rom-suite-${shard}";
-            value = romSuiteCheck shard;
-          }) romSuiteShards)
+          // builtins.listToAttrs (
+            map (shard: {
+              name = "rom-suite-${shard}";
+              value = romSuiteCheck shard;
+            }) romSuiteShards
+          )
+          // builtins.listToAttrs (
+            map (bucket: {
+              name = "compat-shard-${bucket}";
+              value = compatCheck bucket;
+            }) compatBuckets
+          )
           // pkgs.lib.optionalAttrs (paredit != null) {
             paredit =
               pkgs.runCommand "cl-nes-paredit"

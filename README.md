@@ -87,7 +87,7 @@ variables. The values below keep the full-suite default when unset:
 
 ~~~sh
 CL_NES_TEST_NAME_FILTER=mmc1 \
-CL_NES_TEST_LOCATION_FILTER=t/coverage-mapper-contracts.lisp \
+CL_NES_TEST_LOCATION_FILTER=t/cartridge/coverage-mapper-contracts.lisp \
 CL_NES_TEST_PATH_FILTER='mapper contracts > mmc1 updates mirroring and chr banks' \
 CL_NES_TEST_INCLUDE_TAGS=mapper,contracts \
 CL_NES_TEST_REPORTER=spec \
