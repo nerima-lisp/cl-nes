@@ -70,7 +70,8 @@
                        (getf row :branch-covered)
                        (getf row :branch-total)))
    #'string<
-   :key #'first))
+   :key (lambda (row)
+          (namestring (first row)))))
 
 (defun %write-coverage-summary (pathname statistics file-statistics)
   (with-open-file (summary pathname
