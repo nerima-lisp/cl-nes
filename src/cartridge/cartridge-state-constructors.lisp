@@ -49,6 +49,7 @@
                                           (mapper69-registers (make-array 16 :element-type '(unsigned-byte 8)
                                                                           :initial-element 0))
                                           (mapper69-irq-counter 0)
+                                          (mapper69-irq-counter-enabled-p nil)
                                           (mapper69-irq-enabled-p nil)
                                           (mapper69-irq-pending-p nil)
                                           (mapper1-ppu-a12-high-p nil)
@@ -66,6 +67,7 @@
           (mapper-state-core-mapper69-command state) mapper69-command
           (mapper-state-core-mapper69-registers state) mapper69-registers
           (mapper-state-core-mapper69-irq-counter state) mapper69-irq-counter
+          (mapper-state-core-mapper69-irq-counter-enabled-p state) mapper69-irq-counter-enabled-p
           (mapper-state-core-mapper69-irq-enabled-p state) mapper69-irq-enabled-p
           (mapper-state-core-mapper69-irq-pending-p state) mapper69-irq-pending-p
           (mapper-state-core-mapper1-ppu-a12-high-p state) mapper1-ppu-a12-high-p
@@ -76,6 +78,7 @@
                                            (mapper4-registers (make-array 8 :element-type '(unsigned-byte 8)
                                                                           :initial-element 0))
                                            (mapper4-variant :mmc3)
+                                           (mapper4-mmc6-prg-ram-protect 0)
                                            (mapper4-prg-ram-enabled-p t)
                                            (mapper4-prg-ram-write-protected-p nil)
                                            (mapper4-irq-latch 0) (mapper4-irq-counter 0)
@@ -83,12 +86,13 @@
                                            (mapper4-irq-enabled-p nil)
                                            (mapper4-irq-pending-p nil)
                                            (mapper4-ppu-a12-high-p nil)
-                                           (mapper4-ppu-a12-low-cycles 0)
                                            (mapper4-a12-low-m2-cycles 0))
   (let ((state (%make-cartridge-mapper4-state-instance)))
     (setf (cartridge-mapper4-state-mapper4-bank-select state) mapper4-bank-select
           (cartridge-mapper4-state-mapper4-registers state) mapper4-registers
           (cartridge-mapper4-state-mapper4-variant state) mapper4-variant
+          (cartridge-mapper4-state-mapper4-mmc6-prg-ram-protect state)
+          mapper4-mmc6-prg-ram-protect
           (cartridge-mapper4-state-mapper4-prg-ram-enabled-p state) mapper4-prg-ram-enabled-p
           (cartridge-mapper4-state-mapper4-prg-ram-write-protected-p state) mapper4-prg-ram-write-protected-p
           (cartridge-mapper4-state-mapper4-irq-latch state) mapper4-irq-latch
@@ -97,7 +101,6 @@
           (cartridge-mapper4-state-mapper4-irq-enabled-p state) mapper4-irq-enabled-p
           (cartridge-mapper4-state-mapper4-irq-pending-p state) mapper4-irq-pending-p
           (cartridge-mapper4-state-mapper4-ppu-a12-high-p state) mapper4-ppu-a12-high-p
-          (cartridge-mapper4-state-mapper4-ppu-a12-low-cycles state) mapper4-ppu-a12-low-cycles
           (cartridge-mapper4-state-mapper4-a12-low-m2-cycles state) mapper4-a12-low-m2-cycles)
     state))
 

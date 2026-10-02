@@ -24,29 +24,30 @@
              (plusp cycles))
     (incf (cartridge-mapper4-a12-low-m2-cycles cartridge) cycles)))
 
-(defun cartridge-clock-ppu-a12! (cartridge high-p &optional (low-cycles 1))
+(declaim (inline cartridge-clock-ppu-a12!))
+
+(defun cartridge-clock-ppu-a12! (cartridge high-p)
   (when cartridge
     (when (= (cartridge-mapper cartridge) 1)
       (%mapper1-clock-ppu-a12! cartridge high-p))
     (when (= (cartridge-mapper cartridge) 4)
-    (if high-p
-        (when (and (not (cartridge-mapper4-ppu-a12-high-p cartridge))
-                   (or (>= (cartridge-mapper4-ppu-a12-low-cycles cartridge)
-                           (* +mapper4-a12-low-filter-cycles+ 8))
-                       (>= (cartridge-mapper4-a12-low-m2-cycles cartridge)
-                           +mapper4-a12-low-filter-cycles+)))
-          (%mapper4-clock-irq! cartridge))
-        (incf (cartridge-mapper4-ppu-a12-low-cycles cartridge)
-              (max 0 low-cycles)))
-    (setf (cartridge-mapper4-ppu-a12-high-p cartridge) high-p)
-    (when high-p
-      (setf (cartridge-mapper4-ppu-a12-low-cycles cartridge) 0
-            (cartridge-mapper4-a12-low-m2-cycles cartridge) 0))))
+      (when (and high-p
+                 (not (cartridge-mapper4-ppu-a12-high-p cartridge))
+                 (>= (cartridge-mapper4-a12-low-m2-cycles cartridge)
+                     +mapper4-a12-low-filter-cycles+))
+        (%mapper4-clock-irq! cartridge))
+      (setf (cartridge-mapper4-ppu-a12-high-p cartridge) high-p)
+      (when high-p
+        (setf (cartridge-mapper4-a12-low-m2-cycles cartridge) 0))))
   cartridge)
 
 (defun %mapper4-write! (cartridge address value)
   (case (logand address #xE001)
-    (#x8000 (setf (cartridge-mapper4-bank-select cartridge) value))
+    (#x8000
+     (setf (cartridge-mapper4-bank-select cartridge) value)
+     (when (and (eq (cartridge-mapper4-variant cartridge) :mmc6)
+                (not (logbitp 5 value)))
+       (setf (cartridge-mapper4-mmc6-prg-ram-protect cartridge) 0)))
     (#x8001
      (setf (aref (cartridge-mapper4-registers cartridge)
                  (logand (cartridge-mapper4-bank-select cartridge) 7))
@@ -57,8 +58,14 @@
         cartridge
         (if (zerop (logand value 1)) :vertical :horizontal))))
     (#xA001
-     (setf (cartridge-mapper4-prg-ram-enabled-p cartridge) (logbitp 7 value))
-     (setf (cartridge-mapper4-prg-ram-write-protected-p cartridge) (logbitp 6 value)))
+     (if (eq (cartridge-mapper4-variant cartridge) :mmc6)
+         (setf (cartridge-mapper4-mmc6-prg-ram-protect cartridge)
+               (if (logbitp 5 (cartridge-mapper4-bank-select cartridge))
+                   (logand value #xF0)
+                   0))
+         (progn
+           (setf (cartridge-mapper4-prg-ram-enabled-p cartridge) (logbitp 7 value))
+           (setf (cartridge-mapper4-prg-ram-write-protected-p cartridge) (logbitp 6 value)))))
     (#xC000 (setf (cartridge-mapper4-irq-latch cartridge) value))
     (#xC001 (setf (cartridge-mapper4-irq-reload-p cartridge) t))
     (#xE000

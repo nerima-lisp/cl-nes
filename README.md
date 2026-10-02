@@ -1,5 +1,7 @@
 # cl-nes
 
+Current release: 0.3.0.
+
 cl-nes is a headless Nintendo Entertainment System core written in Common
 Lisp. Its only runtime dependency is [cl-host-kit](https://github.com/nerima-lisp/cl-host-kit),
 used for cartridge ROM file reads. It supports iNES cartridges, the
@@ -60,6 +62,7 @@ used directly from ASDF without opening a window or audio device.
 - [Getting started](docs/src/getting-started.md)
 - [API reference](docs/src/reference/api.md)
 - [Compatibility](docs/src/reference/compatibility.md)
+- [Changelog](CHANGELOG.md)
 
 ## Development
 
@@ -84,7 +87,7 @@ variables. The values below keep the full-suite default when unset:
 
 ~~~sh
 CL_NES_TEST_NAME_FILTER=mmc1 \
-CL_NES_TEST_LOCATION_FILTER=t/coverage-mapper-contracts.lisp \
+CL_NES_TEST_LOCATION_FILTER=t/cartridge/coverage-mapper-contracts.lisp \
 CL_NES_TEST_PATH_FILTER='mapper contracts > mmc1 updates mirroring and chr banks' \
 CL_NES_TEST_INCLUDE_TAGS=mapper,contracts \
 CL_NES_TEST_REPORTER=spec \
@@ -140,7 +143,9 @@ A connected GLFW gamepad supplies the first two controller ports. `render`
 writes numbered 256x240 PPM or PNG frames; `--frames` defaults to 1,
 `--prefix` to `frame`, and `--format` to `ppm`. `rom-test` runs the bounded
 `$6000` diagnostic protocol; `--max-frames` defaults to 360. `rom-test` can
-select `mmc3`, `mmc6`, or `mmc3-alt` explicitly for mapper 4.
+select `mmc3`, `mmc6`, or `mmc3-alt` explicitly for mapper 4. The core API
+additionally accepts `:mmc3-rev-a` for the MMC3 revision-A contract; the
+frontend option is intentionally narrower.
 
 The implemented mapper set is 0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28, 34,
 66, 69, 71, 79, and 87. Mapper 4 defaults to MMC3 behavior; NES 2.0 submapper

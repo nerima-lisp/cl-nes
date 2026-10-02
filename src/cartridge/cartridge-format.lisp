@@ -51,6 +51,12 @@
            (four-screen-p (logbitp 3 flags6))
            (mirroring (if (logbitp 0 flags6) :vertical :horizontal))
            (battery-backed-p (logbitp 1 flags6))
+           (chr-ram-size (if nes2-p
+                             (+ (%nes2-ram-size
+                                 (ldb (byte 4 0) (aref octets 11)))
+                                (%nes2-ram-size
+                                 (ldb (byte 4 4) (aref octets 11))))
+                             0))
            (prg-ram-size (if nes2-p
                              (+ (%nes2-ram-size
                                  (ldb (byte 4 0) (aref octets 10)))
@@ -75,8 +81,12 @@
       (%ensure-supported-mapper! mapper)
       (make-cartridge
        :prg-rom (subseq octets offset (+ offset prg-size))
-       :chr-rom (unless (zerop chr-banks)
-                  (subseq octets (+ offset prg-size) required))
+       :chr-rom (if (plusp chr-size)
+                    (subseq octets (+ offset prg-size) required)
+                    (when (and nes2-p (plusp chr-ram-size))
+                      (make-array chr-ram-size
+                                  :element-type '(unsigned-byte 8)
+                                  :initial-element 0)))
        :mapper mapper
        :submapper submapper
        :bus-conflict-p (and (member mapper '(2 3 7 11))
@@ -84,6 +94,6 @@
        :mirroring mirroring
        :battery-backed-p battery-backed-p
        :four-screen-p four-screen-p
-       :chr-writable-p (zerop chr-banks)
+       :chr-writable-p (zerop chr-size)
        :prg-ram-size prg-ram-size
        :mapper4-variant effective-mapper4-variant))))

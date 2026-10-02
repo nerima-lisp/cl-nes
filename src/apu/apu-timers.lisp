@@ -14,7 +14,10 @@
         (when (and (plusp (apu-triangle-length-counter triangle))
                    (plusp (apu-triangle-linear-counter triangle)))
           (setf (apu-triangle-sequence triangle)
-                (mod (1+ (apu-triangle-sequence triangle)) 32))))
+                (mod (1+ (apu-triangle-sequence triangle)) 32)
+                (apu-triangle-dac-output triangle)
+                (aref +apu-triangle-table+
+                      (apu-triangle-sequence triangle)))))
       (decf (apu-triangle-timer triangle))))
 
 (defun %apu-clock-noise-timer! (noise)

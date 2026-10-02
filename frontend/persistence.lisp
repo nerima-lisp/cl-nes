@@ -117,7 +117,8 @@
          (make-array (length octets)
                      :element-type '(unsigned-byte 8)
                      :initial-contents octets))
-     target)))
+     target
+     :synchronize t)))
 
 (defun restore-octets (pathname)
   (host-kit:read-file-octets pathname))

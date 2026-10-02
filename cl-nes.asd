@@ -4,7 +4,7 @@
   :description "A headless Nintendo Entertainment System core."
   :author "nerima-lisp"
   :license "MIT"
-  :version "0.2.0"
+  :version "0.3.0"
   :depends-on ("cl-host-kit")
   :pathname "src"
   :components
@@ -68,7 +68,7 @@
   :description "cl-nes tests driven by cl-weave."
   :author "nerima-lisp"
   :license "MIT"
-  :version "0.2.0"
+  :version "0.3.0"
   :depends-on ("cl-nes" "cl-weave")
   :pathname "t"
   :components
@@ -123,6 +123,7 @@
     :depends-on ("core")
     :components
     ((:file "fixtures-cpu-core") (:file "cpu-opcode-fixtures")
+     (:file "cpu-opcode-semantics")
      (:file "cpu-transition-fixtures") (:file "cpu-state-transitions")
      (:file "cpu-hardware-interrupt-transitions") (:file "cpu-flag-transitions")
      (:file "cpu-addressing-transitions") (:file "cpu-opcodes-00-1f")
@@ -178,7 +179,7 @@
   :description "Interactive GLFW/OpenGL/SDL2 frontend for cl-nes."
   :author "nerima-lisp"
   :license "MIT"
-  :version "0.2.0"
+  :version "0.3.0"
   :depends-on ("cl-nes" "cl-glfw3-kit" "cl-cli")
   :pathname "frontend"
   :serial t
@@ -201,7 +202,7 @@
   :description "Headless tests for the cl-nes frontend's pure components."
   :author "nerima-lisp"
   :license "MIT"
-  :version "0.2.0"
+  :version "0.3.0"
   :depends-on ("cl-nes/frontend" "cl-weave")
   :pathname "frontend/test"
   :serial t
@@ -220,7 +221,7 @@
   :author "nerima-lisp"
   :maintainer "nerima-lisp"
   :license "MIT"
-  :version "0.2.0"
+  :version "0.3.0"
   :depends-on ("cl-nes" "cl-weave")
   :pathname "t/rom-suite"
   :serial t
@@ -235,3 +236,13 @@
                               :reporter :spec
                               :pass-with-no-tests nil)
       (error "cl-nes ROM contract tests failed."))))
+
+(defsystem "cl-nes/compat"
+  :description "Headless compatibility corpus harness for freely distributable homebrew ROMs."
+  :author "nerima-lisp"
+  :license "MIT"
+  :version "0.3.0"
+  :depends-on ("cl-nes")
+  :pathname "t/compat"
+  :serial t
+  :components ((:file "package") (:file "corpus") (:file "runner")))

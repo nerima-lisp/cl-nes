@@ -10,7 +10,7 @@ documentation in separate areas.
   opcode dispatch, APU channel units, frame sequencing, and cycle orchestration
   are kept in separate source components. The APU components are loaded in
   `cl-nes.asd` order: `apu-data.lisp`, `apu-state.lisp`,
-  `apu-construction.lisp`, `apu.lisp`, `apu-lifecycle.lisp`,
+  `apu-construction.lisp`, `apu.lisp`,
   `apu-envelopes.lisp`, `apu-timers.lisp`, `apu-frame.lisp`,
   `apu-timing.lisp`, `apu-status.lisp`, `apu-registers.lisp`, and
   `apu-output.lisp`.
@@ -84,7 +84,7 @@ are retained for removed APIs.
 
 The organization repository was reviewed for additional dependencies. The
 current pins are the latest release tags: cl-host-kit v0.3.1, cl-weave
-v1.3.0, and paredit-cli v1.6.3. cl-nix-forge is pinned to v0.6.1.
+v1.4.0, and paredit-cli v1.6.3. cl-nix-forge is pinned to v0.6.1.
 `cl-process-kit` was not added: it is an
 SBCL-only process toolkit for launchers and test infrastructure, unrelated to
 cartridge ROM reads, the one runtime need this core has. This keeps package
@@ -107,7 +107,15 @@ Enter the pinned environment and run the focused checks:
 nix develop
 sbcl --noinform --non-interactive --eval '(require :asdf)' --load cl-nes.asd --eval '(asdf:compile-system "cl-nes" :force t)' --quit
 sbcl --noinform --non-interactive --load run-tests.lisp --quit
-nix build .#checks.aarch64-darwin.rom-suite --print-build-logs
+nix build \
+  .#checks.aarch64-darwin.rom-suite-cpu \
+  .#checks.aarch64-darwin.rom-suite-ppu \
+  .#checks.aarch64-darwin.rom-suite-apu-test \
+  .#checks.aarch64-darwin.rom-suite-apu-dmc \
+  .#checks.aarch64-darwin.rom-suite-apu-timing \
+  .#checks.aarch64-darwin.rom-suite-dma \
+  .#checks.aarch64-darwin.rom-suite-mapper \
+  --print-build-logs
 nix flake check
 ~~~
 
@@ -128,15 +136,15 @@ sbcl --noinform --non-interactive --load run-coverage.lisp --quit
 ~~~
 
 Performance measurements are documented separately when a reproducible,
-repository-supported benchmark command is available. `ci.yml` is the single
-required GitHub Actions job and runs `nix flake check` on `ubuntu-latest`.
+repository-supported benchmark command is available. The `check` job in
+`.github/workflows/ci.yml` runs `nix flake check` on `ubuntu-latest`.
 
 Focused cl-weave runs use the same launcher and optional environment
 variables:
 
 ~~~sh
 CL_NES_TEST_NAME_FILTER=mmc1 \
-CL_NES_TEST_LOCATION_FILTER=t/coverage-mapper-contracts.lisp \
+CL_NES_TEST_LOCATION_FILTER=t/cartridge/coverage-mapper-contracts.lisp \
 CL_NES_TEST_PATH_FILTER='mapper contracts > mmc1 updates mirroring and chr banks' \
 CL_NES_TEST_INCLUDE_TAGS=mapper,contracts \
 CL_NES_TEST_EXCLUDE_TAGS=slow \
@@ -153,7 +161,7 @@ spelling. Direct `asdf:test-system "cl-nes/test"` execution still runs the
 entire suite with the system's built-in `:spec` reporter.
 
 The coverage runner fails when instrumentation or generated report files are
-empty and enforces a non-regression floor for expression and branch coverage.
+empty and enforces the non-regression floor declared in `run-coverage.lisp`.
 The long-term target is 100% for both categories. Constructor and loader
 keyword defaults have explicit coverage contracts. The deterministic
 `coverage-summary.txt` contains aggregate totals followed by one row per
@@ -170,7 +178,7 @@ documentation strictly into a temporary site directory.
 The reproducible native-system gate can also be invoked directly:
 
 ~~~sh
-nix build .#checks.aarch64-darwin.cl-nes --print-build-logs
+nix build .#checks.aarch64-darwin.default --print-build-logs
 ~~~
 
 That derivation checks every Lisp source file with `paredit-cli`, rejects an

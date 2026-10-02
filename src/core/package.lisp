@@ -156,3 +156,11 @@
    #:run-nametable-text-protocol
    #:run-mmc1-a12-protocol
    #:run-accuracy-coin-protocol))
+
+(in-package #:cl-nes)
+
+(declaim (optimize (speed 1)
+                   (safety 1)
+                   (debug 1)
+                   (space 1)
+                   (compilation-speed 1)))

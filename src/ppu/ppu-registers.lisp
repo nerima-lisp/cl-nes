@@ -32,7 +32,7 @@
 (defun %ppu-read-data-register (ppu)
   (let* ((address (ppu-vram-address ppu))
          (palette-p (>= (logand address #x3FFF) #x3F00))
-         (value (ppu-read-vram ppu address))
+         (value (ppu-read-vram ppu address nil t))
          (decay (%ppu-current-decay ppu))
          (result (if palette-p
                      (logior (logand value #x3F)
@@ -42,10 +42,10 @@
     (prog1 result
       (setf (ppu-read-buffer ppu)
             (if palette-p
-                (ppu-read-vram ppu (- address #x1000))
+                (ppu-read-vram ppu (- address #x1000) nil t)
                 value))
       (%ppu-vram-increment ppu)
-      (%ppu-clock-address-a12! ppu 1))))
+      (%ppu-address-bus! ppu (ppu-vram-address ppu)))))
 
 (defun ppu-read-register (ppu register &optional bus-access-p)
   (case (logand register 7)
@@ -131,12 +131,12 @@
 (defun %ppu-write-address-register! (ppu value)
   (%write-address! ppu value)
   (unless (ppu-write-toggle ppu)
-    (%ppu-clock-address-a12! ppu)))
+    (%ppu-address-bus! ppu (ppu-vram-address ppu))))
 
 (defun %ppu-write-data-register! (ppu value)
-  (ppu-write-vram! ppu (ppu-vram-address ppu) value)
+  (ppu-write-vram! ppu (ppu-vram-address ppu) value t)
   (%ppu-vram-increment ppu)
-  (%ppu-clock-address-a12! ppu 1))
+  (%ppu-address-bus! ppu (ppu-vram-address ppu)))
 
 (defun ppu-write-register! (ppu register value &optional cpu-access-p)
   (setf value (logand value #xFF))

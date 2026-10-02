@@ -28,4 +28,21 @@
     (let ((ppu (make-ppu (make-fixture-cartridge))))
       (setf (ppu-mask ppu) #xE1)
       (expect (cl-nes::%ppu-palette-pixel ppu #x2F)
-              :to-be (logior #x20 (ash 7 6))))))
+              :to-be (logior #x20 (ash 7 6)))))
+
+  (it "selects the background pattern table for a normal fetch"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (ppu-control ppu) #x10
+            (cl-nes::ppu-next-tile ppu) 1)
+      (ppu-write-vram! ppu #x1010 #xA5)
+      (cl-nes::%ppu-background-fetch! ppu 5)
+      (expect (cl-nes::ppu-next-pattern-low ppu) :to-be #xA5)))
+
+  (it "selects MMC5 EXRAM tiles only in EXRAM mode one"
+    (with-mmc5-cartridge (cart)
+      (let ((ppu (make-ppu cart)))
+        (cl-nes::cartridge-write-expansion! cart #x5104 0)
+        (expect (cl-nes::%ppu-mmc5-exram-tile ppu 0 0) :to-be nil)
+        (cl-nes::cartridge-write-expansion! cart #x5104 1)
+        (expect (integerp (cl-nes::%ppu-mmc5-exram-tile ppu 0 0))
+                :to-be t)))))

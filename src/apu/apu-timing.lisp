@@ -1,6 +1,7 @@
 (in-package #:cl-nes)
 
 (defun apu-tick! (apu cycles)
+  (declare (optimize (speed 3) (safety 1) (debug 1)))
   (loop repeat (max 0 cycles) do
     (when (plusp (apu-frame-reset-delay apu))
       (decf (apu-frame-reset-delay apu))

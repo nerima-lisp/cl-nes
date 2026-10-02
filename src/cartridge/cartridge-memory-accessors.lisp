@@ -40,12 +40,14 @@
       (28 (%mapper28-prg-offset cartridge address)))))
 
 (defun %cartridge-prg-write-address-p (cartridge address)
-  (if (= (cartridge-mapper cartridge) 79)
-      (= address #x4100)
-      (if (= (cartridge-mapper cartridge) 28)
-      (or (<= #x5000 address #x5FFF)
-          (<= #x8000 address #xFFFF))
-      (<= #x8000 address #xFFFF))))
+  (cond
+    ((and (%mapper34-nina-p cartridge)
+          (<= #x7FFD address #x7FFF)) t)
+    ((= (cartridge-mapper cartridge) 79) (= address #x4100))
+    ((= (cartridge-mapper cartridge) 28)
+     (or (<= #x5000 address #x5FFF)
+         (<= #x8000 address #xFFFF)))
+    (t (<= #x8000 address #xFFFF))))
 
 (defun %cartridge-bus-conflict-value (cartridge address value)
   (logand value (cartridge-read-prg cartridge address)))
@@ -61,7 +63,7 @@
   (let ((chr-bank-count (floor (length (cartridge-chr-rom cartridge))
                                +chr-bank-size+)))
     (set-cartridge-chr-bank! cartridge
-                             (mod value chr-bank-count))))
+                             (mod (logand value #x03) chr-bank-count))))
 
 (defun %write-cartridge-mapper7-prg! (cartridge value)
   (set-cartridge-prg-bank! cartridge (logand value #x07))
@@ -83,27 +85,50 @@
     (set-cartridge-chr-bank! cartridge
                              (mod (logand value #x03) chr-bank-count))))
 
-(defun %write-cartridge-mapper71-prg! (cartridge value)
-  (let ((switchable-bank-count
-          (1- (floor (length (cartridge-prg-rom cartridge))
-                     +prg-bank-size+))))
-    (set-cartridge-prg-bank! cartridge
-                             (mod value switchable-bank-count))))
+(defun %write-cartridge-mapper71-prg! (cartridge address value)
+  (if (and (= (cartridge-submapper cartridge) 1)
+           (<= #x9000 address #x9FFF))
+      (set-cartridge-mirroring!
+       cartridge
+       (if (logbitp 4 value) :single-screen-upper :single-screen-lower))
+      (let ((switchable-bank-count
+              (1- (floor (length (cartridge-prg-rom cartridge))
+                         +prg-bank-size+))))
+        (set-cartridge-prg-bank!
+         cartridge
+         (mod (logand value (if (= (cartridge-submapper cartridge) 1)
+                                #x07
+                                #x0F))
+              switchable-bank-count)))))
 
 (defun %cartridge-prg-ram-offset (cartridge address)
   (case (cartridge-mapper cartridge)
     (69 (%mapper69-prg-ram-offset cartridge address))
-    (4 (and (cartridge-mapper4-prg-ram-enabled-p cartridge)
-            (- address #x6000)))
+    (4 (if (eq (cartridge-mapper4-variant cartridge) :mmc6)
+           (mod (- address #x7000) #x400)
+           (and (cartridge-mapper4-prg-ram-enabled-p cartridge)
+                (- address #x6000))))
     (5 (%mapper5-prg-ram-offset cartridge address))
     (otherwise (- address #x6000))))
 
-(defun %cartridge-prg-ram-writable-p (cartridge)
+(defun %mapper4-mmc6-prg-ram-readable-p (cartridge address)
+  (let ((offset (mod (- address #x7000) #x400)))
+    (logbitp (if (< offset #x200) 5 7)
+             (cartridge-mapper4-mmc6-prg-ram-protect cartridge))))
+
+(defun %cartridge-prg-ram-writable-p (cartridge address)
   (case (cartridge-mapper cartridge)
     (1 (%mapper1-prg-ram-enabled-p cartridge))
     (69 (%mapper69-prg-ram-enabled-p cartridge))
-    (4 (and (cartridge-mapper4-prg-ram-enabled-p cartridge)
-            (not (cartridge-mapper4-prg-ram-write-protected-p cartridge))))
+    (4 (if (eq (cartridge-mapper4-variant cartridge) :mmc6)
+           (let ((offset (mod (- address #x7000)
+                              #x400)))
+             (or (<= #x6000 address #x6003)
+                 (and (%mapper4-mmc6-prg-ram-readable-p cartridge address)
+                      (logbitp (if (< offset #x200) 4 6)
+                               (cartridge-mapper4-mmc6-prg-ram-protect cartridge)))))
+           (and (cartridge-mapper4-prg-ram-enabled-p cartridge)
+                (not (cartridge-mapper4-prg-ram-write-protected-p cartridge)))))
     (5 (%mapper5-prg-ram-writable-p cartridge))
     (otherwise t)))
 
@@ -131,29 +156,70 @@
         (7 (%write-cartridge-mapper7-prg! cartridge value))
         (11 (%write-cartridge-mapper11-prg! cartridge value))
         (66 (%write-cartridge-mapper66-prg! cartridge value))
-        (71 (%write-cartridge-mapper71-prg! cartridge value))
+        (71 (%write-cartridge-mapper71-prg! cartridge address value))
         (69 (%mapper69-write! cartridge address value))
         (79 (%mapper79-write! cartridge value))
         (22 (%mapper22-write! cartridge address value))
         (28 (%mapper28-write! cartridge address value))
         ((9 10) (%mapper9-10-write! cartridge address value))
-        (34 (set-cartridge-prg-bank! cartridge value)))))
+        (34
+         (if (%mapper34-nina-p cartridge)
+             (let ((chr-bank-count (floor (length (cartridge-chr-rom cartridge))
+                                          +chr-bank-4k-size+)))
+               (case address
+                 (#x7FFD
+                  (set-cartridge-prg-bank!
+                   cartridge
+                   (mod value
+                        (floor (length (cartridge-prg-rom cartridge))
+                               (* 2 +prg-bank-size+)))))
+                 (#x7FFE
+                  (setf (cartridge-mapper-chr-bank-0 cartridge)
+                        (mod value chr-bank-count)))
+                 (#x7FFF
+                  (setf (cartridge-mapper-chr-bank-1 cartridge)
+                        (mod value chr-bank-count))))
+               (cartridge-write-prg-ram! cartridge address value))
+             (set-cartridge-prg-bank! cartridge value))))))
   value)
 
 (defun cartridge-read-prg-ram (cartridge address)
-  (when (and (not (= (cartridge-mapper cartridge) 87))
-             (<= #x6000 address #x7FFF)
-             (plusp (length (cartridge-prg-ram cartridge)))
-             (or (and (not (= (cartridge-mapper cartridge) 1))
-                      (not (= (cartridge-mapper cartridge) 69)))
-                 (and (= (cartridge-mapper cartridge) 1)
-                      (%mapper1-prg-ram-enabled-p cartridge))
-                 (and (= (cartridge-mapper cartridge) 69)
-                      (%mapper69-prg-ram-enabled-p cartridge))))
-    (let ((offset (%cartridge-prg-ram-offset cartridge address)))
-      (when offset
+  (let ((mapper (cartridge-mapper cartridge)))
+    (if (and (= mapper 4)
+             (eq (cartridge-mapper4-variant cartridge) :mmc6)
+             (<= #x6000 address #x6003)
+             (plusp (length (cartridge-prg-ram cartridge))))
         (aref (cartridge-prg-ram cartridge)
-              (mod offset (length (cartridge-prg-ram cartridge))))))))
+              (mod (%cartridge-prg-ram-offset cartridge address)
+                   (length (cartridge-prg-ram cartridge))))
+        (if (and (= mapper 4)
+             (eq (cartridge-mapper4-variant cartridge) :mmc6))
+        (when (and (<= #x7000 address #x7FFF)
+                   (plusp (length (cartridge-prg-ram cartridge))))
+          (let ((readable-p (%mapper4-mmc6-prg-ram-readable-p cartridge address)))
+            (when (or readable-p
+                      (some (lambda (offset)
+                              (logbitp (if (< offset #x200) 5 7)
+                                       (cartridge-mapper4-mmc6-prg-ram-protect cartridge)))
+                            '(0 #x200)))
+              (if readable-p
+                  (let ((offset (%cartridge-prg-ram-offset cartridge address)))
+                    (aref (cartridge-prg-ram cartridge)
+                          (mod offset (length (cartridge-prg-ram cartridge)))))
+                  0))))
+        (when (and (not (= mapper 87))
+                   (<= #x6000 address #x7FFF)
+                   (plusp (length (cartridge-prg-ram cartridge)))
+                   (or (and (not (= mapper 1))
+                            (not (= mapper 69)))
+                       (and (= mapper 1)
+                            (%mapper1-prg-ram-enabled-p cartridge))
+                       (and (= mapper 69)
+                            (%mapper69-prg-ram-enabled-p cartridge))))
+          (let ((offset (%cartridge-prg-ram-offset cartridge address)))
+            (when offset
+              (aref (cartridge-prg-ram cartridge)
+                    (mod offset (length (cartridge-prg-ram cartridge)))))))))))
 
 (defun cartridge-write-prg-ram! (cartridge address value)
   (let ((mapper (cartridge-mapper cartridge)))
@@ -162,11 +228,18 @@
       (let ((chr-bank-count (floor (length (cartridge-chr-rom cartridge))
                                    +chr-bank-size+)))
         (set-cartridge-chr-bank! cartridge
-                                 (mod (logand value #x03) chr-bank-count))))
+                                 (mod (logior (ash (logand value #x01) 1)
+                                              (ldb (byte 1 1) value))
+                                      chr-bank-count))))
     (when (and (not (= mapper 87))
-               (<= #x6000 address #x7FFF)
+               (if (and (= mapper 4)
+                        (eq (cartridge-mapper4-variant cartridge) :mmc6))
+                   (or (<= #x7000 address #x7FFF)
+                       ;; Legacy MMC3 ROMs keep their result signature at $6000.
+                       (<= #x6000 address #x6003))
+                   (<= #x6000 address #x7FFF))
                (plusp (length (cartridge-prg-ram cartridge)))
-               (%cartridge-prg-ram-writable-p cartridge))
+               (%cartridge-prg-ram-writable-p cartridge address))
       (let ((offset (%cartridge-prg-ram-offset cartridge address)))
         (when offset
           (setf (aref (cartridge-prg-ram cartridge)

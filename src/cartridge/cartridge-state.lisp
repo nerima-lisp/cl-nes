@@ -55,6 +55,7 @@
    (mapper69-registers (make-array 16 :element-type '(unsigned-byte 8)
                                    :initial-element 0) vector)
    (mapper69-irq-counter 0 nil)
+   (mapper69-irq-counter-enabled-p nil nil)
    (mapper69-irq-enabled-p nil nil)
    (mapper69-irq-pending-p nil nil)
    (mapper1-ppu-a12-high-p nil nil)
@@ -67,6 +68,7 @@
    (mapper4-registers (make-array 8 :element-type '(unsigned-byte 8)
                                   :initial-element 0) vector)
    (mapper4-variant :mmc3 nil)
+   (mapper4-mmc6-prg-ram-protect 0 nil)
    (mapper4-prg-ram-enabled-p t nil)
    (mapper4-prg-ram-write-protected-p nil nil)
    (mapper4-irq-latch 0 nil)
@@ -75,7 +77,6 @@
    (mapper4-irq-enabled-p nil nil)
    (mapper4-irq-pending-p nil nil)
    (mapper4-ppu-a12-high-p nil nil)
-   (mapper4-ppu-a12-low-cycles 0 nil)
    (mapper4-a12-low-m2-cycles 0 nil))
   :constructor %make-cartridge-mapper4-state-instance
   :reset %reset-cartridge-mapper4-state!)

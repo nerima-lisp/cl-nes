@@ -48,7 +48,7 @@ explicit."
          (rendered (%minimum-bytes-consed frame-count #x18)))
     (format t "allocation gate: baseline ~D rendered ~D allowance ~D~%"
             baseline rendered ppu-scratch-exception)
-    ;; The baseline follows PERFORMANCE_STANDARD.md.  The dot renderer keeps
+    ;; The baseline follows docs/src/benchmarks.md.  The dot renderer keeps
     ;; its state in the PPU pipeline and allocates no legacy frame scratch.
     (expect (<= rendered
                 (+ baseline (* frame-count ppu-scratch-exception)))
@@ -78,26 +78,25 @@ explicit."
 #+sbcl
 (defun %assert-frame-time-scaling-within-p
     (frame-count &key (samples 10) (maximum-ratio 4.0))
-  (labels ((median (values)
-             (let ((sorted (sort (copy-seq values) #'<)))
-               (elt sorted (floor (length sorted) 2))))
-           (sample (count)
-             (loop repeat samples
-                   collect
-                   (let ((nes (make-nes :cartridge
-                                        (make-fixture-cartridge
-                                         :program '(#x78 #x4C #x00 #x80)))))
-                     (ppu-write-register! (nes-ppu nes) 1 #x18)
-                     (dotimes (i 2)
-                       (nes-run-frame/k nes #'identity))
-                     (let ((start (get-internal-real-time)))
-                       (dotimes (i count)
-                         (nes-run-frame/k nes #'identity))
-                       (- (get-internal-real-time) start))))))
-    (let ((ratio (/ (float (median (sample (* 2 frame-count))))
-                    (max 1 (median (sample frame-count))))))
-      (expect (<= ratio maximum-ratio) :to-be t)
-      ratio)))
+  (multiple-value-bind (within-p ratio)
+      (cl-weave:benchmark-scaling-within-p
+       (lambda (count)
+         (let ((nes (make-nes :cartridge
+                              (make-fixture-cartridge
+                               :program '(#x78 #x4C #x00 #x80)))))
+           (ppu-write-register! (nes-ppu nes) 1 #x18)
+           (dotimes (i 2)
+             (nes-run-frame/k nes #'identity))
+           (dotimes (i count)
+             (nes-run-frame/k nes #'identity))))
+       frame-count
+       2
+       maximum-ratio
+       :samples samples)
+    (format t "frame time scaling gate: ratio ~,3F maximum ~,3F~%"
+            ratio maximum-ratio)
+    (expect within-p :to-be t)
+    ratio))
 
 #+sbcl
 (describe "System allocation complexity"

@@ -1,5 +1,4 @@
 (in-package #:cl-nes/test)
-
 (describe "CPU opcode dispatch (C0-DF)"
   (define-opcode-dispatch-spec
       "dispatches opcode #x~2,'0X in ~D cycles"
@@ -34,3 +33,29 @@
      (#xDD 4)
      (#xDE 7)
      (#xDF 7))))
+
+  (define-opcode-semantics-spec
+    ((#xC0 (#xC0 #x40) #x00 #x00 #x80 #xFD #x24 () #x00 #x00 #x80 #xFD #x25 #x8002 () 2)
+     (#xC2 (#xC2 #x55) #x00 #x00 #x00 #xFD #x24 () #x00 #x00 #x00 #xFD #x24 #x8002 () 2)
+     (#xC4 (#xC4 #x40) #x00 #x00 #x80 #xFD #x24 ((#x0040 #x40)) #x00 #x00 #x80 #xFD #x25 #x8002 () 3)
+     (#xC5 (#xC5 #x40) #x80 #x00 #x00 #xFD #x24 ((#x0040 #x40)) #x80 #x00 #x00 #xFD #x25 #x8002 () 3)
+     (#xC7 (#xC7 #x40) #x00 #x00 #x00 #xFD #x24 ((#x0040 #x01)) #x00 #x00 #x00 #xFD #x27 #x8002 ((#x0040 #x00)) 5)
+     (#xC8 (#xC8) #x00 #x00 #xFF #xFD #x24 () #x00 #x00 #x00 #xFD #x26 #x8001 () 2)
+     (#xC9 (#xC9 #x80) #x80 #x00 #x00 #xFD #x24 () #x80 #x00 #x00 #xFD #x27 #x8002 () 2)
+     (#xCA (#xCA) #x00 #x00 #x00 #xFD #x24 () #x00 #xFF #x00 #xFD #xA4 #x8001 () 2)
+     (#xCC (#xCC #x40 #x00) #x00 #x00 #x80 #xFD #x24 ((#x0040 #x40)) #x00 #x00 #x80 #xFD #x25 #x8003 () 4)
+     (#xCD (#xCD #x40 #x00) #x80 #x00 #x00 #xFD #x24 ((#x0040 #x40)) #x80 #x00 #x00 #xFD #x25 #x8003 () 4)
+     (#xCF (#xCF #x40 #x00) #x00 #x00 #x00 #xFD #x24 ((#x0040 #x01)) #x00 #x00 #x00 #xFD #x27 #x8003 ((#x0040 #x00)) 6)
+     (#xD0 (#xD0 #x02) #x00 #x00 #x00 #xFD #x24 () #x00 #x00 #x00 #xFD #x24 #x8004 () 3)
+     (#xD1 (#xD1 #x10) #x80 #x00 #x00 #xFD #x24 ((#x0010 #x40) (#x0011 #x00) (#x0040 #x40)) #x80 #x00 #x00 #xFD #x25 #x8002 () 5)
+     (#xD3 (#xD3 #x10) #x00 #x00 #x00 #xFD #x24 ((#x0010 #x40) (#x0011 #x00) (#x0040 #x01)) #x00 #x00 #x00 #xFD #x27 #x8002 ((#x0040 #x00)) 8)
+     (#xD4 (#xD4 #x40) #x00 #x01 #x00 #xFD #x24 ((#x0041 #xAA)) #x00 #x01 #x00 #xFD #x24 #x8002 () 4)
+     (#xD5 (#xD5 #x40) #x80 #x01 #x00 #xFD #x24 ((#x0041 #x40)) #x80 #x01 #x00 #xFD #x25 #x8002 () 4)
+     (#xD7 (#xD7 #x40) #x00 #x01 #x00 #xFD #x24 ((#x0041 #x01)) #x00 #x01 #x00 #xFD #x27 #x8002 ((#x0041 #x00)) 6)
+     (#xD8 (#xD8) #x00 #x00 #x00 #xFD #x2C () #x00 #x00 #x00 #xFD #x24 #x8001 () 2)
+     (#xD9 (#xD9 #x40 #x00) #x80 #x00 #x01 #xFD #x24 ((#x0041 #x40)) #x80 #x00 #x01 #xFD #x25 #x8003 () 4)
+     (#xDA (#xDA) #x00 #x00 #x00 #xFD #x24 () #x00 #x00 #x00 #xFD #x24 #x8001 () 2)
+     (#xDB (#xDB #x40 #x00) #x00 #x00 #x01 #xFD #x24 ((#x0041 #x01)) #x00 #x00 #x01 #xFD #x27 #x8003 ((#x0041 #x00)) 7)
+     (#xDC (#xDC #x40 #x00) #x00 #x01 #x00 #xFD #x24 ((#x0041 #xAA)) #x00 #x01 #x00 #xFD #x24 #x8003 () 4)
+     (#xDD (#xDD #x40 #x00) #x80 #x01 #x00 #xFD #x24 ((#x0041 #x40)) #x80 #x01 #x00 #xFD #x25 #x8003 () 4)
+     (#xDE (#xDE #x40 #x00) #x00 #x01 #x00 #xFD #x24 ((#x0041 #x00)) #x00 #x01 #x00 #xFD #xA4 #x8003 ((#x0041 #xFF)) 7)))

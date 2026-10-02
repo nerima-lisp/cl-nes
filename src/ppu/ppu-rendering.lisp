@@ -213,6 +213,18 @@
         (ppu-attribute-shift-high ppu)
         (logand #xFFFF (ash (ppu-attribute-shift-high ppu) 1))))
 
+(defun %ppu-shift-sprite-registers! (ppu)
+  (loop for slot below (ppu-secondary-oam-count ppu)
+        do (if (plusp (aref (ppu-sprite-x-counter ppu) slot))
+               (decf (aref (ppu-sprite-x-counter ppu) slot))
+               (setf (aref (ppu-sprite-shift-low ppu) slot)
+                     (logand #xFF
+                             (ash (aref (ppu-sprite-shift-low ppu) slot) 1))
+                     (aref (ppu-sprite-shift-high ppu) slot)
+                     (logand #xFF
+                             (ash (aref (ppu-sprite-shift-high ppu) slot) 1)))))
+  ppu)
+
 (defun %ppu-palette-pixel (ppu color)
   (let ((color (logand color #x3F))
         (mask (%ppu-effective-mask ppu)))
@@ -251,6 +263,31 @@
     (setf (ppu-secondary-oam-count ppu) count)
     count))
 
+(defun %ppu-sprite-pixel-at-shifts (ppu x background-solid)
+  (let ((mask (%ppu-effective-mask ppu)))
+    (when (and (logbitp 3 mask)
+               (or (>= x 8) (logbitp 2 mask)))
+      (loop for slot below (ppu-secondary-oam-count ppu)
+            for sprite = (aref (ppu-sprite-indexes ppu) slot)
+            do (let* ((low (aref (ppu-sprite-shift-low ppu) slot))
+                      (high (aref (ppu-sprite-shift-high ppu) slot))
+                      (color (logior (ldb (byte 1 7) low)
+                                     (ash (ldb (byte 1 7) high) 1))))
+                 (unless (zerop color)
+                   (let ((attributes (aref (ppu-sprite-attributes ppu) slot)))
+                     (when (and (= sprite 0) background-solid (< x 255)
+                                (not (logbitp 6 (ppu-status ppu))))
+                       (setf (ppu-status ppu) (logior (ppu-status ppu) #x40)))
+                     (return (if (and (logbitp 5 attributes)
+                                      background-solid)
+                                 nil
+                                 (logand
+                                  (ppu-read-vram
+                                   ppu
+                                   (+ #x3F10 (* (logand attributes 3) 4)
+                                      color))
+                                  #x3F))))))))))
+
 (defun %ppu-sprite-pixel-at-dot (ppu x y background-solid)
   (when (logbitp 3 (%ppu-effective-mask ppu))
     (loop for slot below (ppu-secondary-oam-count ppu)
@@ -265,13 +302,20 @@
                              nil
                              color)))))))
 
+(defun %ppu-render-visible-dot! (ppu)
+  (declare (type ppu ppu))
+  (let ((x (1- (ppu-dot ppu)))
+        (y (ppu-scanline ppu)))
+    (multiple-value-bind (background solid)
+        (%ppu-background-pixel-at-dot ppu)
+      (let ((sprite (if (plusp (ppu-sprite-evaluation-index ppu))
+                        (%ppu-sprite-pixel-at-shifts ppu x solid)
+                        (%ppu-sprite-pixel-at-dot ppu x y solid))))
+        (setf (aref (ppu-framebuffer ppu) (+ x (* y +ppu-width+)))
+              (%ppu-palette-pixel ppu (or sprite background)))))))
+
 (defun %ppu-render-dot! (ppu)
+  (declare (type ppu ppu))
   (when (and (< (ppu-scanline ppu) +ppu-height+)
              (<= 1 (ppu-dot ppu) 256))
-    (let ((x (1- (ppu-dot ppu)))
-          (y (ppu-scanline ppu)))
-      (multiple-value-bind (background solid)
-          (%ppu-background-pixel-at-dot ppu)
-        (let ((sprite (%ppu-sprite-pixel-at-dot ppu x y solid)))
-          (setf (aref (ppu-framebuffer ppu) (+ x (* y +ppu-width+)))
-                (%ppu-palette-pixel ppu (or sprite background))))))))
+    (%ppu-render-visible-dot! ppu)))

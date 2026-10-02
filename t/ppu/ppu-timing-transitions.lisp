@@ -37,6 +37,13 @@
       (expect (logand (ppu-status ppu) #x80) :to-be #x80)
       (ppu-read-register ppu 2 t)
       (expect (cl-nes::ppu-nmi-pending-p ppu) :to-be nil)))
+  (it "clears vblank suppression without starting vblank"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (cl-nes::ppu-vblank-suppression-p ppu) t
+            (ppu-status ppu) 0)
+      (cl-nes::%start-vblank! ppu)
+      (expect (cl-nes::ppu-vblank-suppression-p ppu) :to-be nil)
+      (expect (ppu-status ppu) :to-be 0)))
   (it "advances dots across scanline and frame boundaries"
     (dolist (case '((:name :ordinary-dot
                      :scanline 12 :dot 7 :odd-frame-p nil :mask 0
@@ -112,6 +119,21 @@
       (expect (cl-nes::ppu-scanline ppu) :to-be 0)
       (expect (cl-nes::ppu-dot ppu) :to-be 0)
       (expect (cl-nes::ppu-odd-frame-p ppu) :to-be nil)))
+  (it "uses the PPUMASK edge value for the odd-frame skip"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (cl-nes::ppu-scanline ppu) 261
+            (cl-nes::ppu-dot ppu) 338
+            (cl-nes::ppu-odd-frame-p ppu) t
+            (ppu-mask ppu) #x08
+            (cl-nes::ppu-rendering-mask  ppu) 0
+            (cl-nes::ppu-rendering-mask-pending ppu) #x08
+            (cl-nes::ppu-rendering-mask-delay ppu) 1
+            (cl-nes::ppu-rendering-mask-valid-p ppu) t)
+      (ppu-tick! ppu)
+      (expect (cl-nes::ppu-dot ppu) :to-be 340)
+      (ppu-tick! ppu)
+      (expect (cl-nes::ppu-scanline ppu) :to-be 0)
+      (expect (cl-nes::ppu-dot ppu) :to-be 0)))
   (it-each ((256 0 #x7000 #x0021)
             (257 12 #x041F #x7FFF)
             (280 261 #x7BE0 #x7FFF)

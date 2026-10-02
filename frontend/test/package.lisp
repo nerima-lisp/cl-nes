@@ -14,7 +14,10 @@
                 #:rate-controller-delay
                 #:rate-controller-update!
                 #:restore-octets
+                #:run-render
+                #:run-rom-test
                 #:rom-identity
+                #:rom-state-directory
                 #:save-state-slot
                 #:savestate-path
                 #:savestate-load-key
@@ -24,6 +27,8 @@
 (in-package #:cl-nes/frontend/test)
 
 (import '(cl-nes:invalid-savestate
+          cl-nes:cartridge-prg-ram
+          cl-nes:make-cartridge
           cl-nes:make-nes
           cl-nes:nes-run-frame/k
           cl-nes:nes-save-state))

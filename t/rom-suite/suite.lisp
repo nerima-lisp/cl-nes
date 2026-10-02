@@ -67,6 +67,77 @@
                             (getf result :completed-count))))))
   result)
 
+(defun rom-worker-count ()
+  (let ((requested (uiop:getenv "CL_NES_ROM_WORKERS")))
+    (or (and requested
+             (ignore-errors
+               (max 1 (parse-integer requested :junk-allowed nil))))
+        (ignore-errors
+          (max 1
+               (parse-integer
+                (uiop:run-program '("getconf" "_NPROCESSORS_ONLN")
+                                  :output :string)
+                :junk-allowed t)))
+        1)))
+
+(defun rom-suite-shard ()
+  (let ((name (uiop:getenv "CL_NES_ROM_SUITE_SHARD")))
+    (if (null name)
+        :all
+        (let ((shard (intern (string-upcase name) :keyword)))
+          (if (member shard '(:cpu :ppu :apu-test :apu-dmc :apu-timing :dma :mapper))
+              shard
+              (error "Unknown ROM suite shard: ~A" name))))))
+
+(defun rom-suite-contracts ()
+  (let ((shard (rom-suite-shard)))
+    (remove-if-not
+     (lambda (contract)
+       (or (eq shard :all)
+           (and (eq shard :apu-test)
+                (string= (rom-contract-id contract) "apu-test"))
+           (and (eq shard :apu-dmc)
+                (member (rom-contract-id contract)
+                        '("apu-dmc-basics" "apu-dmc-rates")
+                        :test #'string=))
+           (and (eq shard :apu-timing)
+                (let ((id (rom-contract-id contract)))
+                  (and (>= (length id) 10)
+                       (string= id "blargg-apu" :end1 10 :end2 10))))
+           (eq (rom-contract-category contract) shard)))
+     (rom-contract-table))))
+
+(defun run-contracts-parallel (contracts)
+  (let* ((count (length contracts))
+         (worker-count (min count (rom-worker-count)))
+         (results (make-array count))
+         (next-index 0)
+         (lock (sb-thread:make-mutex :name "rom-suite-work-queue"))
+         (threads
+           (loop repeat worker-count
+                 collect
+                 (sb-thread:make-thread
+                  (lambda ()
+                    (loop
+                      (let ((index
+                              (sb-thread:with-mutex (lock)
+                                (when (< next-index count)
+                                  (prog1 next-index
+                                    (incf next-index))))))
+                        (unless index (return))
+                        (setf (aref results index)
+                              (handler-case
+                                  (run-contract (nth index contracts))
+                                (error (condition)
+                                  (list :passed nil
+                                        :error (princ-to-string condition)
+                                        :text "worker condition")))))))))))
+    (dolist (thread threads)
+      (sb-thread:join-thread thread))
+    (loop for contract in contracts
+          for index from 0
+          collect (cons contract (aref results index)))))
+
 (defun run-accuracy-contract ()
   (let ((path (accuracy-coin-path)))
     (unless (and path (probe-file path))
@@ -83,12 +154,23 @@
       result)))
 
 (defun run-rom-suite ()
-  (let ((results nil))
-    (dolist (contract (rom-contract-table))
-      (let ((result (enforce-ratchet contract (run-contract contract))))
+  (let ((results nil)
+        (shard (rom-suite-shard))
+        (contracts (rom-suite-contracts)))
+    (format t "rom-suite shard=~A workers=~D contracts=~D~%"
+            shard
+            (min (length contracts) (rom-worker-count))
+            (length contracts))
+    (dolist (entry (run-contracts-parallel contracts))
+      (let* ((contract (car entry))
+             (result (enforce-ratchet contract (cdr entry))))
         (push result results)
+        (unless (getf result :passed)
+          (format *error-output* "ROM failed: ~A~%"
+                  (result-summary contract result)))
         (format t "~A~%" (result-summary contract result))))
-    (run-accuracy-contract)
+    (when (member shard '(:all :mapper))
+      (run-accuracy-contract))
     (nreverse results)))
 
 (defun run-rom-suite-table-tests ()
@@ -133,9 +215,10 @@
       (progn
         (run-rom-suite-table-tests)
         (run-rom-suite)
-        (let ((difference (run-nestest-trace)))
-          (when difference
-            (error "nestest required pass: ~A" difference)))
+        (when (member (rom-suite-shard) '(:all :mapper))
+          (let ((difference (run-nestest-trace)))
+            (when difference
+              (error "nestest required pass: ~A" difference))))
         0)
     (error (condition)
       (format *error-output* "ROM suite failed: ~A~%" condition)

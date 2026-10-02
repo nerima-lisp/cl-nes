@@ -34,11 +34,13 @@
           (cartridge-mapper-outer-bank cartridge) #xFF
           (cartridge-mapper69-command cartridge) 0
           (cartridge-mapper69-irq-counter cartridge) 0
+          (cartridge-mapper69-irq-counter-enabled-p cartridge) nil
           (cartridge-mapper69-irq-enabled-p cartridge) nil
           (cartridge-mapper69-irq-pending-p cartridge) nil
           (cartridge-mapper1-ppu-a12-high-p cartridge) nil
           (cartridge-mapper1-last-write-cycle cartridge) nil
           (cartridge-mapper4-bank-select cartridge) 0
+          (cartridge-mapper4-mmc6-prg-ram-protect cartridge) 0
           (cartridge-mapper4-prg-ram-enabled-p cartridge) t
           (cartridge-mapper4-prg-ram-write-protected-p cartridge) nil
           (cartridge-mapper4-irq-latch cartridge) 0
@@ -47,7 +49,6 @@
           (cartridge-mapper4-irq-enabled-p cartridge) nil
           (cartridge-mapper4-irq-pending-p cartridge) nil
           (cartridge-mapper4-ppu-a12-high-p cartridge) nil
-          (cartridge-mapper4-ppu-a12-low-cycles cartridge) 0
           (cartridge-mapper4-a12-low-m2-cycles cartridge) 0
           (cartridge-mapper5-state-prg-mode mapper5-state) 3
           (cartridge-mapper5-state-chr-mode mapper5-state) 3
