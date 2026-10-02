@@ -1,5 +1,7 @@
 (in-package #:cl-user)
 
+(require :asdf)
+
 (defparameter *coverage-root*
   (make-pathname :name nil
                  :type nil
