@@ -1,5 +1,7 @@
 (in-package #:cl-user)
 
+(require :asdf)
+
 (defparameter *coverage-root*
   (make-pathname :name nil
                  :type nil
@@ -55,48 +57,21 @@
             (length reports)
             (%file-size data-pathname))))
 
-(defun %package-symbol-call (package-name symbol-name &rest arguments)
-  (let ((package (find-package package-name)))
-    (unless package
-      (error "Package ~A is not loaded." package-name))
-    (apply (find-symbol symbol-name package) arguments)))
-
 (defun %coverage-file-statistics (source-files excluded-source-files)
-  "Return deterministic per-file coverage rows for the measured sources.
-
-This uses cl-weave's SB-COVER integration directly so the report identifies
-the next test seam without parsing generated HTML."
-  (let* ((matcher (%package-symbol-call :cl-weave "COVERAGE-SOURCE-MATCHER"
-                                        source-files excluded-source-files))
-         (coverage-symbol
-           (%package-symbol-call :cl-weave "COVERAGE-INTERNAL-SYMBOL"
-                                 "*CODE-COVERAGE-INFO*" t))
-         (compute-symbol
-           (%package-symbol-call :cl-weave "COVERAGE-INTERNAL-SYMBOL"
-                                 "COMPUTE-FILE-INFO" t))
-         (ok-symbol
-           (%package-symbol-call :cl-weave "COVERAGE-INTERNAL-SYMBOL" "OK-OF" t))
-         (all-symbol
-           (%package-symbol-call :cl-weave "COVERAGE-INTERNAL-SYMBOL" "ALL-OF" t))
-         (refresh-symbol
-           (%package-symbol-call :cl-weave "COVERAGE-INTERNAL-SYMBOL"
-                                 "REFRESH-COVERAGE-BITS" t))
-         (coverage-info (symbol-value coverage-symbol)))
-    (funcall refresh-symbol)
-    (sort
-     (loop for source being the hash-keys of (car coverage-info)
-           when (and (funcall matcher source) (probe-file source))
-             collect
-             (let* ((counts (funcall compute-symbol source :default))
-                    (expression (getf counts :expression))
-                    (branch (getf counts :branch)))
-               (list source
-                     (funcall ok-symbol expression)
-                     (funcall all-symbol expression)
-                     (funcall ok-symbol branch)
-                     (funcall all-symbol branch))))
-     #'string<
-     :key #'first)))
+  "Return deterministic per-file coverage rows for the measured sources."
+  (sort
+   (loop for row in (uiop:symbol-call
+                     :cl-weave :coverage-file-statistics
+                     :include-pathnames source-files
+                     :exclude-pathnames excluded-source-files)
+         collect (list (getf row :pathname)
+                       (getf row :expression-covered)
+                       (getf row :expression-total)
+                       (getf row :branch-covered)
+                       (getf row :branch-total)))
+   #'string<
+   :key (lambda (row)
+          (namestring (first row)))))
 
 (defun %write-coverage-summary (pathname statistics file-statistics)
   (with-open-file (summary pathname
@@ -202,7 +177,11 @@ the next test seam without parsing generated HTML."
                                   :coverage-output data-pathname
                                   :coverage-report-directory report-directory
                                   :coverage-include-pathnames source-files
-                                  :coverage-exclude-pathnames excluded-source-files)))
+                                  :coverage-exclude-pathnames excluded-source-files
+                                  :coverage-minimum-expression
+                                  (* 100.0d0 *minimum-expression-coverage*)
+                                  :coverage-minimum-branch
+                                  (* 100.0d0 *minimum-branch-coverage*))))
     (unless passed
         (error "cl-nes coverage suite failed."))
     (%assert-coverage-artifacts data-pathname report-directory)

@@ -14,14 +14,17 @@
     (unless (probe-file path)
       (error "ROM input missing for ~A: ~A" (rom-contract-id contract) path))
     (handler-case
-        (case (rom-contract-protocol contract)
-          (:blargg (run-blargg-contract path contract))
-          (:ram-result (run-ram-result-contract path contract))
-          (:text-progress (run-text-progress-contract path contract))
-          (:nametable-text (run-nametable-text-contract path contract))
-          (:mmc1-a12 (run-mmc1-a12-contract path contract))
-          (otherwise (error "Unknown ROM protocol ~S"
-                            (rom-contract-protocol contract))))
+        (call-with-rom-test-timeout
+         (rom-contract-id contract)
+         (lambda ()
+           (case (rom-contract-protocol contract)
+             (:blargg (run-blargg-contract path contract))
+             (:ram-result (run-ram-result-contract path contract))
+             (:text-progress (run-text-progress-contract path contract))
+             (:nametable-text (run-nametable-text-contract path contract))
+             (:mmc1-a12 (run-mmc1-a12-contract path contract))
+             (otherwise (error "Unknown ROM protocol ~S"
+                               (rom-contract-protocol contract))))))
       (error (condition)
         (list :passed nil :error (princ-to-string condition)
               :text "condition signaled")))))
@@ -67,18 +70,40 @@
                             (getf result :completed-count))))))
   result)
 
+(defparameter *default-rom-worker-count* 1
+  "Deterministic fallback when the runner does not select a worker count.")
+
+(defparameter *default-rom-test-timeout-ms* 120000
+  "Default wall-clock limit for one ROM protocol execution.")
+
+(defun positive-environment-integer (name default)
+  (let ((value (uiop:getenv name)))
+    (if (null value)
+        default
+        (let ((parsed (ignore-errors (parse-integer value :junk-allowed nil))))
+          (if (and parsed (plusp parsed))
+              parsed
+              (error "~A must be a positive integer: ~A" name value))))))
+
+(defun rom-test-timeout-ms ()
+  (positive-environment-integer "CL_NES_ROM_TEST_TIMEOUT_MS"
+                                *default-rom-test-timeout-ms*))
+
+(defun call-with-rom-test-timeout (label thunk)
+  (let ((timeout-ms (rom-test-timeout-ms)))
+    #+sbcl
+    (handler-case
+        (sb-ext:with-timeout (/ timeout-ms 1000.0d0)
+          (funcall thunk))
+      (sb-ext:timeout ()
+        (error "ROM test unit ~A exceeded timeout-ms=~D"
+               label timeout-ms)))
+    #-sbcl
+    (funcall thunk)))
+
 (defun rom-worker-count ()
-  (let ((requested (uiop:getenv "CL_NES_ROM_WORKERS")))
-    (or (and requested
-             (ignore-errors
-               (max 1 (parse-integer requested :junk-allowed nil))))
-        (ignore-errors
-          (max 1
-               (parse-integer
-                (uiop:run-program '("getconf" "_NPROCESSORS_ONLN")
-                                  :output :string)
-                :junk-allowed t)))
-        1)))
+  (positive-environment-integer "CL_NES_ROM_WORKERS"
+                                *default-rom-worker-count*))
 
 (defun rom-suite-shard ()
   (let ((name (uiop:getenv "CL_NES_ROM_SUITE_SHARD")))
@@ -142,16 +167,19 @@
   (let ((path (accuracy-coin-path)))
     (unless (and path (probe-file path))
       (error "AccuracyCoin input missing: ~A" path))
-    (let* ((contract *accuracy-coin-contract*)
-           (result (run-accuracy-coin path contract))
-           (pass-count (getf result :pass-count)))
-      (enforce-accuracy-ratchet contract result)
-      (format t "accuracy-coin pass=~D total=~D fail=~D skip=~D running=~D~%"
-              pass-count (getf result :total) (getf result :fail-count)
-              (getf result :skip-count) (getf result :running-count))
-      (format t "accuracy-coin categories=~S~%"
-              (getf result :category-pass-counts))
-      result)))
+    (call-with-rom-test-timeout
+     "accuracy-coin"
+     (lambda ()
+       (let* ((contract *accuracy-coin-contract*)
+              (result (run-accuracy-coin path contract))
+              (pass-count (getf result :pass-count)))
+         (enforce-accuracy-ratchet contract result)
+         (format t "accuracy-coin pass=~D total=~D fail=~D skip=~D running=~D~%"
+                 pass-count (getf result :total) (getf result :fail-count)
+                 (getf result :skip-count) (getf result :running-count))
+         (format t "accuracy-coin categories=~S~%"
+                 (getf result :category-pass-counts))
+         result)))))
 
 (defun run-rom-suite ()
   (let ((results nil)
@@ -216,7 +244,9 @@
         (run-rom-suite-table-tests)
         (run-rom-suite)
         (when (member (rom-suite-shard) '(:all :mapper))
-          (let ((difference (run-nestest-trace)))
+          (let ((difference
+                  (call-with-rom-test-timeout "nestest"
+                                               #'run-nestest-trace)))
             (when difference
               (error "nestest required pass: ~A" difference))))
         0)

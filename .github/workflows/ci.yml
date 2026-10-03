@@ -15,16 +15,98 @@ concurrency:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        timeout-minutes: 5
         with:
           persist-credentials: false
       - uses: ./.github/actions/nix-setup
+        timeout-minutes: 10
         with:
           cachix-cache: ${{ vars.CACHIX_CACHE }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
       - name: Check flake
-        timeout-minutes: 90
-        run: timeout -k 30 5400 nix flake check --print-build-logs
+        timeout-minutes: 85
+        run: timeout -k 30 5040 nix flake check --system x86_64-linux --print-build-logs
+
+  paredit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        timeout-minutes: 5
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/nix-setup
+        timeout-minutes: 10
+        with:
+          cachix-cache: ${{ vars.CACHIX_CACHE }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Check all Lisp files with paredit
+        timeout-minutes: 15
+        run: timeout -k 30 840 nix build --print-build-logs ".#checks.x86_64-linux.paredit"
+
+  coverage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        timeout-minutes: 5
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/nix-setup
+        timeout-minutes: 10
+        with:
+          cachix-cache: ${{ vars.CACHIX_CACHE }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Check coverage
+        timeout-minutes: 15
+        run: timeout -k 30 540 nix build --print-build-logs ".#checks.x86_64-linux.coverage"
+
+  rom-suite:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [cpu, ppu, apu-test, apu-dmc, apu-timing, dma, mapper]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        timeout-minutes: 5
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/nix-setup
+        timeout-minutes: 10
+        with:
+          cachix-cache: ${{ vars.CACHIX_CACHE }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Check ROM suite shard ${{ matrix.shard }}
+        timeout-minutes: 15
+        run: >-
+          timeout -k 30 540 nix build --print-build-logs
+          ".#checks.x86_64-linux.rom-suite-${{ matrix.shard }}"
+
+  compat:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        bucket: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        timeout-minutes: 5
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/nix-setup
+        timeout-minutes: 10
+        with:
+          cachix-cache: ${{ vars.CACHIX_CACHE }}
+          cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      - name: Check compatibility shard ${{ matrix.bucket }}
+        timeout-minutes: 35
+        run: >-
+          timeout -k 30 2040 nix build --print-build-logs
+          ".#checks.x86_64-linux.compat-shard-${{ matrix.bucket }}"
