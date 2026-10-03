@@ -102,11 +102,8 @@
     (funcall thunk)))
 
 (defun rom-worker-count ()
-  (let ((requested (uiop:getenv "CL_NES_ROM_WORKERS")))
-    (or (and requested
-             (ignore-errors
-               (max 1 (parse-integer requested :junk-allowed nil))))
-        *default-rom-worker-count*)))
+  (positive-environment-integer "CL_NES_ROM_WORKERS"
+                                *default-rom-worker-count*))
 
 (defun rom-suite-shard ()
   (let ((name (uiop:getenv "CL_NES_ROM_SUITE_SHARD")))
