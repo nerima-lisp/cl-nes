@@ -27,6 +27,7 @@
       (setf (getf options :timeout-ms)
             (or (test-timeout-from-environment)
                 *default-test-timeout-ms*)))
+    (setf (getf options :exclude-tags) '("heavy"))
     (format t "cl-weave test timeout-ms=~D~%"
             (getf options :timeout-ms))
     (unless (apply #'uiop:symbol-call

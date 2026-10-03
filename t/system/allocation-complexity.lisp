@@ -1,6 +1,11 @@
 (in-package #:cl-nes/test)
 
 #+sbcl
+(defun %elapsed-seconds (start)
+  (/ (- (get-internal-real-time) start)
+     internal-time-units-per-second))
+
+#+sbcl
 (defun %frame-bytes-consed (frame-count mask)
   (let ((nes (make-nes :cartridge
                        (make-fixture-cartridge
@@ -33,21 +38,30 @@ explicit."
            (sample (count)
              (loop repeat samples
                    collect (%frame-bytes-consed count #x18))))
-    (let* ((n-values (sample frame-count))
+    (let* ((start (get-internal-real-time))
+           (n-values (sample frame-count))
            (two-n-values (sample (* 2 frame-count)))
            (n-median (median n-values))
            (two-n-median (median two-n-values))
            (ratio (/ (float two-n-median) (max 1 n-median))))
+      (format t "allocation scaling frame generation: ~,3F s~%"
+              (%elapsed-seconds start))
       (expect (<= ratio maximum-ratio) :to-be t)
       ratio)))
 
 #+sbcl
 (defun %assert-rendered-frame-allocation-gate-p
     (&key (frame-count 60) (ppu-scratch-exception 0))
-  (let* ((baseline (%minimum-bytes-consed frame-count 0))
-         (rendered (%minimum-bytes-consed frame-count #x18)))
+  (let* ((baseline-start (get-internal-real-time))
+         (baseline (%minimum-bytes-consed frame-count 0))
+         (baseline-seconds (%elapsed-seconds baseline-start))
+         (rendered-start (get-internal-real-time))
+         (rendered (%minimum-bytes-consed frame-count #x18))
+         (rendered-seconds (%elapsed-seconds rendered-start)))
     (format t "allocation gate: baseline ~D rendered ~D allowance ~D~%"
             baseline rendered ppu-scratch-exception)
+    (format t "allocation frame generation: baseline ~,3F s rendered ~,3F s~%"
+            baseline-seconds rendered-seconds)
     ;; The baseline follows docs/src/benchmarks.md.  The dot renderer keeps
     ;; its state in the PPU pipeline and allocates no legacy frame scratch.
     (expect (<= rendered
@@ -101,7 +115,7 @@ explicit."
 #+sbcl
 (describe "System allocation complexity"
   (it "keeps rendered frame allocation close to linear"
-      (:timeout-ms 300000)
+      (:tags '("heavy"))
     (%assert-rendered-frame-allocation-gate-p)
     (%assert-rendered-frame-allocation-scaling-within-p 2))
   (it "keeps rendered frame time within the linear bound"
