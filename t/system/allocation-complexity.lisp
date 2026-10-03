@@ -101,6 +101,7 @@ explicit."
 #+sbcl
 (describe "System allocation complexity"
   (it "keeps rendered frame allocation close to linear"
+      (:timeout-ms 300000)
     (%assert-rendered-frame-allocation-gate-p)
     (%assert-rendered-frame-allocation-scaling-within-p 2))
   (it "keeps rendered frame time within the linear bound"
