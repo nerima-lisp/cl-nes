@@ -1,7 +1,7 @@
 (in-package #:cl-nes/test)
 
 (describe "Coverage: PPU NMI and mask runtime paths"
-  (it "applies delayed masks and toggles pending NMI through control writes"
+  (it "checks OAM access and three-dot PPUMASK delay"
     (let ((ppu (make-ppu)))
       (ppu-write-register! ppu 3 2)
       (ppu-write-register! ppu 4 #xFF)
@@ -18,6 +18,8 @@
       (expect (cl-nes::ppu-nmi-pending-p ppu) :to-be nil)
       (ppu-write-register! ppu 1 #x08)
       (expect (cl-nes::%ppu-effective-mask ppu) :to-be 0)
+      (ppu-tick! ppu)
+      (expect (cl-nes::ppu-rendering-mask-delay ppu) :to-be 2)
       (ppu-tick! ppu)
       (expect (cl-nes::ppu-rendering-mask-delay ppu) :to-be 1)
       (ppu-tick! ppu)

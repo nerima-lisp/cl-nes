@@ -59,6 +59,11 @@
                   vector)
    (secondary-oam-count 0 fixnum)
    (sprite-evaluation-index 0 fixnum)
+   (sprite-evaluation-n 0 fixnum)
+   (sprite-evaluation-m 0 fixnum)
+   (sprite-evaluation-latch #xFF (unsigned-byte 8))
+   (sprite-evaluation-done-p nil nil)
+   (sprite-render-count 0 fixnum)
    (sprite-shift-low (make-array 8 :element-type '(unsigned-byte 8) :initial-element 0)
                      vector)
    (sprite-shift-high (make-array 8 :element-type '(unsigned-byte 8) :initial-element 0)
@@ -68,7 +73,9 @@
    (sprite-attributes (make-array 8 :element-type '(unsigned-byte 8) :initial-element 0)
                       vector)
    (sprite-indexes (make-array 8 :element-type '(unsigned-byte 8) :initial-element 0)
-                   vector))
+                   vector)
+   (sprite-evaluated-indexes (make-array 8 :element-type '(unsigned-byte 8) :initial-element 0)
+                             vector))
   :constructor %make-ppu
   :exclude (cartridge))
 

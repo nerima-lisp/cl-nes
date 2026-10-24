@@ -38,6 +38,11 @@ console reset for callers that want to preserve cartridge-backed state."
         (ppu-next-pattern-high ppu) 0
         (ppu-secondary-oam-count ppu) 0
         (ppu-sprite-evaluation-index ppu) 0
+        (ppu-sprite-evaluation-n ppu) 0
+        (ppu-sprite-evaluation-m ppu) 0
+        (ppu-sprite-evaluation-latch ppu) #xFF
+        (ppu-sprite-evaluation-done-p ppu) nil
+        (ppu-sprite-render-count ppu) 0
         (ppu-decay-value ppu) 0
         (ppu-decay-clock ppu) 0
         (ppu-decay-next-expiry ppu) most-positive-fixnum)
@@ -48,6 +53,7 @@ console reset for callers that want to preserve cartridge-backed state."
   (fill (ppu-sprite-x-counter ppu) 0)
   (fill (ppu-sprite-attributes ppu) 0)
   (fill (ppu-sprite-indexes ppu) 0)
+  (fill (ppu-sprite-evaluated-indexes ppu) 0)
   (fill (ppu-framebuffer ppu) 0)
   ppu)
 

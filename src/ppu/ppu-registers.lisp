@@ -121,7 +121,7 @@
 (defun %ppu-write-mask-register! (ppu value)
   (setf (ppu-mask ppu) value
         (ppu-rendering-mask-pending ppu) value
-        (ppu-rendering-mask-delay ppu) 2
+        (ppu-rendering-mask-delay ppu) 3
         (ppu-rendering-mask-valid-p ppu) t))
 
 (defun %ppu-write-oam-data-register! (ppu value)

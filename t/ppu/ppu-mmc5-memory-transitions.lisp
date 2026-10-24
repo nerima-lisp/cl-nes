@@ -47,7 +47,7 @@
                        :chr-banks 16))
            (ppu (make-ppu cartridge))
            (chr (cl-nes::cartridge-chr-rom cartridge)))
-      (setf (ppu-mask ppu) #x06
+      (setf (ppu-mask ppu) #x0E
             (cl-nes::ppu-scanline ppu) 10)
       (cl-nes::cartridge-write-expansion! cartridge #x5104 0)
       (cl-nes::cartridge-write-expansion! cartridge #x5200 #x81)

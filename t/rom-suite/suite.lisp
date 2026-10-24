@@ -234,7 +234,11 @@
         (id category path protocol expected max-frames state failure-text mapper
          result-address running-value)
         (unless (and (stringp id) (stringp path))
-          (error "invalid table row"))))))
+          (error "invalid table row")))
+       (it "classifies AccuracyCoin result values"
+         (cl-weave:expect (accuracy-result-kind #xff) :to-be :skipped)
+         (cl-weave:expect (accuracy-result-kind #x01) :to-be :pass)
+         (cl-weave:expect (accuracy-result-kind 3) :to-be :running)))))
 
 (define-rom-contract-tests)
 

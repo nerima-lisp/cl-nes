@@ -14,7 +14,15 @@
         (setf (ppu-mask ppu) #x08)
         (dotimes (sprite 9)
           (setf (aref (ppu-oam ppu) (* sprite 4)) 0)))
-      (ppu-tick! ppu)
+      (if (eql kind :overflow)
+          (progn
+            (ppu-tick! ppu 65)
+            (expect (cl-nes::ppu-dot ppu) :to-be 129)
+            (expect (cl-nes::ppu-secondary-oam-count ppu) :to-be 8)
+            (expect (logand (ppu-status ppu) #x20) :to-be 0)
+            (ppu-tick! ppu)
+            (expect (cl-nes::ppu-dot ppu) :to-be 130))
+          (ppu-tick! ppu))
       (expect (logand (ppu-status ppu) (logior #x80 #x20))
               :to-be expected-status)
       (expect (ppu-frame-ready-p ppu) :to-be frame-ready)))
@@ -28,6 +36,24 @@
             (aref (ppu-oam ppu) (+ (* 8 4) 1)) 1)
       (cl-nes::%ppu-evaluate-sprites! ppu 1)
       (expect (logand (ppu-status ppu) #x20) :to-be #x20)))
+  (it "publishes an empty pre-render evaluation for offscreen Y=255 sprites after dot 320"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (ppu-mask ppu) #x08
+            (cl-nes::ppu-scanline ppu) 261
+            (cl-nes::ppu-dot ppu) 64
+            (cl-nes::ppu-secondary-oam-count ppu) 1
+            (cl-nes::ppu-sprite-render-count ppu) 1
+            (aref (cl-nes::ppu-sprite-indexes ppu) 0) 7
+            (aref (ppu-oam ppu) 0) #xFF)
+      (ppu-tick! ppu 255)
+      (expect (cl-nes::ppu-dot ppu) :to-be 319)
+      (expect (cl-nes::ppu-secondary-oam-count ppu) :to-be 0)
+      (expect (cl-nes::ppu-sprite-render-count ppu) :to-be 1)
+      (expect (aref (cl-nes::ppu-sprite-indexes ppu) 0) :to-be 7)
+      (ppu-tick! ppu)
+      (expect (cl-nes::ppu-sprite-render-count ppu) :to-be 0)
+      (expect (cl-nes::ppu-sprite-evaluation-index ppu) :to-be 1)
+      (expect (aref (cl-nes::ppu-sprite-indexes ppu) 0) :to-be 7)))
   (it "suppresses the vblank NMI when status is read at the race dot"
     (let ((ppu (make-ppu (make-fixture-cartridge))))
       (setf (cl-nes::ppu-scanline ppu) 241
@@ -119,21 +145,22 @@
       (expect (cl-nes::ppu-scanline ppu) :to-be 0)
       (expect (cl-nes::ppu-dot ppu) :to-be 0)
       (expect (cl-nes::ppu-odd-frame-p ppu) :to-be nil)))
-  (it "uses the PPUMASK edge value for the odd-frame skip"
+  (it-each ((#x08 0 1 339)
+            (#x00 #x08 1 340)
+            (#x08 #x08 0 340))
+    "uses the delayed PPUMASK value for the odd-frame skip"
+    (mask rendering-mask delay expected-dot)
     (let ((ppu (make-ppu (make-fixture-cartridge))))
       (setf (cl-nes::ppu-scanline ppu) 261
             (cl-nes::ppu-dot ppu) 338
             (cl-nes::ppu-odd-frame-p ppu) t
-            (ppu-mask ppu) #x08
-            (cl-nes::ppu-rendering-mask  ppu) 0
-            (cl-nes::ppu-rendering-mask-pending ppu) #x08
-            (cl-nes::ppu-rendering-mask-delay ppu) 1
+            (ppu-mask ppu) mask
+            (cl-nes::ppu-rendering-mask ppu) rendering-mask
+            (cl-nes::ppu-rendering-mask-pending ppu) mask
+            (cl-nes::ppu-rendering-mask-delay ppu) delay
             (cl-nes::ppu-rendering-mask-valid-p ppu) t)
       (ppu-tick! ppu)
-      (expect (cl-nes::ppu-dot ppu) :to-be 340)
-      (ppu-tick! ppu)
-      (expect (cl-nes::ppu-scanline ppu) :to-be 0)
-      (expect (cl-nes::ppu-dot ppu) :to-be 0)))
+      (expect (cl-nes::ppu-dot ppu) :to-be expected-dot)))
   (it-each ((256 0 #x7000 #x0021)
             (257 12 #x041F #x7FFF)
             (280 261 #x7BE0 #x7FFF)

@@ -66,7 +66,36 @@
              :audio-continuation (collect right-target))
             (setf left-samples (symbol-value left-target)
                   right-samples (symbol-value right-target)))))
-      (expect (equalp left-samples right-samples) :to-be t))))
+      (expect (equalp left-samples right-samples) :to-be t)))
+
+  (it "round-trips in-progress sprite evaluation state"
+    (let* ((source (make-nes :cartridge (make-fixture-cartridge :program '(#xEA))))
+           (target (make-nes :cartridge (make-fixture-cartridge :program '(#xEA))))
+           (source-ppu (nes-ppu source))
+           (target-ppu (nes-ppu target))
+           (state nil))
+      (setf (cl-nes::ppu-secondary-oam-count source-ppu) 1
+            (cl-nes::ppu-sprite-evaluation-index source-ppu) 4
+            (cl-nes::ppu-sprite-evaluation-n source-ppu) 8
+            (cl-nes::ppu-sprite-evaluation-m source-ppu) 2
+            (cl-nes::ppu-sprite-evaluation-latch source-ppu) #xFD
+            (cl-nes::ppu-sprite-evaluation-done-p source-ppu) t
+            (cl-nes::ppu-sprite-render-count source-ppu) 2
+            (aref (cl-nes::ppu-secondary-oam source-ppu) 0) #xFD
+            (aref (cl-nes::ppu-sprite-indexes source-ppu) 0) 4
+            (aref (cl-nes::ppu-sprite-evaluated-indexes source-ppu) 0) 7)
+      (setf state (nes-save-state source))
+      (nes-load-state target state)
+      (expect (cl-nes::ppu-secondary-oam-count target-ppu) :to-be 1)
+      (expect (cl-nes::ppu-sprite-evaluation-index target-ppu) :to-be 4)
+      (expect (cl-nes::ppu-sprite-evaluation-n target-ppu) :to-be 8)
+      (expect (cl-nes::ppu-sprite-evaluation-m target-ppu) :to-be 2)
+      (expect (cl-nes::ppu-sprite-evaluation-latch target-ppu) :to-be #xFD)
+      (expect (cl-nes::ppu-sprite-evaluation-done-p target-ppu) :to-be t)
+      (expect (cl-nes::ppu-sprite-render-count target-ppu) :to-be 2)
+      (expect (aref (cl-nes::ppu-secondary-oam target-ppu) 0) :to-be #xFD)
+      (expect (aref (cl-nes::ppu-sprite-indexes target-ppu) 0) :to-be 4)
+      (expect (aref (cl-nes::ppu-sprite-evaluated-indexes target-ppu) 0) :to-be 7))))
 
   (it "signals a dedicated condition for malformed headers and truncation"
     (let* ((nes (make-nes))

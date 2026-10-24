@@ -5,7 +5,7 @@
     (let* ((cartridge (make-fixture-cartridge))
            (ppu (make-ppu cartridge)))
       (ppu-write-register! ppu #x00 #x10)
-      (ppu-write-register! ppu #x01 #x06)
+      (ppu-write-register! ppu #x01 #x0A)
       (ppu-write-vram! ppu #x2001 #x01)
       (ppu-write-vram! ppu #x1010 #x80)
       (ppu-write-vram! ppu #x3F01 #x22)

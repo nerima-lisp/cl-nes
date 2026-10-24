@@ -13,7 +13,10 @@
                 (aref oam 3) 8)
           (setf (ppu-control ppu) #x10
                 (ppu-mask ppu) #x1E
-                (cl-nes::ppu-scanline ppu) 1)
+                (cl-nes::ppu-scanline ppu) 1
+                (cl-nes::ppu-sprite-render-count ppu) 1
+                (aref (cl-nes::ppu-sprite-indexes ppu) 0) 0
+                (aref (cl-nes::ppu-sprite-evaluated-indexes ppu) 0) 0)
           (setf (cl-nes::ppu-vram-address ppu) 0
                 (cl-nes::ppu-dot ppu) 9
                 (cl-nes::ppu-background-shift-low ppu) #x8000)
@@ -42,7 +45,7 @@
       (setf (ppu-mask ppu) 0)
       (expect (cl-nes::%ppu-rendering-enabled-p ppu) :to-be nil)
       (setf (ppu-control ppu) #x10
-            (ppu-mask ppu) #x06
+            (ppu-mask ppu) #x0A
             (cl-nes::ppu-vram-address ppu) 0
             (cl-nes::ppu-dot ppu) 1
             (cl-nes::ppu-background-shift-low ppu) #x8000)
@@ -93,7 +96,7 @@
             (ppu-control ppu) #x20)
       (cl-nes::%ppu-evaluate-sprites! ppu 0)
       (setf (ppu-control ppu) #x10
-            (ppu-mask ppu) #x06
+            (ppu-mask ppu) #x0A
             (cl-nes::ppu-vram-address ppu) #x0140
             (cl-nes::ppu-dot ppu) 1
             (cl-nes::ppu-background-shift-low ppu) #x8000)
@@ -107,7 +110,7 @@
       (setf (ppu-mask ppu) #x1C
             (ppu-control ppu) 0
             (ppu-status ppu) #x40
-            (cl-nes::ppu-secondary-oam-count ppu) 1
+            (cl-nes::ppu-sprite-render-count ppu) 1
             (aref (cl-nes::ppu-sprite-indexes ppu) 0) 0
             (aref (ppu-oam ppu) 0) 0
             (aref (ppu-oam ppu) 1) 0

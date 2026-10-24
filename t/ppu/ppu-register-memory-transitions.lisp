@@ -12,6 +12,8 @@
       (ppu-tick! ppu)
       (expect (cl-nes::ppu-rendering-mask ppu) :to-be 0)
       (ppu-tick! ppu)
+      (expect (cl-nes::ppu-rendering-mask ppu) :to-be 0)
+      (ppu-tick! ppu)
       (expect (cl-nes::ppu-rendering-mask ppu) :to-be #x18)))
 
   (it "wraps the 15-bit VRAM address and uses palette reads immediately"

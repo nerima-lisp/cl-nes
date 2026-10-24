@@ -135,10 +135,10 @@
                 :protocol :blargg :expected 0 :max-frames 360 :state :pass
                 :failure-text "status 0; measured pass")
                (:id "ppu-vbl-10" :path "ppu_vbl_nmi/rom_singles/10-even_odd_timing.nes"
-                :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
+                :protocol :blargg :expected 0 :max-frames 360 :state :pass
                 :failure-text "status 128; even/odd timing failure")
                (:id "sprite-hit-01" :path "sprite_hit_tests_2005.10.05/01.basics.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED, 2-10 are README failure codes")
                (:id "sprite-hit-02" :path "sprite_hit_tests_2005.10.05/02.alignment.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
@@ -150,19 +150,19 @@
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-05" :path "sprite_hit_tests_2005.10.05/05.left_clip.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-06" :path "sprite_hit_tests_2005.10.05/06.right_edge.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-07" :path "sprite_hit_tests_2005.10.05/07.screen_bottom.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-08" :path "sprite_hit_tests_2005.10.05/08.double_height.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-09" :path "sprite_hit_tests_2005.10.05/09.timing_basics.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-10" :path "sprite_hit_tests_2005.10.05/10.timing_order.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
@@ -177,7 +177,7 @@
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-overflow-3" :path "sprite_overflow_tests/3.Timing.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-overflow-4" :path "sprite_overflow_tests/4.Obscure.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
@@ -625,8 +625,8 @@
 
 (defun accuracy-result-kind (value)
   (cond
-    ((and (oddp value) (/= value 3)) :pass)
     ((= value #xff) :skipped)
+    ((and (oddp value) (/= value 3)) :pass)
     ((= value 3) :running)
     ((and (= (logand value 3) 2) (>= value 2)) :fail)
     (t :fail)))

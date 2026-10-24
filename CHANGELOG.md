@@ -4,9 +4,9 @@
 
 ### Breaking changes
 
-- Save-state format version 3 records the sampled CPU IRQ input. Loading
-  rejects incompatible format versions, so version 2 states are not portable
-  to this release.
+- Save-state format version 3 records the sampled CPU IRQ input and
+  in-progress PPU sprite evaluation. Loading rejects incompatible format
+  versions, so version 2 states are not portable to this release.
 
 ### Compatibility and cartridge support
 

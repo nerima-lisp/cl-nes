@@ -35,8 +35,9 @@
         (expect color :to-be #x21)
         (expect present :to-be t)
         (expect behind :to-be nil))
-      (setf (ppu-mask sprite-ppu) #x18
+      (setf (ppu-mask sprite-ppu) #x10
             (cl-nes::ppu-secondary-oam-count sprite-ppu) 1
+            (cl-nes::ppu-sprite-render-count sprite-ppu) 1
             (aref (cl-nes::ppu-sprite-indexes sprite-ppu) 0) 0)
       (expect (cl-nes::%ppu-sprite-pixel-at-dot sprite-ppu 8 1 t)
               :to-be #x21)
@@ -50,8 +51,8 @@
       (setf (aref (cl-nes::ppu-secondary-oam ppu) 0) 0
             (aref (cl-nes::ppu-secondary-oam ppu) 1) 3
             (aref (cl-nes::ppu-secondary-oam ppu) 2) #x80)
-      (ppu-write-vram! ppu #x1037 #xA5)
-      (ppu-write-vram! ppu #x103F #x5A)
+      (ppu-write-vram! ppu #x1036 #xA5)
+      (ppu-write-vram! ppu #x103E #x5A)
       (cl-nes::%ppu-clock-pipeline! ppu)
       (setf (cl-nes::ppu-dot ppu) 263)
       (cl-nes::%ppu-clock-pipeline! ppu)
@@ -78,6 +79,13 @@
         (setf (aref (ppu-oam ppu) (* sprite 4)) 0))
       (cl-nes::%ppu-evaluate-sprites! ppu 1)
       (expect (logand (ppu-status ppu) #x20) :to-be #x20)))
+  (it "does not flag overflow for offscreen Y=255 sprites"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (dotimes (sprite 64)
+        (setf (aref (ppu-oam ppu) (* sprite 4)) #xFF))
+      (cl-nes::%ppu-evaluate-sprites! ppu 0)
+      (expect (cl-nes::ppu-secondary-oam-count ppu) :to-be 0)
+      (expect (logand (ppu-status ppu) #x20) :to-be 0)))
 
   (it "evaluates 8x16 sprites and detects 8x16 overflow"
     (let ((ppu (make-ppu (make-fixture-cartridge))))
@@ -98,6 +106,7 @@
             (aref (ppu-oam ppu) 1) 0
             (aref (ppu-oam ppu) 2) 0
             (aref (ppu-oam ppu) 3) 65
-            (cl-nes::ppu-scanline ppu) 1)
+            (cl-nes::ppu-scanline ppu) 1
+            (cl-nes::ppu-sprite-render-count ppu) 1)
       (ppu-tick! ppu 66)
       (expect (logand (ppu-status ppu) #x40) :to-be #x40))))
