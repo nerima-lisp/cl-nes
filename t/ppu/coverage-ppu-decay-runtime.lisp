@@ -22,4 +22,4 @@
       (ppu-write-vram! ppu #x3F00 #x23)
       (cl-nes::%ppu-drive-decay! ppu #xC0 #xC0)
       (expect (ppu-read-register ppu 7 t) :to-be #xE3)
-      (expect (cl-nes::ppu-read-buffer ppu) :to-be 0))))
+      (progn (ppu-tick! ppu 7) (expect (cl-nes::ppu-read-buffer ppu) :to-be 0)))))

@@ -204,10 +204,13 @@
              t)))))
 
 (defun %ppu-shift-background-registers! (ppu)
+  ;; The high pattern plane shifts in 1; the low pattern plane shifts in 0.
   (setf (ppu-background-shift-low ppu)
         (logand #xFFFF (ash (ppu-background-shift-low ppu) 1))
         (ppu-background-shift-high ppu)
-        (logand #xFFFF (ash (ppu-background-shift-high ppu) 1))
+        (logand #xFFFF
+                (logior 1
+                        (ash (ppu-background-shift-high ppu) 1)))
         (ppu-attribute-shift-low ppu)
         (logand #xFFFF (ash (ppu-attribute-shift-low ppu) 1))
         (ppu-attribute-shift-high ppu)

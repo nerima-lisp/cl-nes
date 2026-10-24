@@ -21,6 +21,9 @@ console reset for callers that want to preserve cartridge-backed state."
         (ppu-scroll-x ppu) 0
         (ppu-scroll-y ppu) 0
         (ppu-read-buffer ppu) 0
+        (ppu-read-buffer-pending-address ppu) 0
+        (ppu-read-buffer-pending-delay ppu) 0
+        (ppu-read-buffer-pending-p ppu) nil
         (ppu-scanline ppu) 0
         (ppu-dot ppu) 0
         (ppu-frame-ready-p ppu) nil

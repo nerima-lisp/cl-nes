@@ -29,29 +29,50 @@
     (%ppu-drive-decay! ppu value)
     value))
 
-(defun %ppu-read-data-register (ppu)
+(defun %ppu-read-data-register (ppu &optional bus-access-p)
   (let* ((address (ppu-vram-address ppu))
          (palette-p (>= (logand address #x3FFF) #x3F00))
-         (value (ppu-read-vram ppu address nil t))
+         (mask (if (ppu-rendering-mask-valid-p ppu)
+                   (ppu-rendering-mask ppu)
+                   (ppu-mask ppu)))
+         (rendering-p (and (or (< (ppu-scanline ppu) 240)
+                               (= (ppu-scanline ppu) 261))
+                           (or (logbitp 3 mask)
+                               (logbitp 4 mask))))
+         (value (if (and bus-access-p rendering-p (not palette-p))
+                    nil
+                    (ppu-read-vram ppu address nil (not bus-access-p))))
          (decay (%ppu-current-decay ppu))
          (result (if palette-p
-                     (logior (logand value #x3F)
+                     (logior (logand value
+                                     (if (logbitp 0 (ppu-mask ppu))
+                                         #x30
+                                         #x3F))
                              (logand decay #xC0))
                      (ppu-read-buffer ppu))))
     (%ppu-drive-decay! ppu result (if palette-p #x3F #xFF))
-    (prog1 result
-      (setf (ppu-read-buffer ppu)
-            (if palette-p
-                (ppu-read-vram ppu (- address #x1000) nil t)
-                value))
-      (%ppu-vram-increment ppu)
-      (%ppu-address-bus! ppu (ppu-vram-address ppu)))))
+    (%ppu-vram-increment ppu)
+    (if (and bus-access-p rendering-p)
+        (setf (ppu-read-buffer-pending-address ppu)
+              (if palette-p
+                  (- address #x1000)
+                  (ppu-vram-address ppu))
+              ;; bus-read clocks three dots after this callback; PPUDATA updates four dots later.
+              (ppu-read-buffer-pending-delay ppu) 7
+              (ppu-read-buffer-pending-p ppu) t)
+        (setf (ppu-read-buffer ppu)
+              (if palette-p
+                  (ppu-read-vram ppu (- address #x1000) nil t)
+                  value)))
+    (unless (and bus-access-p rendering-p)
+      (%ppu-address-bus! ppu (ppu-vram-address ppu)))
+    result))
 
 (defun ppu-read-register (ppu register &optional bus-access-p)
   (case (logand register 7)
     (2 (%ppu-read-status-register ppu bus-access-p))
     (4 (%ppu-read-oam-data-register ppu bus-access-p))
-    (7 (%ppu-read-data-register ppu))
+    (7 (%ppu-read-data-register ppu bus-access-p))
     (otherwise (if bus-access-p
                    (%ppu-current-decay ppu)
                    0))))

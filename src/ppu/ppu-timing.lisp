@@ -252,6 +252,27 @@
          ppu
          (if (= scanline 261) 0 (1+ scanline))
          dot)))))
+(defun %ppu-rendering-address-latch-p (scanline dot)
+  (and (or (< scanline 240) (= scanline 261))
+       (or (and (or (<= 1 dot 256)
+                    (<= 321 dot 336))
+                (member (logand dot 7) '(1 3 5 7)))
+           (and (<= 257 dot 320)
+                (member (mod (- dot 257) 8) '(0 2 4 6)))
+           (member dot '(337 339)))))
+(defun %ppu-clock-read-buffer! (ppu scanline rendering-scanline-p)
+  (when (ppu-read-buffer-pending-p ppu)
+    (decf (ppu-read-buffer-pending-delay ppu))
+    (cond
+      ((= (ppu-read-buffer-pending-delay ppu) 2)
+       (unless (and rendering-scanline-p
+                    (%ppu-rendering-address-latch-p
+                     scanline (ppu-dot ppu)))
+         (%ppu-address-bus! ppu (ppu-read-buffer-pending-address ppu))))
+      ((zerop (ppu-read-buffer-pending-delay ppu))
+       (setf (ppu-read-buffer ppu)
+             (ppu-read-vram ppu (ppu-address-bus ppu) nil t)
+             (ppu-read-buffer-pending-p ppu) nil)))))
 
 (defun ppu-tick! (ppu &optional (ticks 1))
   (declare (type ppu ppu) (type fixnum ticks)
@@ -279,9 +300,12 @@
                      (<= 1 (ppu-dot ppu) 256))
             (%ppu-shift-sprite-registers!
              ppu (%ppu-rendering-enabled-p ppu)))
-          (when rendering-scanline-p
+          (when (and rendering-scanline-p
+                   (or (<= 1 (ppu-dot ppu) 256)
+                       (<= 321 (ppu-dot ppu) 336)))
             (%ppu-shift-background-registers! ppu))
-          (%ppu-clock-pipeline! ppu rendering-scanline-p))
+          (%ppu-clock-pipeline! ppu rendering-scanline-p)
+          (%ppu-clock-read-buffer! ppu scanline rendering-scanline-p))
         (when (and (= (ppu-scanline ppu) 241) (= (ppu-dot ppu) 1))
           (%start-vblank! ppu))
         (when (and (= (ppu-scanline ppu) 261) (= (ppu-dot ppu) 1))
