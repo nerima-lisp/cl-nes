@@ -155,9 +155,8 @@
                             base-high)
                         8)
                    (logand address #xFF)))
-         (write-value
-           (if crossed-p value (logand value high-plus-one))))
-    ;; A page crossing corrupts the address high byte, not the stored data.
+         (write-value (logand value high-plus-one)))
+    ;; The high-byte mask affects both the corrupted address and stored data.
     (bus-read bus (logior (logand base #xFF00)
                           (logand address #x00FF)))
     (bus-write! bus write-address write-value)))

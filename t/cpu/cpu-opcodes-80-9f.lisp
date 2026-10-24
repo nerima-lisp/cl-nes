@@ -97,13 +97,13 @@
       (expect-cpu-step-cycles cpu bus 5)
       (expect (aref (cl-nes::bus-ram bus) #x500) :to-be #x0E)
       (expect (cpu-p cpu) :to-be #x24)))
-  (it "corrupts the destination page but stores the unmasked value on crossing"
+  (it "corrupts the destination page and masks stored data on crossing"
     (with-fixture-cpu-system
         (cpu bus :program (list #x9E #x10 #x7D))
       (setf (cpu-x cpu) #x0F
             (cpu-y cpu) #xF0
             (cpu-p cpu) #x24)
       (expect-cpu-step-cycles cpu bus 5)
-      (expect (aref (cl-nes::bus-ram bus) #x600) :to-be #x0F)
+      (expect (aref (cl-nes::bus-ram bus) #x600) :to-be #x0E)
       (expect (cl-nes::bus-last-cpu-access-address bus) :to-be #x0E00)
       (expect (cpu-p cpu) :to-be #x24))))
