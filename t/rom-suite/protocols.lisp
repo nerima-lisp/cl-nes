@@ -212,15 +212,15 @@
     (:suite "apu" :category :apu
                :subroms ((:id "apu-test" :path "apu_test/apu_test.nes"
                  :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
-                 :failure-text "status 128; #19 one-byte buffer timing; #31 rate 14 timing")
+                 :failure-text "status 128; #19 one-byte buffer timing")
                (:id "apu-dmc-basics" :path "apu_test/rom_singles/7-dmc_basics.nes"
                 :protocol :ram-result :expected 0 :result-address #x6000
                 :running-value #x80 :max-frames 360 :state :pass
                 :failure-text "status 0; DMC test failure code is described in apu_test/readme.txt")
                (:id "apu-dmc-rates" :path "apu_test/rom_singles/8-dmc_rates.nes"
                 :protocol :ram-result :expected 0 :result-address #x6000
-                :running-value #x80 :max-frames 360 :state :known-fail
-                :failure-text "status 0; text reports Rate 14's period is too long (#31)")
+                :running-value #x80 :max-frames 360 :state :pass
+                :failure-text "status 0; 8-dmc_rates reports all 16 sample rates passed")
                (:id "blargg-apu" :path "blargg_apu_2005.07.30/01.len_ctr.nes"
                  :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
                  :failure-text "result $F0; 1 means PASSED")

@@ -67,8 +67,8 @@
                            (if (plusp (apu-noise-length-counter (apu-noise apu))) 8 0)
                            (if (or (plusp (apu-dmc-bytes-remaining (apu-dmc apu)))
                                    (and (apu-dmc-enabled-p (apu-dmc apu))
-                                        (plusp (apu-dmc-bits-remaining (apu-dmc apu)))
-                                        (not (apu-dmc-silence-p (apu-dmc apu)))))
+                                        (not (apu-dmc-sample-buffer-empty-p
+                                              (apu-dmc apu)))))
                                16
                              0)
                            (if (or (apu-frame-irq-pending-p apu)

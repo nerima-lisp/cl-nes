@@ -28,13 +28,22 @@
       (expect (cl-nes::apu-dmc-bits-remaining dmc) :to-be 5)
       (expect (cl-nes::apu-dmc-silence-p dmc) :to-be nil)))
 
-  (it "reports DMC active from bytes remaining only"
+  (it "reports DMC active while bytes remain or the sample buffer is full"
     (with-fixture-apu (apu nil nil nil nil dmc)
-      (setf (cl-nes::apu-dmc-bits-remaining dmc) 7
-            (cl-nes::apu-dmc-silence-p dmc) nil)
+      (setf (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-bits-remaining dmc) 7
+            (cl-nes::apu-dmc-silence-p dmc) nil
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t)
       (expect (logand (apu-read-register apu #x4015) #x10) :to-be 0)
-      (setf (cl-nes::apu-dmc-bytes-remaining dmc) 1)
-      (expect (logand (apu-read-register apu #x4015) #x10) :to-be #x10)))
+      (setf (cl-nes::apu-dmc-sample-buffer-empty-p dmc) nil)
+      (expect (logand (apu-read-register apu #x4015) #x10) :to-be #x10)
+      (setf (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bytes-remaining dmc) 1)
+      (expect (logand (apu-read-register apu #x4015) #x10) :to-be #x10)
+      (setf (cl-nes::apu-dmc-enabled-p dmc) nil
+            (cl-nes::apu-dmc-bytes-remaining dmc) 0
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) nil)
+      (expect (logand (apu-read-register apu #x4015) #x10) :to-be 0)))
 
   (it "fetches DMC bytes through its reader and raises terminal IRQs"
     (let ((read-address nil))
