@@ -45,6 +45,30 @@ allowing tests to supply the mapping established by that ROM's source."
 
 (defun protocol-running-result-complete-p (result running-value running-observed)
   (and running-value running-observed (/= result running-value)))
+(defun protocol-blargg-status-action (nes status signature-p running-observed
+                                           reset-armed-p failure-p
+                                           &key (remaining-frames 0))
+  (if (and signature-p (= status #x81) reset-armed-p)
+      (let ((minimum-delay-frames 7))
+        (if (>= remaining-frames (1+ minimum-delay-frames))
+            (progn
+              ;; Seven emulated frames exceed the requested 100 ms delay.
+              (loop repeat minimum-delay-frames
+                    do (nes-run-frame/k nes (function identity)))
+              (nes-reset! nes)
+              (values :continue nil nil minimum-delay-frames))
+            (values (if failure-p :complete :continue)
+                    running-observed reset-armed-p 0)))
+      (let* ((running-observed (or running-observed (= status #x80)))
+             (reset-armed-p (or reset-armed-p (= status #x80))))
+        (values (if (or (protocol-blargg-complete-p
+                         status signature-p running-observed)
+                        failure-p)
+                    :complete
+                    :continue)
+                running-observed
+                reset-armed-p
+                0))))
 
 (defun protocol-run-frames-until (nes max-frames predicate &key input-continuation)
   (or (loop for frame from 1 to max-frames
@@ -84,24 +108,29 @@ button.  The returned plist contains :RESULTS for $0400-$04FF and
          (nes (make-nes :cartridge (apply #'load-cartridge path load-args)))
          (last-text "")
          (running-observed nil)
-         (frames nil))
-    (setf frames
-          (protocol-run-frames-until
-           nes max-frames
-           (lambda (frame)
-             (declare (ignore frame))
+         (reset-armed-p t)
+         (frames 0)
+         (complete-p nil))
+    (loop while (and (< frames max-frames) (not complete-p))
+          do (nes-run-frame/k nes #'identity)
+             (incf frames)
              (let* ((bus (nes-bus nes))
                     (signature-p (equal '(222 176 97)
                                         (protocol-bus-range bus #x6001 #x6003)))
                     (status (bus-read bus #x6000)))
-               (when (= status #x80)
-                 (setf running-observed t))
                (setf last-text
                      (protocol-ascii-result
                       (protocol-bus-range bus #x6004 #x60ff)))
-               (or (protocol-blargg-complete-p status signature-p
-                                               running-observed)
-                   (search "FAILED" (string-upcase last-text)))))))
+               (multiple-value-bind (action next-running-observed
+                                     next-reset-armed-p delay-frames)
+                   (protocol-blargg-status-action
+                    nes status signature-p running-observed reset-armed-p
+                    (search "FAILED" (string-upcase last-text))
+                    :remaining-frames (- max-frames frames))
+                 (setf running-observed next-running-observed
+                       reset-armed-p next-reset-armed-p
+                       complete-p (eq action :complete))
+                 (incf frames delay-frames))))
     (let* ((bus (nes-bus nes))
            (signature-ok (equal '(222 176 97)
                                 (protocol-bus-range bus #x6001 #x6003)))
