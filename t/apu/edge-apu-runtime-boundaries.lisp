@@ -52,11 +52,18 @@
               :to-be 15)))
 
   (it "clocks a length counter on the delayed five-step reset"
-    (let ((apu (make-apu)))
+    (let* ((apu (make-apu))
+           (bus (make-bus :apu apu)))
       (apu-write-register! apu #x4015 1)
       (apu-write-register! apu #x4003 #xA0)
-      (apu-write-register! apu #x4017 #x80)
+      (setf (cl-nes::bus-cpu-access-hook bus)
+            (lambda () (apu-tick! apu 1)))
+      (bus-write! bus #x4017 #x80)
       (apu-tick! apu 3)
+      (expect (cl-nes::apu-pulse-length-counter
+               (cl-nes::apu-pulse-1 apu))
+              :to-be 48)
+      (apu-tick! apu 1)
       (expect (cl-nes::apu-pulse-length-counter
                (cl-nes::apu-pulse-1 apu))
               :to-be 47))))
