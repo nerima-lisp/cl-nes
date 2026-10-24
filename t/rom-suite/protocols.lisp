@@ -24,7 +24,7 @@
                  :failure-text "All 2 tests passed")
                (:id "instr-misc" :path "instr_misc/instr_misc.nes"
                  :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                 :failure-text "Illegal 6502 opcode #x9B at #xF3E9")
+                 :failure-text "status 128; 02-branch_wrap..Passed")
                (:id "cpu-interrupts-v2" :path "cpu_interrupts_v2/cpu_interrupts.nes"
                  :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
                  :failure-text "status 1; failed while running test 2 of 5")
@@ -76,7 +76,7 @@
       (:id "instr-misc-03-dummy-reads" :path "instr_misc/rom_singles/03-dummy_reads.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; Passed")
       (:id "instr-misc-04-dummy-reads-apu" :path "instr_misc/rom_singles/04-dummy_reads_apu.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128; result text 9C")
       (:id "instr-timing-01" :path "instr_timing/rom_singles/1-instr_timing.nes"
        :protocol :blargg :expected 0 :max-frames 1500 :state :pass :failure-text "1-instr_timing..Passed")
       (:id "instr-timing-02-branch" :path "instr_timing/rom_singles/2-branch_timing.nes"
@@ -354,7 +354,7 @@
                   (:name "PPU Palette RAM" :category :power-on-state
                    :address #x03ff :expected :pass))
     :items nil
-    :ratchet-pass-count 86
+    :ratchet-pass-count 87
     :ratchet-pass-items
     ("ROM is not writable" "RAM Mirroring" "PC Wraparound"
      "The Decimal Flag" "The B Flag" "Dummy read cycles" "Dummy write cycles"
