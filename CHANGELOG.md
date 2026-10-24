@@ -4,9 +4,9 @@
 
 ### Breaking changes
 
-- Save-state loading now rejects incompatible format versions. Save states
-  produced with an incompatible version are not portable to this release
-  (`b538c4a`).
+- Save-state format version 3 records the sampled CPU IRQ input. Loading
+  rejects incompatible format versions, so version 2 states are not portable
+  to this release.
 
 ### Compatibility and cartridge support
 

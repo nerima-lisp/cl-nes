@@ -3,7 +3,10 @@
 (describe "Save-state contracts"
   (it "round-trips the complete machine deterministically"
     (let* ((nes (make-nes :cartridge (make-fixture-cartridge :program '(#xEA))))
-           (first (nes-save-state nes)))
+           (first (progn
+                    (setf (cl-nes::nes-irq-line-sample-p nes) t)
+                    (nes-save-state nes))))
+      (expect (aref first 4) :to-be 3)
       (nes-run-frames/k nes 1 (lambda (framebuffer)
                                 (declare (ignore framebuffer))
                                 nil))
@@ -72,7 +75,7 @@
            (bad-magic (copy-seq state))
            (old-version (copy-seq state)))
       (setf (aref bad-magic 0) 0
-            (aref old-version 4) 1)
+            (aref old-version 4) 2)
       (dolist (input (list short bad-magic))
         (expect (typep (captured-condition
                         (lambda () (nes-load-state nes input)))

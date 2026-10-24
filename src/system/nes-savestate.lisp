@@ -1,7 +1,7 @@
 (in-package #:cl-nes)
 
 (define-constant +nes-savestate-magic+ #(67 76 78 83))
-(define-constant +nes-savestate-version+ 2)
+(define-constant +nes-savestate-version+ 3)
 
 (defun %savestate-append (output octets)
   (dotimes (index (length octets))

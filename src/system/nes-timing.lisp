@@ -12,6 +12,8 @@
   (%bus-advance-dma-cycle! bus)
   (setf (bus-cpu-cycle-phase bus)
         (logxor (bus-cpu-cycle-phase bus) 1))
+  ;; The next cycle's CPU-visible poll consumes this post-clock sample.
+  (%nes-sample-irq-line! nes)
   (when cycle-hook
     (funcall cycle-hook)))
 

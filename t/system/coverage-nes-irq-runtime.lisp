@@ -12,6 +12,37 @@
         (expect (cpu-pc (nes-cpu nes)) :to-be #x9000)
         (expect (cl-nes::apu-frame-irq-pending-p (nes-apu nes)) :to-be t))))
 
+  (it "samples IRQ before the final cycle of a three-cycle instruction"
+    (let* ((cartridge (make-fixture-cartridge :program '(#xA5 #x00)))
+           (nes (make-nes :cartridge cartridge))
+           (cpu (nes-cpu nes))
+           (elapsed 0))
+      (set-fixture-vector! cartridge #xFFFE #x9000)
+      (setf (cpu-p cpu) 0)
+      (let ((cycles
+              (nes-step/k
+               nes #'identity
+               :cycle-hook
+               (lambda ()
+                 (when (= (incf elapsed) 1)
+                   (setf (cl-nes::apu-frame-irq-pending-p (nes-apu nes)) t))))))
+        (expect cycles :to-be 10)
+        (expect (cpu-pc cpu) :to-be #x9000))))
+
+  (it "takes the sampled IRQ after a final-cycle $4015 acknowledge"
+    (let* ((cartridge (set-fixture-vector!
+                       (make-fixture-cartridge
+                        :program '(#xAD #x15 #x40))
+                       #xFFFE
+                       #x9000))
+           (nes (make-nes :cartridge cartridge))
+           (cpu (nes-cpu nes)))
+      (setf (cpu-p cpu) 0
+            (cl-nes::apu-frame-irq-pending-p (nes-apu nes)) t)
+      (expect (nes-step/k nes #'identity) :to-be 11)
+      (expect (cpu-pc cpu) :to-be #x9000)
+      (expect (cl-nes::apu-frame-irq-pending-p (nes-apu nes)) :to-be nil)))
+
   (it "uses the current two-cycle IRQ observation at the poll boundary"
     (let* ((cartridge (make-fixture-cartridge :program '(#xEA)))
            (nes (make-nes :cartridge cartridge))
@@ -22,6 +53,68 @@
             (cl-nes::apu-frame-irq-pending-p (nes-apu nes)) t)
       (expect (nes-step/k nes #'identity) :to-be 9)
       (expect (cpu-pc cpu) :to-be #x9000)))
+
+  (it "skips the third-cycle IRQ poll of a taken same-page branch"
+    (let* ((cartridge (make-fixture-cartridge
+                       :program '(#xD0 #x00 #xEA)))
+           (nes (make-nes :cartridge cartridge))
+           (cpu (nes-cpu nes))
+           (elapsed 0))
+      (set-fixture-vector! cartridge #xFFFE #x9000)
+      (setf (cpu-p cpu) 0)
+      (let ((cycles
+              (nes-step/k
+               nes #'identity
+               :cycle-hook
+               (lambda ()
+                 (when (= (incf elapsed) 2)
+                   (setf (cl-nes::apu-frame-irq-pending-p (nes-apu nes)) t))))))
+        (expect cycles :to-be 3)
+        (expect (cpu-pc cpu) :to-be #x8002)
+        (expect (cl-nes::apu-frame-irq-pending-p (nes-apu nes)) :to-be t))))
+
+  (it "polls a taken page-crossing branch on its fourth cycle"
+    (let* ((cartridge (set-fixture-vector!
+                       (make-fixture-cartridge
+                        :program '(#xD0 #x01)
+                        :start #x80FD)
+                       #xFFFE
+                       #x9000))
+           (nes (make-nes :cartridge cartridge))
+           (cpu (nes-cpu nes))
+           (elapsed 0))
+      (setf (cpu-p cpu) 0)
+      (let ((cycles
+              (nes-step/k
+               nes #'identity
+               :cycle-hook
+               (lambda ()
+                 (when (= (incf elapsed) 2)
+                   (setf (cl-nes::apu-frame-irq-pending-p (nes-apu nes)) t))))))
+        (expect cycles :to-be 11)
+        (expect (cpu-pc cpu) :to-be #x9000))))
+  (it "polls an IRQ seen on the first poll of a taken page-crossing branch"
+    (let* ((cartridge (set-fixture-vector!
+                       (make-fixture-cartridge
+                        :program (list #xD0 #x01)
+                        :start #x80FD)
+                       #xFFFE
+                       #x9000))
+           (nes (make-nes :cartridge cartridge))
+           (cpu (nes-cpu nes))
+           (elapsed 0))
+      (setf (cpu-p cpu) 0
+            (cl-nes::apu-frame-irq-pending-p (nes-apu nes)) t)
+      (let ((cycles
+              (nes-step/k
+               nes (function identity)
+               :cycle-hook
+               (lambda ()
+                 (when (= (incf elapsed) 1)
+                   (setf (cl-nes::apu-frame-irq-pending-p (nes-apu nes))
+                         nil))))))
+        (expect cycles :to-be 11)
+        (expect (cpu-pc cpu) :to-be #x9000))))
 
   (it "exercises NES interrupt eligibility and injected components"
     (let* ((cpu (make-cpu))

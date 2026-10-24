@@ -13,15 +13,13 @@
   (bus-read bus (cpu-pc cpu))
   (setf (cpu-pc cpu) (logand (1+ (cpu-pc cpu)) #xFFFF))
   (%push-word! cpu bus (cpu-pc cpu))
-  (%push-byte! cpu bus (%status-for-stack cpu t))
-  (%set-flag! cpu +flag-interrupt-disable+ t)
-  ;; A pending NMI can hijack BRK after its stack writes but before
-  ;; the interrupt vector is fetched. The pushed status still has BRK
-  ;; set, as on the 6502.
+  ;; BRK polls NMI after pushing its return address and before status.
   (let ((vector-type
           (if (and nmi-poll (funcall nmi-poll))
               :nmi
               :irq)))
+    (%push-byte! cpu bus (%status-for-stack cpu t))
+    (%set-flag! cpu +flag-interrupt-disable+ t)
     (setf (cpu-pc cpu)
           (if (eq vector-type :nmi)
               (logior (bus-read bus #xFFFA)

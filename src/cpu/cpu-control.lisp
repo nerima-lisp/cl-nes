@@ -18,8 +18,8 @@
           (let ((page-crossed-p
                   (/= (logand old-pc #xFF00)
                       (logand new-pc #xFF00))))
-            (unless page-crossed-p
-              (setf (cpu-irq-poll-delay cpu) t))
+            (setf (cpu-irq-poll-delay cpu)
+                  (if page-crossed-p 'page-cross-branch t))
             (if page-crossed-p 4 3)))
         2)))
 
@@ -58,15 +58,14 @@
     (bus-read bus (cpu-pc cpu))
     (bus-read bus (cpu-pc cpu))
     (%push-word! cpu bus (cpu-pc cpu))
-    (%push-byte! cpu bus (%status-for-stack cpu nil))
-    (%set-flag! cpu +flag-interrupt-disable+ t)
-    (setf (cpu-irq-delay cpu) 0)
-    ;; An NMI edge observed during an IRQ response takes over at the vector
-    ;; fetch.  The stack frame remains the hardware-interrupt frame above.
+    ;; NMI polling follows the return-address pushes and precedes status.
     (let ((vector-type
             (if (and nmi-poll (funcall nmi-poll))
                 :nmi
                 type)))
+      (%push-byte! cpu bus (%status-for-stack cpu nil))
+      (%set-flag! cpu +flag-interrupt-disable+ t)
+      (setf (cpu-irq-delay cpu) 0)
       (setf (cpu-pc cpu)
             (if (eq vector-type :nmi)
                 (logior (bus-read bus #xFFFA)

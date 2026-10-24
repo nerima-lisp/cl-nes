@@ -6,6 +6,7 @@
    (ppu nil nil)
    (apu nil nil)
    (audio-stream nil nil)
+   (irq-line-sample-p nil nil)
    (irq-seen-p nil nil)
    (irq-seen-before-last-p nil nil)
    (nmi-hijacked-p nil nil))

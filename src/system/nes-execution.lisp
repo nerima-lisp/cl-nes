@@ -1,13 +1,20 @@
 (in-package #:cl-nes)
 
 (defvar *nes-step-context* nil)
+(defvar *nes-step-first-irq-poll-seen-p* nil)
 
 (defun %nes-poll-irq-before-clock! (nes)
   (setf (nes-irq-seen-before-last-p nes) (nes-irq-seen-p nes)
-        (nes-irq-seen-p nes) (%nes-irq-pending-p nes)))
+        (nes-irq-seen-p nes) (nes-irq-line-sample-p nes)))
+
+(defun %nes-sample-irq-line! (nes)
+  (setf (nes-irq-line-sample-p nes) (%nes-irq-pending-p nes)))
 
 (defun %nes-poll-irq-before-cycle! ()
-  (%nes-poll-irq-before-clock! *nes-step-context*))
+  (let ((nes *nes-step-context*))
+    (%nes-poll-irq-before-clock! nes)
+    (when (= (bus-cpu-access-count (nes-bus nes)) 1)
+      (setf *nes-step-first-irq-poll-seen-p* (nes-irq-seen-p nes)))))
 
 (defun %nes-poll-nmi-event! ()
   (let ((nes *nes-step-context*))
@@ -63,20 +70,10 @@ cycle, including DMA and interrupt clocks.  The function returns the
 continuation's result."
   (let* ((cpu (nes-cpu nes))
          (irq-disabled-at-start
-           (%flag-set-p cpu +flag-interrupt-disable+))
-         ;; An IRQ asserted by the clocks of this instruction is normally
-         ;; sampled at this boundary.  A taken, non-page-crossing branch marks
-         ;; its final clock as the one 6502 exception.  Keep the observation
-         ;; history at the clock boundary rather than only looking at the
-         ;; line after the whole instruction: a read of $4015 can clear the
-         ;; APU source before the CPU reaches its interrupt poll.
-         (irq-seen-p (%nes-irq-pending-p nes))
-         (irq-seen-before-last-p irq-seen-p)
-         (nmi-hijacked-p nil))
-    (setf (nes-irq-seen-p nes) irq-seen-p
-          (nes-irq-seen-before-last-p nes) irq-seen-before-last-p
-          (nes-nmi-hijacked-p nes) nmi-hijacked-p)
-    (let ((*nes-step-context* nes))
+           (%flag-set-p cpu +flag-interrupt-disable+)))
+    (setf (nes-nmi-hijacked-p nes) nil)
+    (let ((*nes-step-context* nes)
+          (*nes-step-first-irq-poll-seen-p* nil))
       (let ((cycles
               (%nes-run-instruction!
                nes cycle-hook #'%nes-poll-irq-before-cycle!)))
@@ -94,10 +91,12 @@ continuation's result."
                             nes :nmi nil cycle-hook nil)))
             (when (and (not nmi-taken-p)
                        (%nes-irq-eligible-p cpu irq-disabled-at-start)
-                       (if (and (= cycles 2)
-                                (not (cpu-irq-poll-delay cpu)))
-                           (nes-irq-seen-p nes)
-                           (nes-irq-seen-before-last-p nes)))
+                       (if (eq (cpu-irq-poll-delay cpu) 'page-cross-branch)
+                           (or *nes-step-first-irq-poll-seen-p*
+                               (nes-irq-seen-p nes))
+                           (if (cpu-irq-poll-delay cpu)
+                               (nes-irq-seen-before-last-p nes)
+                               (nes-irq-seen-p nes))))
               (let ((interrupt-cycles
                       (%nes-run-interrupt!
                        nes :irq t cycle-hook #'%nes-poll-irq-before-cycle!)))

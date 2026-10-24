@@ -1,6 +1,10 @@
 (in-package #:cl-nes)
 
 (defun %nes-reset-cpu-and-clock! (nes)
+  (setf (nes-irq-line-sample-p nes) nil
+        (nes-irq-seen-p nes) nil
+        (nes-irq-seen-before-last-p nes) nil
+        (nes-nmi-hijacked-p nes) nil)
   ;; The CPU reset sequence consumes seven clocks before fetching the reset
   ;; vector.  The APU's power/reset phase must include those clocks, and the
   ;; PPU must advance three dots for each of them.  Direct PPU reset still

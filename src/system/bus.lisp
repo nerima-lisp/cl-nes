@@ -83,15 +83,11 @@
                  (= (logand address 7) 2))
         (ppu-tick! (bus-ppu bus) 2)
         (setf ppu-ticks 1))
-      (let ((value (%bus-read-device bus address)))
-        (setf value (logand (or value (bus-open-bus bus)) #xFF)
-              (bus-open-bus bus) value)
+      (let ((value (%bus-read-value bus address)))
+        (%bus-cpu-access-before-cycle! bus)
         (%bus-cpu-access! bus ppu-ticks)
         (when (bus-dmc-read-replay-p bus)
-          (setf value (logand (or (%bus-read-device bus address)
-                                  (bus-open-bus bus))
-                              #xFF)
-                (bus-open-bus bus) value
+          (setf value (%bus-read-value bus address)
                 (bus-dmc-read-replay-p bus) nil))
         value))))
 
@@ -200,8 +196,31 @@
           (+ (cpu-cycles (nes-cpu (bus-cpu-access-nes bus)))
              (bus-cpu-access-count bus)))))
       (t nil))
+    (%bus-cpu-access-before-cycle! bus)
     (%bus-cpu-access! bus ppu-ticks)
     value))
+
+(defun %bus-read-value (bus address)
+  (let* ((device-value (%bus-read-device bus address))
+         (open-bus (bus-open-bus bus))
+         (value
+           (cond
+             ((= address #x4015)
+              (logior (logand (or device-value 0) #xDF)
+                      (logand open-bus #x20)))
+             ((or (= address #x4016) (= address #x4017))
+              (logior (logand (or device-value 0) #x1F)
+                      (logand open-bus #xE0)))
+             (t
+              (logand (or device-value open-bus) #xFF)))))
+    (unless (= address #x4015)
+      (setf (bus-open-bus bus) value))
+    value))
+
+(defun %bus-cpu-access-before-cycle! (bus)
+  (when (and (bus-cpu-access-active-p bus)
+             (bus-cpu-access-pre-cycle-hook bus))
+    (funcall (bus-cpu-access-pre-cycle-hook bus))))
 
 (defun %bus-cpu-access! (bus &optional (ppu-ticks 3))
   (if (bus-cpu-access-active-p bus)
@@ -210,7 +229,7 @@
         (%nes-clock-cpu-cycle! (bus-cpu-access-nes bus)
                                bus
                                (bus-cpu-access-cycle-hook bus)
-                               (bus-cpu-access-pre-cycle-hook bus)
+                               nil
                                ppu-ticks))
       (let ((hook (bus-cpu-access-hook bus)))
         (when hook

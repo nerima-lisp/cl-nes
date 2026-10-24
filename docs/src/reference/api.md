@@ -46,7 +46,7 @@ unless `:mapper4-variant` is supplied explicitly.
 | `nes-run-frame/k` | Run to the next frame boundary, call the continuation with the framebuffer, and return its result. `:cycle-hook` runs per CPU cycle; `:input-continuation` is called once with the NES before the first CPU step. |
 | `nes-run-frames/k` | Run a positive frame count, calling the frame continuation once per frame. Optional `:sample-rate`, `:audio-buffer`, `:audio-continuation`, and `:input-continuation` configure audio and frame-boundary input. Return the NES. |
 
-Save states begin with the `CLNS` magic and version 2. Older or newer versions
+Save states begin with the `CLNS` magic and version 3. Older or newer versions
 are rejected as incompatible; states are portable only among implementations
 that support this format version and the serialized mapper/state data.
 
