@@ -354,7 +354,7 @@
                   (:name "PPU Palette RAM" :category :power-on-state
                    :address #x03ff :expected :pass))
     :items nil
-    :ratchet-pass-count 87
+    :ratchet-pass-count 93
     :ratchet-pass-items
     ("ROM is not writable" "RAM Mirroring" "PC Wraparound"
      "The Decimal Flag" "The B Flag" "Dummy read cycles" "Dummy write cycles"
@@ -383,7 +383,10 @@
      "DMA + Open Bus" "Length Counter" "Length Table" "Frame Counter 5-step"
      "Controller Strobing" "Controller Clocking" "Instruction Timing"
      "Branch Dummy Reads" "JSR Edge Cases" "CHR ROM is not writable"
-     "PPU Register Mirroring")))
+     "PPU Register Mirroring"
+     "Sprite 0 Hit behavior"
+     "Sprite overflow behavior"
+     "Misaligned OAM behavior")))
 
 (defparameter *accuracy-coin-item-specs*
   '((:cpu-behavior "ROM is not writable" #x0405)
@@ -635,7 +638,8 @@
   (let* ((protocol-result
            (cl-nes:run-accuracy-coin-protocol path (getf contract :max-frames)))
          (results (getf protocol-result :results))
-         (shared-draw (getf protocol-result :shared-draw)))
+         (shared-draw (getf protocol-result :shared-draw))
+         (page-runs (getf protocol-result :page-runs)))
     (let* ((items (loop for item in (getf contract :items)
                         for address = (getf item :address)
                         for value = (if (= address #x03FF)
@@ -682,5 +686,6 @@
             :running-count running-count :completed-count completed-count
             :category-pass-counts category-pass-counts
             :frames (getf protocol-result :frames)
+            :page-runs page-runs
             :items items :shared-draw-items shared-draw-items
             :results results))))

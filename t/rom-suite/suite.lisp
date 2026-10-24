@@ -179,6 +179,17 @@
                  (getf result :skip-count) (getf result :running-count))
          (format t "accuracy-coin categories=~S~%"
                  (getf result :category-pass-counts))
+         (dolist (page-run (getf result :page-runs))
+           (format t
+                   "accuracy-coin page suite=~D frames=~D menu=~D cursor=~D vblank-sync=~D items=~S~%"
+                   (getf page-run :suite)
+                   (getf page-run :frames)
+                   (getf page-run :menu)
+                   (getf page-run :cursor)
+                   (getf page-run :vblank-sync)
+                   (loop for item in (getf page-run :items)
+                         collect (list (getf item :name)
+                                       (getf item :value)))))
          result)))))
 
 (defun run-rom-suite ()

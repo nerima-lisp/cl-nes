@@ -109,4 +109,47 @@
             (cl-nes::ppu-scanline ppu) 1
             (cl-nes::ppu-sprite-render-count ppu) 1)
       (ppu-tick! ppu 66)
-      (expect (logand (ppu-status ppu) #x40) :to-be #x40))))
+      (expect (logand (ppu-status ppu) #x40) :to-be #x40)))
+  (it "starts sprite evaluation at OAMADDR and identifies the first slot as sprite zero"
+  (let* ((ppu (make-ppu (make-fixture-cartridge)))
+         (oam (ppu-oam ppu))
+         (secondary (cl-nes::ppu-secondary-oam ppu)))
+    (fill oam #xFF)
+    (setf (ppu-oam-address ppu) #x81
+          (ppu-mask ppu) #x10
+          (aref oam #x81) 0
+          (aref oam #x82) #xE3
+          (aref oam #x83) 0
+          (aref oam #x84) 8)
+    (loop for dot from 65 to 72
+          do (cl-nes::%ppu-evaluate-sprites! ppu 1 dot))
+    (expect (cl-nes::ppu-secondary-oam-count ppu) :to-be 1)
+    (expect (aref secondary 0) :to-be 0)
+    (expect (aref secondary 1) :to-be #xE3)
+    (expect (aref secondary 2) :to-be 0)
+    (expect (aref secondary 3) :to-be 8)
+    (expect (ppu-oam-address ppu) :to-be #x85)
+    (setf (cl-nes::ppu-sprite-render-count ppu) 1
+          (aref (cl-nes::ppu-sprite-indexes ppu) 0) 32
+          (aref (cl-nes::ppu-sprite-x-counter ppu) 0) 0
+          (aref (cl-nes::ppu-sprite-shift-low ppu) 0) #x80
+          (aref (cl-nes::ppu-sprite-shift-high ppu) 0) 0
+          (aref (cl-nes::ppu-sprite-attributes ppu) 0) 0)
+    (cl-nes::%ppu-sprite-pixel-at-shifts ppu 8 t)
+    (expect (logand (ppu-status ppu) #x40) :to-be #x40)
+    (setf (cl-nes::ppu-scanline ppu) 0
+          (cl-nes::ppu-dot ppu) 257
+          (ppu-oam-address ppu) #x80)
+    (cl-nes::%ppu-clock-pipeline! ppu)
+    (expect (ppu-oam-address ppu) :to-be 0)
+    (setf (ppu-mask ppu) 0
+          (cl-nes::ppu-dot ppu) 0
+          (cl-nes::ppu-sprite-render-count ppu) 1
+          (aref (cl-nes::ppu-sprite-x-counter ppu) 0) 1
+          (aref (cl-nes::ppu-sprite-shift-low ppu) 0) #x80)
+    (ppu-tick! ppu)
+    (expect (aref (cl-nes::ppu-sprite-x-counter ppu) 0) :to-be 0)
+    (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be #x80)
+    (setf (ppu-mask ppu) #x10)
+    (ppu-tick! ppu)
+    (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be 0))))

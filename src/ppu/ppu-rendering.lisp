@@ -213,16 +213,17 @@
         (ppu-attribute-shift-high ppu)
         (logand #xFFFF (ash (ppu-attribute-shift-high ppu) 1))))
 
-(defun %ppu-shift-sprite-registers! (ppu)
+(defun %ppu-shift-sprite-registers! (ppu &optional (shift-p t))
   (loop for slot below (ppu-sprite-render-count ppu)
         do (if (plusp (aref (ppu-sprite-x-counter ppu) slot))
                (decf (aref (ppu-sprite-x-counter ppu) slot))
-               (setf (aref (ppu-sprite-shift-low ppu) slot)
-                     (logand #xFF
-                             (ash (aref (ppu-sprite-shift-low ppu) slot) 1))
-                     (aref (ppu-sprite-shift-high ppu) slot)
-                     (logand #xFF
-                             (ash (aref (ppu-sprite-shift-high ppu) slot) 1)))))
+               (when shift-p
+                 (setf (aref (ppu-sprite-shift-low ppu) slot)
+                       (logand #xFF
+                               (ash (aref (ppu-sprite-shift-low ppu) slot) 1))
+                       (aref (ppu-sprite-shift-high ppu) slot)
+                       (logand #xFF
+                               (ash (aref (ppu-sprite-shift-high ppu) slot) 1))))))
   ppu)
 
 (defun %ppu-palette-pixel (ppu color)
@@ -239,96 +240,84 @@
   (when (and dot-supplied-p (= dot 65))
     (fill (ppu-secondary-oam ppu) #xFF)
     (setf (ppu-secondary-oam-count ppu) 0
-          (ppu-sprite-evaluation-n ppu) 0
+          (ppu-sprite-evaluation-n ppu)
+          (ldb (byte 6 2) (ppu-oam-address ppu))
           (ppu-sprite-evaluation-m ppu) 0
           (ppu-sprite-evaluation-latch ppu) #xFF
           (ppu-sprite-evaluation-done-p ppu) nil))
-  (when (and dot-supplied-p
-             (<= 65 dot 256)
-             (not (ppu-sprite-evaluation-done-p ppu)))
-    (if (oddp dot)
-        (setf (ppu-sprite-evaluation-latch ppu)
-              (aref (ppu-oam ppu)
-                    (+ (* (ppu-sprite-evaluation-n ppu) 4)
-                       (ppu-sprite-evaluation-m ppu))))
-        (let* ((n (ppu-sprite-evaluation-n ppu))
-               (m (ppu-sprite-evaluation-m ppu))
-               (count (ppu-secondary-oam-count ppu))
-               (height (if (logbitp 5 (ppu-control ppu)) 16 8))
-               (top (1+ (ppu-sprite-evaluation-latch ppu)))
-               (in-range-p (and (<= top scanline)
-                                (< scanline (+ top height)))))
-          (cond
-            ((and (plusp m)
-                  (or (< count 8)
-                      (= n
-                         (aref (ppu-sprite-evaluated-indexes ppu)
-                               (1- count)))))
-             (setf (aref (ppu-secondary-oam ppu)
-                         (+ (* (1- count) 4) m))
-                   (ppu-sprite-evaluation-latch ppu))
-             (if (= m 3)
-                 (progn
-                   (setf (ppu-sprite-evaluation-m ppu) 0)
-                   (incf (ppu-sprite-evaluation-n ppu))
-                   (when (= (ppu-sprite-evaluation-n ppu) 64)
-                     (setf (ppu-sprite-evaluation-done-p ppu) t)))
-                 (incf (ppu-sprite-evaluation-m ppu))))
-            ((< count 8)
-             (if in-range-p
-                 (setf (aref (ppu-secondary-oam ppu) (* count 4))
-                       (ppu-sprite-evaluation-latch ppu)
-                       (aref (ppu-sprite-evaluated-indexes ppu) count) n
-                       (ppu-secondary-oam-count ppu) (1+ count)
-                       (ppu-sprite-evaluation-m ppu) 1)
-                 (progn
-                   (incf (ppu-sprite-evaluation-n ppu))
-                   (when (= (ppu-sprite-evaluation-n ppu) 64)
-                     (setf (ppu-sprite-evaluation-done-p ppu) t)))))
-            (t
-             (when in-range-p
-               (setf (ppu-status ppu)
-                     (logior (ppu-status ppu) #x20)))
-             (if in-range-p
-                 (if (= m 3)
-                     (progn
-                       (setf (ppu-sprite-evaluation-m ppu) 0)
-                       (incf (ppu-sprite-evaluation-n ppu)))
-                     (incf (ppu-sprite-evaluation-m ppu)))
-                 (setf (ppu-sprite-evaluation-n ppu) (1+ n)
-                       (ppu-sprite-evaluation-m ppu) (mod (1+ m) 4)))
-             (when (= (ppu-sprite-evaluation-n ppu) 64)
-               (setf (ppu-sprite-evaluation-done-p ppu) t)))))))
-  (ppu-secondary-oam-count ppu))
+  (labels ((set-oam-address (address)
+             (let* ((old-address (ppu-oam-address ppu))
+                    (address (logand address #xFF))
+                    (n (ldb (byte 6 2) address)))
+               (setf (ppu-oam-address ppu) address
+                     (ppu-sprite-evaluation-n ppu) n)
+               (when (and (= (ldb (byte 6 2) old-address) 63) (< address old-address))
+                 (setf (ppu-sprite-evaluation-done-p ppu) t))))
+           (in-range-p (value)
+             (let* ((height (if (logbitp 5 (ppu-control ppu)) 16 8))
+                    (top (1+ value)))
+               (and (<= top scanline)
+                    (< scanline (+ top height))))))
+    (when (and dot-supplied-p
+               (<= 65 dot 256)
+               (or (not (ppu-sprite-evaluation-done-p ppu))
+                   (plusp (ppu-sprite-evaluation-m ppu))))
+      (if (oddp dot)
+          (setf (ppu-sprite-evaluation-latch ppu)
+                (aref (ppu-oam ppu) (ppu-oam-address ppu)))
+          (let* ((count (ppu-secondary-oam-count ppu))
+                 (address (ppu-oam-address ppu))
+                 (m (ppu-sprite-evaluation-m ppu))
+                 (value (ppu-sprite-evaluation-latch ppu)))
+            (cond
+              ((plusp m) (setf (aref (ppu-secondary-oam ppu) (+ (* (1- count) 4) m)) value) (if (= m 3) (setf (ppu-sprite-evaluation-m ppu) 0) (incf (ppu-sprite-evaluation-m ppu))) (set-oam-address (1+ address)))
+              ((< count 8)
+               (if (in-range-p value)
+                   (progn
+                     (setf (aref (ppu-secondary-oam ppu) (* count 4))
+                           value
+                           (aref (ppu-sprite-evaluated-indexes ppu) count)
+                           (ldb (byte 6 2) address)
+                           (ppu-secondary-oam-count ppu) (1+ count)
+                           (ppu-sprite-evaluation-m ppu) 1)
+                     (set-oam-address (1+ address)))
+                   (set-oam-address
+                    (logand #xFF #xFC (+ address 4)))))
+              (t
+               (let ((in-range-p (in-range-p value)))
+                 (when in-range-p
+                   (setf (ppu-status ppu)
+                         (logior (ppu-status ppu) #x20)))
+                 (set-oam-address (+ address (if (or in-range-p (= (logand address 3) 3)) 1 5)))))))))
+  (ppu-secondary-oam-count ppu)))
 
 (defun %ppu-sprite-pixel-at-shifts (ppu x background-solid)
   (let ((mask (%ppu-effective-mask ppu)))
     (when (and (logbitp 4 mask)
                (or (>= x 8) (logbitp 2 mask)))
       (loop for slot below (ppu-sprite-render-count ppu)
-            for sprite = (aref (ppu-sprite-indexes ppu) slot)
-            do (when (zerop (aref (ppu-sprite-x-counter ppu) slot))
-                 (let* ((low (aref (ppu-sprite-shift-low ppu) slot))
-                        (high (aref (ppu-sprite-shift-high ppu) slot))
-                        (color (logior (ldb (byte 1 7) low)
-                                       (ash (ldb (byte 1 7) high) 1))))
-                   (unless (zerop color)
-                     (let ((attributes
-                             (aref (ppu-sprite-attributes ppu) slot)))
-                       (when (and (= sprite 0) background-solid (< x 255)
-                                  (not (logbitp 6 (ppu-status ppu))))
-                         (setf (ppu-status ppu)
-                               (logior (ppu-status ppu) #x40)))
-                       (return (if (and (logbitp 5 attributes)
-                                        background-solid)
-                                   nil
-                                   (logand
-                                    (ppu-read-vram
-                                     ppu
-                                     (+ #x3F10
-                                        (* (logand attributes 3) 4)
-                                        color))
-                                    #x3F)))))))))))
+      do (when (zerop (aref (ppu-sprite-x-counter ppu) slot))
+           (let* ((low (aref (ppu-sprite-shift-low ppu) slot))
+                  (high (aref (ppu-sprite-shift-high ppu) slot))
+                  (color (logior (ldb (byte 1 7) low)
+                                 (ash (ldb (byte 1 7) high) 1))))
+             (unless (zerop color)
+               (let ((attributes
+                       (aref (ppu-sprite-attributes ppu) slot)))
+                 (when (and (= slot 0) background-solid (< x 255)
+                            (not (logbitp 6 (ppu-status ppu))))
+                   (setf (ppu-status ppu)
+                         (logior (ppu-status ppu) #x40)))
+                 (return (if (and (logbitp 5 attributes)
+                                  background-solid)
+                             nil
+                             (logand
+                              (ppu-read-vram
+                               ppu
+                               (+ #x3F10
+                                  (* (logand attributes 3) 4)
+                                  color))
+                              #x3F)))))))))))
 
 (defun %ppu-sprite-pixel-at-dot (ppu x y background-solid)
   (when (logbitp 4 (%ppu-effective-mask ppu))
@@ -337,7 +326,7 @@
           do (multiple-value-bind (color present behind)
                  (%sprite-pixel ppu sprite x y)
                (when present
-                 (when (and (= sprite 0) background-solid (< x 255)
+                 (when (and (= slot 0) background-solid (< x 255)
                             (not (logbitp 6 (ppu-status ppu))))
                    (setf (ppu-status ppu) (logior (ppu-status ppu) #x40)))
                  (return (if (and behind background-solid)

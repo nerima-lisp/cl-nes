@@ -237,7 +237,7 @@
       (when (= dot 257)
         (%ppu-copy-horizontal! ppu))
       (when (<= 257 dot 320)
-        (%ppu-sprite-fetch! ppu dot)
+        (progn (setf (ppu-oam-address ppu) 0) (%ppu-sprite-fetch! ppu dot))
         (when (= dot 320)
           (setf (ppu-sprite-render-count ppu)
                 (ppu-secondary-oam-count ppu)
@@ -275,9 +275,10 @@
           (when (and (< scanline +ppu-height+)
                      (<= 1 (ppu-dot ppu) 256))
             (%ppu-render-visible-dot! ppu))
-          (when (and rendering-scanline-p
+          (when (and (or (< scanline +ppu-height+) (= scanline 261))
                      (<= 1 (ppu-dot ppu) 256))
-            (%ppu-shift-sprite-registers! ppu))
+            (%ppu-shift-sprite-registers!
+             ppu (%ppu-rendering-enabled-p ppu)))
           (when rendering-scanline-p
             (%ppu-shift-background-registers! ppu))
           (%ppu-clock-pipeline! ppu rendering-scanline-p))
