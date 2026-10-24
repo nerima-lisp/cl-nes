@@ -42,7 +42,7 @@
                                    :to-be
                                    0)))
                    (cl-weave:it
-                    "requires nonzero audio after visual and deterministic gates"
+                    "marks ready flat output silent after visual and deterministic gates"
                     (let* ((first
                             (list :first-hash
                                   1
@@ -52,9 +52,21 @@
                                   2
                                   :audio-samples
                                   0
+                                  :audio-ready-p
+                                  t
+                                  :audio-spread
+                                  0.0f0
                                   :pc-count
                                   2))
                            (second (list :last-hash 2)))
                       (cl-weave:expect (%classify first second) :to-be :silent)
-                      (setf (getf first :audio-samples) 1)
+                      (setf (getf first :audio-spread) 0.25f0)
+                      (cl-weave:expect (%classify first second) :to-be :pass)))
+                   (cl-weave:it
+                    "does not mark a never-ready flat ROM silent"
+                    (let* ((first
+                            (list :first-hash 1 :last-hash 2
+                                  :unique-pixels 2 :audio-ready-p nil
+                                  :audio-spread 0.0f0 :pc-count 2))
+                           (second (list :last-hash 2)))
                       (cl-weave:expect (%classify first second) :to-be :pass))))

@@ -175,3 +175,27 @@
               :to-be nes)
       (expect input-calls :to-be 3)
       (expect (controller-buttons controller-1) :to-be +button-a+))))
+(describe "compatibility audio classification"
+  (it "marks configured flat output as silent"
+    (let* ((apu (make-apu))
+           (result (list :first-hash 1 :last-hash 2
+                         :unique-pixels 2 :pc-count 2
+                         :audio-ready-p nil :audio-spread 0.0f0)))
+      (cl-nes::apu-write-register! apu #x4015 #x01)
+      (cl-nes::apu-write-register! apu #x4000 #x1F)
+      (cl-nes::apu-write-register! apu #x4002 #x08)
+      (cl-nes::apu-write-register! apu #x4003 #x08)
+      (setf (getf result :audio-ready-p)
+            (cl-nes/compat::%apu-output-ready-p apu))
+      (expect (getf result :audio-ready-p) :to-be-truthy)
+      (expect (cl-nes/compat::%classify result result) :to-equal :silent)))
+  (it "does not call an unconfigured flat ROM silent"
+    (let* ((apu (make-apu))
+           (result (list :first-hash 1 :last-hash 2
+                         :unique-pixels 2 :pc-count 2
+                         :audio-ready-p nil :audio-spread 0.0f0)))
+      (cl-nes::apu-write-register! apu #x4015 #x0F)
+      (setf (getf result :audio-ready-p)
+            (cl-nes/compat::%apu-output-ready-p apu))
+      (expect (getf result :audio-ready-p) :to-be nil)
+      (expect (cl-nes/compat::%classify result result) :to-equal :pass))))

@@ -84,7 +84,39 @@
         (%png-chunk #(73 68 65 84) (subseq z 0 at) stream))
       (%png-chunk #(73 69 78 68) #() stream))
     pathname))
-
+(defun %apu-output-ready-p (apu)
+  ;; NESdev gates use active counters/levels; triangle/DMC can hold DAC values; $4015 enable alone is insufficient.
+  (labels ((envelope-ready-p (envelope)
+             (or (plusp (cl-nes::%apu-envelope-output envelope))
+                 (and (cl-nes::apu-envelope-start-p envelope)
+                      (or (not (cl-nes::apu-envelope-constant-volume-p envelope))
+                          (plusp (cl-nes::apu-envelope-volume envelope))))))
+           (pulse-ready-p (pulse first-p)
+             (and (cl-nes::apu-pulse-enabled-p pulse)
+                  (plusp (cl-nes::apu-pulse-length-counter pulse))
+                  (>= (cl-nes::apu-pulse-timer-period pulse) 8)
+                  (<= (cl-nes::%apu-pulse-sweep-target pulse first-p) #x7FF)
+                  (envelope-ready-p (cl-nes::apu-pulse-envelope pulse)))))
+    (let* ((triangle (cl-nes::apu-triangle apu))
+           (noise (cl-nes::apu-noise apu))
+           (dmc (cl-nes::apu-dmc apu)))
+      (or (pulse-ready-p (cl-nes::apu-pulse-1 apu) t)
+          (pulse-ready-p (cl-nes::apu-pulse-2 apu) nil)
+          (and (cl-nes::apu-triangle-enabled-p triangle)
+               (plusp (cl-nes::apu-triangle-length-counter triangle))
+               (or (plusp (cl-nes::apu-triangle-linear-counter triangle))
+                   (and (cl-nes::apu-triangle-linear-reload-p triangle)
+                        (plusp (cl-nes::apu-triangle-linear-reload-value triangle)))))
+          (plusp (cl-nes::apu-triangle-dac-output triangle))
+          (and (cl-nes::apu-noise-enabled-p noise)
+               (plusp (cl-nes::apu-noise-length-counter noise))
+               (envelope-ready-p (cl-nes::apu-noise-envelope noise)))
+          (plusp (cl-nes::apu-dmc-output dmc))
+          (not (cl-nes::apu-dmc-sample-buffer-empty-p dmc))
+          (and (cl-nes::apu-dmc-enabled-p dmc)
+               (plusp (cl-nes::apu-dmc-bytes-remaining dmc)))
+          (and (plusp (cl-nes::apu-dmc-bits-remaining dmc))
+               (not (cl-nes::apu-dmc-silence-p dmc)))))))
 (defun %compat-root (&optional root-name)
   (let ((root (or (and root-name
                        (uiop:getenv (format nil "CL_NES_COMPAT_ROOT_~A"
@@ -124,25 +156,46 @@
                         :controller-1 controller-1))
          (audio (make-nes-audio-buffer :size 4096))
          (audio-samples 0)
+         (audio-min nil)
+         (audio-max nil)
+         (audio-ready-p nil)
+         (probe-cycles 256)
+         (audio-stream
+           (cl-nes::%nes-make-audio-stream
+            cl-nes:+nes-default-audio-sample-rate+ audio
+            (lambda (buffer)
+              (loop for sample across (nes-audio-buffer-samples buffer)
+                    repeat (nes-audio-buffer-count buffer)
+                    do (when (not (zerop sample)) (incf audio-samples))
+                       (setf audio-min
+                             (if audio-min (min audio-min sample) sample)
+                             audio-max
+                             (if audio-max (max audio-max sample) sample))))))
          (first-hash nil)
          (last-frame nil)
          (pc-seen (make-hash-table :test #'eql))
-         (first-frame nil))
-    (nes-run-frames/k
-     nes *frames*
-     (lambda (framebuffer)
-       (unless first-frame (setf first-frame (copy-seq framebuffer)))
-       (setf last-frame (copy-seq framebuffer))
-       (setf first-hash (or first-hash (%hash-octets framebuffer)))
-       (setf (gethash (cpu-pc (nes-cpu nes)) pc-seen) t))
-     :audio-buffer audio
-     :audio-continuation
-     (lambda (buffer)
-       (loop for sample across (nes-audio-buffer-samples buffer)
-             repeat (nes-audio-buffer-count buffer)
-             do (when (not (zerop sample)) (incf audio-samples))))
-     :input-continuation
-     (%compat-input-continuation id controller-1))
+         (first-frame nil)
+         (input-continuation
+           (%compat-input-continuation id controller-1)))
+    (let ((cl-nes::*nes-audio-cycle-nes* nes)
+          (cl-nes::*nes-audio-cycle-stream* audio-stream))
+      (dotimes (frame *frames*)
+        (nes-run-frame/k
+         nes
+         (lambda (framebuffer)
+           (unless first-frame (setf first-frame (copy-seq framebuffer)))
+           (setf last-frame (copy-seq framebuffer))
+           (setf first-hash (or first-hash (%hash-octets framebuffer)))
+           (setf (gethash (cpu-pc (nes-cpu nes)) pc-seen) t))
+         :cycle-hook
+         (lambda ()
+           (cl-nes::%nes-audio-cycle-hook)
+           (decf probe-cycles)
+           (when (zerop probe-cycles)
+             (setf probe-cycles 256)
+             (when (%apu-output-ready-p (cl-nes:nes-apu nes))
+               (setf audio-ready-p t))))
+         :input-continuation input-continuation)))
     (when write-image
       (%write-png
        (merge-pathnames (format nil "~A.png" id) (pathname (%artifact-root)))
@@ -151,6 +204,8 @@
           :last-hash (%hash-octets last-frame)
           :unique-pixels (%distinct-count last-frame)
           :audio-samples audio-samples
+          :audio-spread (if audio-min (- audio-max audio-min) 0.0f0)
+          :audio-ready-p audio-ready-p
           :pc-count (hash-table-count pc-seen)
           :cycles (cpu-cycles (nes-cpu nes)))))
 
@@ -160,7 +215,8 @@
     ((<= (getf first :pc-count) 1) :stopped)
     ((= (getf first :first-hash) (getf first :last-hash)) :static)
     ((<= (getf first :unique-pixels) 1) :static)
-    ((zerop (getf first :audio-samples)) :silent)
+    ((and (getf first :audio-ready-p)
+          (zerop (getf first :audio-spread))) :silent)
     (t :pass)))
 
 (defun %run-entry (entry)
@@ -177,6 +233,8 @@
                 :rerun-hash (getf second :last-hash)
                 :unique-pixels (getf first :unique-pixels)
                 :audio-samples (getf first :audio-samples)
+                :audio-ready-p (getf first :audio-ready-p)
+                :audio-spread (getf first :audio-spread)
                 :pc-count (getf first :pc-count)
                 :cycles (getf first :cycles)))
       (cl-nes:unsupported-mapper (condition)
@@ -192,15 +250,17 @@
                               (pathname (%artifact-root)))))
     (with-open-file (stream path :direction :output :if-exists :supersede
                             :if-does-not-exist :create)
-      (format stream "id~Cstatus~Cmapper~Cframes~Cfirst_hash~Crerun_hash~Cunique_pixels~Caudio_samples~Cpc_count~Ccycles~Cerror~%"
-              #\Tab #\Tab #\Tab #\Tab #\Tab #\Tab #\Tab #\Tab #\Tab #\Tab)
+      (format stream "id~Cstatus~Cmapper~Cframes~Cfirst_hash~Crerun_hash~Cunique_pixels~Caudio_samples~Caudio_ready~Caudio_spread~Cpc_count~Ccycles~Cerror~%"
+              #\Tab #\Tab #\Tab #\Tab #\Tab #\Tab #\Tab #\Tab #\Tab #\Tab #\Tab #\Tab)
       (dolist (result results)
-        (format stream "~A~C~A~C~A~C~A~C~A~C~A~C~A~C~A~C~A~C~A~C~A~%"
+        (format stream "~A~C~A~C~A~C~A~C~A~C~A~C~A~C~A~C~A~C~A~C~A~C~A~C~A~%"
                 (getf result :id) #\Tab
                 (string-downcase (symbol-name (getf result :status))) #\Tab
                 (getf result :mapper) #\Tab (getf result :frames) #\Tab
                 (getf result :first-hash) #\Tab (getf result :rerun-hash) #\Tab
                 (getf result :unique-pixels) #\Tab (getf result :audio-samples) #\Tab
+                (if (getf result :audio-ready-p) "yes" "no") #\Tab
+                (getf result :audio-spread) #\Tab
                 (getf result :pc-count) #\Tab (getf result :cycles) #\Tab
                 (or (getf result :error) ""))))
     path))
@@ -255,22 +315,24 @@
 (defun compat-main ()
   (let ((corpus (%selected-corpus)))
     (unless (>= (length *compat-corpus*) 50)
-    (error "Compatibility corpus must contain at least 50 ROMs."))
+      (error "Compatibility corpus must contain at least 50 ROMs."))
     (unless (every (lambda (entry)
-                    (and (getf entry :license-source)
-                         (getf entry :license-quote)))
-                  *compat-corpus*)
+                     (and (getf entry :license-source)
+                          (getf entry :license-quote)))
+                   *compat-corpus*)
       (error "Every compatibility ROM must have concrete license provenance."))
     (let* ((results (mapcar #'%run-entry corpus))
            (report (%write-report results)))
       (%check-baseline results)
       (dolist (result results)
-        (format t "compat ~A status=~(~A~) mapper=~A~%"
-                (getf result :id) (getf result :status) (getf result :mapper)))
+        (format t "compat ~A status=~(~A~) mapper=~A audio-ready=~A audio-spread=~A~%"
+                (getf result :id) (getf result :status) (getf result :mapper)
+                (if (getf result :audio-ready-p) "yes" "no")
+                (getf result :audio-spread)))
       (format t "compat corpus=~D frames=~D report=~A~%"
               (length results) *frames* report)
       (if (some (lambda (result)
-                 (member (getf result :status) '(:crash :nondeterministic)))
-               results)
+                  (member (getf result :status) '(:crash :nondeterministic)))
+                results)
           1
           0))))

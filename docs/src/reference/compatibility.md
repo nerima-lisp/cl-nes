@@ -51,6 +51,7 @@ bytes are not committed to this repository. The contract table is in
 protocol, runtime framebuffer hashes, and AccuracyCoin's `$0400-$04FF` result
 RAM. These hashes are diagnostics of the emulator's output; they are not
 golden or reference-image hashes.
+
 Each row has a bounded frame limit and a ratchet state. A passing `:pass` row
 must remain passing, while an unexpectedly passing `:known-fail` row fails the
 check and requires its recorded baseline to be updated.
@@ -185,17 +186,30 @@ per-ROM distribution record; explicit metadata is retained as MIT, GPL/LGPL,
 zlib, GNU All-Permissive, or the exact Creative Commons variant.
 Non-commercial and share-alike restrictions are not relabeled as plain CC-BY.
 
-For every entry, its compatibility shard runs a bounded number of frames twice with the same initial state.
+For every entry, its compatibility shard runs a bounded number of frames twice
+with the same initial state.
 It writes a representative PNG image at the final frame and reports exceptions,
 unsupported mappers, frame-boundary CPU progress, framebuffer change, non-zero
-audio samples, and whether final framebuffer hashes match across the two runs.
-The final-frame hash comparison checks deterministic reruns of the same ROM;
-it is not a comparison with an external golden framebuffer.
+audio sample count, audio sample spread, APU output readiness, and whether final
+framebuffer hashes match across the two runs. The runner samples APU state every
+256 CPU cycles. Pulse requires enable, a non-zero length counter, an envelope
+that can produce a non-zero level, and timer/sweep settings that permit output.
+Noise requires enable, length, and a non-zero-capable envelope; triangle
+requires enable, length, and a non-zero linear counter or pending reload; a
+non-zero held triangle DAC value also counts because the triangle continues to
+output its last value when halted. DMC requires active sample data or bits, or
+a non-zero DAC level. A `silent` result requires an output-ready state to have
+been observed and zero audio spread. An enable write by itself does not count,
+so a ROM that never configures a channel
+is not classified as silent. The final-frame hash comparison checks
+deterministic reruns of the same ROM; it is not a comparison with an external
+golden framebuffer.
 
 Results are written to `compat-results.tsv` and images to the configured
 compatibility artifact directory. The flake exposes round-robin
 `compat-shard-*` checks; together they cover the complete corpus while keeping
-each bounded job independently schedulable. A `pass` result is the ratchet baseline;
+each bounded job independently schedulable. A `pass` result is the ratchet
+baseline;
 `stopped`, `static`, `silent`, `crash`, and `unsupported-mapper` remain visible
 as compatibility findings. The checked-in ratchet is
 `t/compat/baseline.tsv`; it records the expected status and mapper for every

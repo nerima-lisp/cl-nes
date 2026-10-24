@@ -71,7 +71,7 @@
   :author "nerima-lisp"
   :license "MIT"
   :version "0.3.0"
-  :depends-on ("cl-nes" "cl-weave")
+  :depends-on ("cl-nes" "cl-weave" "cl-nes/compat")
   :pathname "t"
   :components
   ((:module "core"
