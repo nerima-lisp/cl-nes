@@ -141,4 +141,18 @@
       (cl-nes::set-cartridge-bus-conflict-p! cartridge t)
       (expect (cartridge-write-prg! cartridge #x8000 #xFF) :to-be #xFF)
       (expect (cl-nes::cartridge-prg-bank cartridge) :to-be 0)
-      (expect (cartridge-read-prg cartridge #x8000) :to-be 0))))
+      (expect (cartridge-read-prg cartridge #x8000) :to-be 0)))
+  (it "maps UxROM windows across eight 16 KiB PRG banks"
+    (let ((cartridge (make-patterned-cartridge :mapper 2
+                                               :prg-banks 16
+                                               :chr-banks 8)))
+      (cartridge-write-prg! cartridge #x8000 #x0E)
+      (expect (cartridge-read-prg cartridge #x8000) :to-be 12)
+      (expect (cartridge-read-prg cartridge #xBFFF) :to-be 13)
+      (expect (cartridge-read-prg cartridge #xC000) :to-be 14)
+      (expect (cartridge-read-prg cartridge #xFFFF) :to-be 15)
+      (cartridge-write-prg! cartridge #x8000 #x07)
+      (expect (cartridge-read-prg cartridge #x8000) :to-be 14)
+      (expect (cartridge-read-prg cartridge #xBFFF) :to-be 15)
+      (expect (cartridge-read-prg cartridge #xC000) :to-be 14)
+      (expect (cartridge-read-prg cartridge #xFFFF) :to-be 15))))

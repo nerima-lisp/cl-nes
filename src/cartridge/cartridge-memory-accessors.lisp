@@ -24,7 +24,7 @@
               (bank-count (floor (length rom) +prg-bank-size+))
               (fixed-bank (1- bank-count)))
          (if (< offset +prg-bank-size+)
-             (+ (* (mod (cartridge-prg-bank cartridge) fixed-bank)
+             (+ (* (mod (cartridge-prg-bank cartridge) bank-count)
                    +prg-bank-size+)
                 offset)
              (+ (* fixed-bank +prg-bank-size+)
@@ -57,11 +57,10 @@
   (logand value (cartridge-read-prg cartridge address)))
 
 (defun %write-cartridge-mapper2-prg! (cartridge value)
-  (let ((switchable-bank-count
-          (1- (floor (length (cartridge-prg-rom cartridge))
-                     +prg-bank-size+))))
+  (let ((bank-count (floor (length (cartridge-prg-rom cartridge))
+                          +prg-bank-size+)))
     (set-cartridge-prg-bank! cartridge
-                             (mod value switchable-bank-count))))
+                             (mod value bank-count))))
 
 (defun %write-cartridge-mapper3-prg! (cartridge value)
   (let ((chr-bank-count (floor (length (cartridge-chr-rom cartridge))
