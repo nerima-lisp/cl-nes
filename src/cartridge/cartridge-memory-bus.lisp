@@ -1,31 +1,51 @@
 (in-package #:cl-nes)
 
 (defun cartridge-ppu-read-nametable (cartridge ciram address)
-  (if (not (and cartridge (= (cartridge-mapper cartridge) 5)))
-      (aref ciram (%mirrored-nametable-index cartridge address))
-      (multiple-value-bind (source within)
-          (cartridge-mmc5-nametable-location cartridge address)
-        (case source
-          (:ciram-0 (aref ciram within))
-          (:ciram-1 (aref ciram (+ #x400 within)))
-          (:exram (aref (cartridge-mapper5-state-exram
-                         (cartridge-mapper5-state cartridge))
-                        within))
-          (:fill (cartridge-mmc5-fill-value cartridge within))))))
+  (cond
+    ((and cartridge
+          (= (cartridge-mapper cartridge) 30)
+          (cartridge-four-screen-p cartridge))
+     (let ((chr (cartridge-chr-rom cartridge)))
+       (aref chr
+             (+ (- (length chr) +chr-bank-size+)
+                (mod (- address #x2000) #x1000)))))
+    ((not (and cartridge (= (cartridge-mapper cartridge) 5)))
+     (aref ciram (%mirrored-nametable-index cartridge address)))
+    (t
+     (multiple-value-bind (source within)
+         (cartridge-mmc5-nametable-location cartridge address)
+       (case source
+         (:ciram-0 (aref ciram within))
+         (:ciram-1 (aref ciram (+ #x400 within)))
+         (:exram
+          (aref (cartridge-mapper5-state-exram (cartridge-mapper5-state cartridge))
+                within))
+         (:fill (cartridge-mmc5-fill-value cartridge within)))))))
 
 (defun cartridge-ppu-write-nametable! (cartridge ciram address value)
-  (if (not (and cartridge (= (cartridge-mapper cartridge) 5)))
-      (setf (aref ciram (%mirrored-nametable-index cartridge address)) value)
-      (multiple-value-bind (source within)
-          (cartridge-mmc5-nametable-location cartridge address)
-        (case source
-          (:ciram-0 (setf (aref ciram within) value))
-          (:ciram-1 (setf (aref ciram (+ #x400 within)) value))
-          (:exram (setf (aref (cartridge-mapper5-state-exram
-                               (cartridge-mapper5-state cartridge))
-                              within)
-                        value))
-          (:fill nil))))
+  (cond
+    ((and cartridge
+          (= (cartridge-mapper cartridge) 30)
+          (cartridge-four-screen-p cartridge))
+     (let ((chr (cartridge-chr-rom cartridge)))
+       (setf (aref chr
+                   (+ (- (length chr) +chr-bank-size+)
+                      (mod (- address #x2000) #x1000)))
+             value)))
+    ((not (and cartridge (= (cartridge-mapper cartridge) 5)))
+     (setf (aref ciram (%mirrored-nametable-index cartridge address)) value))
+    (t
+     (multiple-value-bind (source within)
+         (cartridge-mmc5-nametable-location cartridge address)
+       (case source
+         (:ciram-0 (setf (aref ciram within) value))
+         (:ciram-1 (setf (aref ciram (+ #x400 within)) value))
+         (:exram
+          (setf (aref (cartridge-mapper5-state-exram
+                       (cartridge-mapper5-state cartridge))
+                      within)
+                value))
+         (:fill nil)))))
   value)
 
 (defun cartridge-cpu-read (cartridge address)

@@ -30,7 +30,9 @@ fixed to the final PRG bank. It also selects 8 KiB banks of CHR-RAM and applies
 submapper-specific register-write and bus-conflict behavior. Submappers 0
 through 4 are accepted, and PRG-RAM is not exposed. Flash programming, flash
 persistence, and submapper 4 LED outputs are not modeled. Header mirroring and
-submapper 3 register mirroring are supported. See the [UNROM 512 board
+submapper 3 register mirroring are supported. Submappers 0, 1, 2, and 4 support
+four-screen mode, using the final 8 KiB of CHR-RAM for nametable storage. See
+the [UNROM 512 board
 description](https://www.nesdev.org/wiki/UNROM512) for the board variants
 represented by Mapper 30.
 

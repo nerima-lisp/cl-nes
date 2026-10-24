@@ -95,14 +95,15 @@
       (expect (cartridge-read-chr cartridge 0) :to-be 0)
       (expect (cartridge-mirroring cartridge) :to-be :single-screen-lower)))
 
-  (it "keeps four-screen nametables distinct"
-    (let ((cartridge
-            (make-mapper30-contract-cartridge
-             :mirroring :vertical
-             :four-screen-p t))
-          (ciram (make-array #x1000
-                             :element-type (quote (unsigned-byte 8))
-                             :initial-element 0)))
+  (it "maps four-screen nametables to the final CHR-RAM bank"
+    (let* ((cartridge
+             (make-mapper30-contract-cartridge
+              :mirroring :vertical
+              :four-screen-p t))
+           (ciram (make-array #x1000
+                              :element-type (quote (unsigned-byte 8))
+                              :initial-element 0))
+           (chr (cartridge-chr-rom cartridge)))
       (cartridge-write-prg! cartridge #xC000 #x80)
       (expect (cartridge-mirroring cartridge) :to-be :vertical)
       (cl-nes::cartridge-ppu-write-nametable! cartridge ciram #x2000 #xA5)
@@ -110,7 +111,11 @@
       (expect (cl-nes::cartridge-ppu-read-nametable cartridge ciram #x2000)
               :to-be #xA5)
       (expect (cl-nes::cartridge-ppu-read-nametable cartridge ciram #x2800)
-              :to-be #x5A)))
+              :to-be #x5A)
+      (expect (aref chr #x6000) :to-be #xA5)
+      (expect (aref chr #x6800) :to-be #x5A)
+      (expect (aref ciram 0) :to-be 0)
+      (expect (aref ciram #x800) :to-be 0)))
   (it "loads Mapper 30 header mirroring and conflict flags"
     (let ((legacy
             (load-cartridge
