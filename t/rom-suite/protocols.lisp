@@ -322,7 +322,7 @@
                 :failure-text "result $F8; 1 means PASSED"
                 :mapper4-variant :mmc3)
                (:id "mmc3-irq-tests-a12" :path "mmc3_irq_tests/3.A12_clocking.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 60 :state :pass
                 :failure-text "result $F8; 1 means PASSED"
                 :mapper4-variant :mmc3)
                (:id "mmc3-irq-tests-scanline" :path "mmc3_irq_tests/4.Scanline_timing.nes"

@@ -116,4 +116,46 @@
       (ppu-write-vram! ppu #x0000 #x80)
       (ppu-write-vram! ppu #x3F11 #x21)
       (expect (cl-nes::%ppu-sprite-pixel-at-dot ppu 0 1 t)
+              :to-be #x21)))
+  (it "gates rendering fetch and scroll pipeline with PPUMASK"
+    (with-fixture-ppu (disabled (make-fixture-cartridge))
+      (setf (ppu-mask disabled) 0
+            (cl-nes::ppu-vram-address disabled) 0
+            (cl-nes::ppu-temporary-address disabled) 1
+            (cl-nes::ppu-scanline disabled) 0
+            (cl-nes::ppu-dot disabled) 0)
+      (ppu-tick! disabled 341)
+      (expect (cl-nes::ppu-vram-address disabled) :to-be 0))
+    (with-fixture-ppu (enabled (make-fixture-cartridge))
+      (setf (ppu-mask enabled) #x08
+            (cl-nes::ppu-vram-address enabled) 0
+            (cl-nes::ppu-temporary-address enabled) 1
+            (cl-nes::ppu-scanline enabled) 0
+            (cl-nes::ppu-dot enabled) 0)
+      (ppu-tick! enabled 341)
+      (expect (cl-nes::ppu-vram-address enabled) :to-be #x1003)
+      (expect (cl-nes::ppu-address-bus enabled) :to-be #x2003)))
+  (it "renders CPU-written CHR-RAM through the headless NES PPU"
+    (let* ((cartridge (make-fixture-cartridge))
+           (nes (make-nes :cartridge cartridge))
+           (bus (nes-bus nes))
+           (ppu (nes-ppu nes)))
+      (flet ((cpu-write-vram! (address value)
+               (bus-write! bus #x2006 (ldb (byte 8 8) address))
+               (bus-write! bus #x2006 (ldb (byte 8 0) address))
+               (bus-write! bus #x2007 value)))
+        (cpu-write-vram! #x0000 #xFF)
+        (cpu-write-vram! #x0008 0)
+        (cpu-write-vram! #x2000 0)
+        (cpu-write-vram! #x23C0 0)
+        (cpu-write-vram! #x3F00 #x0F)
+        (cpu-write-vram! #x3F01 #x21)
+        (cpu-write-vram! #x2000 0)
+        (bus-write! bus #x2001 #x0A))
+      (setf (cl-nes::ppu-scanline ppu) 261
+            (cl-nes::ppu-vram-address ppu) 0
+            (cl-nes::ppu-temporary-address ppu) 0
+            (cl-nes::ppu-dot ppu) 0)
+      (ppu-tick! ppu 350)
+      (expect (aref (ppu-framebuffer ppu) 8)
               :to-be #x21))))

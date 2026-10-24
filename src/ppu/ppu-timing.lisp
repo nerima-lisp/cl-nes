@@ -265,7 +265,7 @@
     (%ppu-advance-rendering-mask! ppu)
     (let* ((scanline (ppu-scanline ppu))
            (rendering-scanline-p (%ppu-rendering-scanline-p ppu))
-           (pipeline-scanline-p (or (< scanline 240) (= scanline 261))))
+           (pipeline-scanline-p rendering-scanline-p))
       (incf (ppu-dot ppu))
       (when (and (< scanline +ppu-height+)
                  (<= 1 (ppu-dot ppu) 256))

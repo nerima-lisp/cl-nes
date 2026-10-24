@@ -142,7 +142,8 @@
     "updates scroll state at dot ~D on scanline ~D"
     (dot scanline temporary expected)
     (let ((ppu (make-ppu (make-fixture-cartridge))))
-      (setf (cl-nes::ppu-scanline ppu) scanline
+      (setf (ppu-mask ppu) #x08
+            (cl-nes::ppu-scanline ppu) scanline
             (cl-nes::ppu-dot ppu) (1- dot)
             (cl-nes::ppu-temporary-address ppu) temporary
             (cl-nes::ppu-vram-address ppu)
