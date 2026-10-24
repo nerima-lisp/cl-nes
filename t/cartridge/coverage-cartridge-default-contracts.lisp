@@ -33,4 +33,31 @@
       (expect (cartridge-mapper4-variant mmc4) :to-be :mmc3-alt)
       (expect (cartridge-mapper mapper2) :to-be 2)
       (expect (cartridge-submapper mapper2) :to-be 1)
-      (expect (cl-nes::cartridge-bus-conflict-p mapper2) :to-be nil))))
+      (expect (cl-nes::cartridge-bus-conflict-p mapper2) :to-be nil)))
+  (it "distinguishes UxROM submapper 1 and 2 bus conflicts"
+    (let ((submapper-1-image
+            (make-ines-image :prg-banks 4
+                             :flags6 #x20
+                             :flags7 #x08
+                             :byte8 #x10))
+          (submapper-2-image
+            (make-ines-image :prg-banks 4
+                             :flags6 #x20
+                             :flags7 #x08
+                             :byte8 #x20)))
+      (dolist (image (list submapper-1-image submapper-2-image))
+        (setf (aref image cl-nes::+ines-header-size+) #x02
+              (aref image (+ cl-nes::+ines-header-size+
+                             (* 2 cl-nes::+prg-bank-size+))) #x22
+              (aref image (+ cl-nes::+ines-header-size+
+                             (* 3 cl-nes::+prg-bank-size+))) #x33))
+      (let ((submapper-1 (load-cartridge submapper-1-image))
+            (submapper-2 (load-cartridge submapper-2-image)))
+        (expect (cartridge-submapper submapper-1) :to-be 1)
+        (expect (cartridge-submapper submapper-2) :to-be 2)
+        (expect (cl-nes::cartridge-bus-conflict-p submapper-1) :to-be nil)
+        (expect (cl-nes::cartridge-bus-conflict-p submapper-2) :to-be t)
+        (cartridge-write-prg! submapper-1 #x8000 #x03)
+        (cartridge-write-prg! submapper-2 #x8000 #x03)
+        (expect (cartridge-read-prg submapper-1 #x8000) :to-be #x33)
+        (expect (cartridge-read-prg submapper-2 #x8000) :to-be #x22)))))

@@ -110,7 +110,8 @@
        :submapper submapper
        :bus-conflict-p
        (or (and (member mapper '(2 3 7 11))
-                (zerop submapper))
+                (or (zerop submapper)
+                    (and (= mapper 2) (= submapper 2))))
            (and (= mapper 30)
                 (or (= submapper 2)
                     (and (= submapper 0)
