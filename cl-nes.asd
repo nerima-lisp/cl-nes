@@ -250,3 +250,16 @@
   :pathname "t/compat"
   :serial t
   :components ((:file "package") (:file "corpus") (:file "runner")))
+
+(defsystem "cl-nes/compat/test"
+  :depends-on ("cl-nes/compat" "cl-weave")
+  :pathname "t/compat"
+  :serial t
+  :components ((:file "runner-contracts"))
+  :perform
+  (test-op (operation component)
+    (declare (ignore operation))
+    (unless (uiop:symbol-call :cl-weave :run-all
+                              :reporter :spec
+                              :pass-with-no-tests nil)
+      (error "cl-nes compatibility runner contracts failed."))))

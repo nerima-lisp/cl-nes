@@ -100,8 +100,27 @@
                                                (pathname (format nil "~A/" root))))
     (format nil "~A/" root)))
 
+(defparameter *compat-input-sequences*
+  `(("memory" . ((1 . ,cl-nes:+button-start+)
+                 (181 . 0)))))
+
+(defun %compat-input-continuation (id controller)
+  (let ((sequence (cdr (assoc id *compat-input-sequences* :test #'string=)))
+        (frame 0)
+        (buttons 0))
+    (when sequence
+      (lambda (nes)
+        (declare (ignore nes))
+        (incf frame)
+        (dolist (input sequence)
+          (when (<= (car input) frame)
+            (setf buttons (cdr input))))
+        (cl-nes:controller-set-buttons! controller buttons)))))
+
 (defun %run-once (path id write-image)
-  (let* ((nes (make-nes :cartridge (load-cartridge path)))
+  (let* ((controller-1 (cl-nes:make-controller))
+         (nes (make-nes :cartridge (load-cartridge path)
+                        :controller-1 controller-1))
          (audio (make-nes-audio-buffer :size 4096))
          (audio-samples 0)
          (first-hash nil)
@@ -120,7 +139,9 @@
      (lambda (buffer)
        (loop for sample across (nes-audio-buffer-samples buffer)
              repeat (nes-audio-buffer-count buffer)
-             do (when (not (zerop sample)) (incf audio-samples)))))
+             do (when (not (zerop sample)) (incf audio-samples))))
+     :input-continuation
+     (%compat-input-continuation id controller-1))
     (when write-image
       (%write-png
        (merge-pathnames (format nil "~A.png" id) (pathname (%artifact-root)))
