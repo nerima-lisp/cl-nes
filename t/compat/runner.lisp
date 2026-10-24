@@ -100,6 +100,7 @@
                                                (pathname (format nil "~A/" root))))
     (format nil "~A/" root)))
 
+;; The ROM enables rendering before polling Start, which advances its idle loop.
 (defparameter *compat-input-sequences*
   `(("memory" . ((1 . ,cl-nes:+button-start+)
                  (181 . 0)))))
