@@ -5,7 +5,7 @@
     (let ((apu (make-apu)))
       (apu-write-register! apu #x4017 0)
       (expect (cl-nes::apu-frame-event-offset apu) :to-be 1)
-      (apu-tick! apu 3)
+      (apu-tick! apu 5)
       (expect (cl-nes::apu-frame-event-offset apu) :to-be 0)))
 
   (it "matches AccuracyCoin Test C at the four-step terminal-event boundary"
@@ -70,3 +70,33 @@
       (apu-tick! apu 1)
       (expect (cl-nes::apu-frame-step apu) :to-be 0)
       (expect (cl-nes::apu-frame-cycle apu) :to-be 0))))
+
+(describe "APU frame reset parity contracts"
+  (it "counts the reset tick after four post-write cycles on parity zero"
+    (let* ((apu (make-apu))
+           (bus (make-bus :apu apu)))
+      (setf (cl-nes::bus-cpu-access-hook bus)
+            (lambda () (apu-tick! apu 1)))
+      (bus-write! bus #x4017 0)
+      (expect (cl-nes::apu-frame-reset-delay apu) :to-be 4)
+      (apu-tick! apu 3)
+      (expect (cl-nes::apu-frame-reset-delay apu) :to-be 1)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-frame-reset-delay apu) :to-be 0)
+      (expect (cl-nes::apu-frame-cycle apu) :to-be 1)))
+
+  (it "counts the reset application tick after the parity-one delay"
+    (let* ((apu (make-apu))
+           (bus (make-bus :apu apu)))
+      (setf (cl-nes::bus-cpu-access-hook bus)
+            (lambda () (apu-tick! apu 1)))
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-cycle-parity apu) :to-be 1)
+      (bus-write! bus #x4017 0)
+      (expect (cl-nes::apu-frame-reset-delay apu) :to-be 3)
+      (apu-tick! apu 2)
+      (expect (cl-nes::apu-frame-reset-delay apu) :to-be 1)
+      (expect (cl-nes::apu-frame-cycle apu) :to-be 4)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-frame-reset-delay apu) :to-be 0)
+      (expect (cl-nes::apu-frame-cycle apu) :to-be 1))))

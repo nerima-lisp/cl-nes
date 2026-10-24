@@ -32,8 +32,8 @@
   (it "delays frame mode changes and preserves console registers"
     (let ((apu (make-apu)))
       (apu-write-register! apu #x4017 #x80)
-      (expect (cl-nes::apu-frame-reset-delay apu) :to-be 3)
-      (apu-tick! apu 3)
+      (expect (cl-nes::apu-frame-reset-delay apu) :to-be 5)
+      (apu-tick! apu 5)
       (expect (cl-nes::apu-five-step-p apu) :to-be t)
       (apu-write-register! apu #x4017 0)
       (expect (cl-nes::apu-frame-reset-delay apu) :to-be 4)

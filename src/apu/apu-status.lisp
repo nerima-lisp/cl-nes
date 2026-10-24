@@ -32,15 +32,15 @@
         (setf (apu-dmc-bytes-remaining dmc) 0))))
 
 (defun %apu-write-frame-counter! (apu value)
+  (when (= (apu-frame-reset-delay apu) 1)
+    (%apu-apply-frame-reset! apu))
+  ;; The write cycle is counted immediately; 5/4 ticks implement the 4/3-cycle delay.
   (setf (apu-frame-last-five-step-p apu) (logbitp 7 value)
         (apu-frame-reset-delay apu)
-        (if (zerop (apu-cycle-parity apu)) 3 4)
+        (if (zerop (apu-cycle-parity apu)) 5 4)
         (apu-frame-event-offset apu) (if (zerop (apu-cycle-parity apu)) 1 0)
         (apu-frame-reset-five-step-p apu) (logbitp 7 value)
         (apu-frame-reset-irq-inhibit-p apu) (logbitp 6 value)
-        ;; The inhibit bit takes effect at the write.  The
-        ;; sequencer mode itself still changes after its
-        ;; hardware reset delay.
         (apu-frame-irq-inhibit-p apu) (logbitp 6 value))
   (when (logbitp 6 value)
     (setf (apu-frame-irq-pending-p apu) nil
