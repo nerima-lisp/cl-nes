@@ -65,7 +65,10 @@
       (setf (cl-nes::ppu-dot ppu) 7)
       (cl-nes::%ppu-clock-pipeline! ppu)
       (setf (cl-nes::ppu-dot ppu) 8)
-      (cl-nes::%ppu-clock-pipeline! ppu)
+      (progn
+        (cl-nes::%ppu-clock-pipeline! ppu)
+        (loop repeat 8 do
+          (cl-nes::%ppu-shift-background-registers! ppu)))
       (setf (cl-nes::ppu-background-shift-low ppu) #x8000)
       (ppu-write-vram! ppu #x3F01 #x21)
       (multiple-value-bind (color solid)
@@ -89,7 +92,10 @@
       (setf (cl-nes::ppu-dot ppu) 7)
       (cl-nes::%ppu-clock-pipeline! ppu)
       (setf (cl-nes::ppu-dot ppu) 8)
-      (cl-nes::%ppu-clock-pipeline! ppu)
+      (progn
+        (cl-nes::%ppu-clock-pipeline! ppu)
+        (loop repeat 8 do
+          (cl-nes::%ppu-shift-background-registers! ppu)))
       (setf (cl-nes::ppu-background-shift-low ppu) #x8000)
       (ppu-write-vram! ppu #x3F05 #x22)
       (multiple-value-bind (color solid)

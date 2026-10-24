@@ -152,33 +152,28 @@
            (%ppu-address-bus! ppu address)
            (setf (ppu-next-pattern-high ppu)
                  (%ppu-mmc5-background-chr ppu address split-p exram)))))
-      ((0) (setf (ppu-background-shift-low ppu)
-                 (logand #xFFFF
-                         (logior (ash (ppu-next-pattern-low ppu) 8)
-                                 (ldb (byte 8 0)
-                                      (ppu-background-shift-low ppu))))
-                 (ppu-background-shift-high ppu)
-                 (logand #xFFFF
-                         (logior (ash (ppu-next-pattern-high ppu) 8)
-                                 (ldb (byte 8 0)
-                                      (ppu-background-shift-high ppu))))
-                 (ppu-attribute-shift-low ppu)
-                 (logand #xFFFF
-                         (logior (ash (if (logbitp 0 (ppu-next-attribute ppu))
-                                           #xFF
-                                           0)
-                                       8)
-                                 (ldb (byte 8 0)
-                                      (ppu-attribute-shift-low ppu))))
-                 (ppu-attribute-shift-high ppu)
-                 (logand #xFFFF
-                         (logior (ash (if (logbitp 1 (ppu-next-attribute ppu))
-                                           #xFF
-                                           0)
-                                       8)
-                                 (ldb (byte 8 0)
-                                      (ppu-attribute-shift-high ppu)))))
-            (%ppu-horizontal-increment! ppu)))))
+      ((0)
+       (setf (ppu-background-shift-low ppu)
+             (logand #xFFFF
+                     (logior (logand #xFF00 (ppu-background-shift-low ppu))
+                             (ldb (byte 8 0) (ppu-next-pattern-low ppu))))
+             (ppu-background-shift-high ppu)
+             (logand #xFFFF
+                     (logior (logand #xFF00 (ppu-background-shift-high ppu))
+                             (ldb (byte 8 0) (ppu-next-pattern-high ppu))))
+             (ppu-attribute-shift-low ppu)
+             (logand #xFFFF
+                     (logior (logand #xFF00 (ppu-attribute-shift-low ppu))
+                             (if (logbitp 0 (ppu-next-attribute ppu))
+                                 #xFF
+                                 0)))
+             (ppu-attribute-shift-high ppu)
+             (logand #xFFFF
+                     (logior (logand #xFF00 (ppu-attribute-shift-high ppu))
+                             (if (logbitp 1 (ppu-next-attribute ppu))
+                                 #xFF
+                                 0))))
+       (%ppu-horizontal-increment! ppu)))))
 
 (defun %ppu-sprite-fetch! (ppu dot)
   (let* ((sprite (floor (- dot 257) 8))

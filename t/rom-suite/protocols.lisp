@@ -141,13 +141,13 @@
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED, 2-10 are README failure codes")
                (:id "sprite-hit-02" :path "sprite_hit_tests_2005.10.05/02.alignment.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-03" :path "sprite_hit_tests_2005.10.05/03.corners.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-04" :path "sprite_hit_tests_2005.10.05/04.flip.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-05" :path "sprite_hit_tests_2005.10.05/05.left_clip.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
@@ -159,13 +159,13 @@
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-08" :path "sprite_hit_tests_2005.10.05/08.double_height.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-09" :path "sprite_hit_tests_2005.10.05/09.timing_basics.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-10" :path "sprite_hit_tests_2005.10.05/10.timing_order.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
                 :failure-text "result $F8; 1 means PASSED")
                (:id "sprite-hit-11" :path "sprite_hit_tests_2005.10.05/11.edge_timing.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F8 :max-frames 360 :state :pass
