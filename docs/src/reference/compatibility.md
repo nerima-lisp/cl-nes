@@ -8,7 +8,7 @@ hardware compatibility.
 The parser accepts iNES 1.0 and the supported subset of NES 2.0 headers. The
 supported mapper numbers are:
 
-0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28, 34, 66, 69, 71, 79, and 87.
+0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28, 30, 34, 66, 69, 71, 79, 87, and 113.
 
 PRG-ROM and CHR-ROM are banked according to the mapper. A cartridge with no
 CHR-ROM receives writable CHR-RAM. PRG-RAM, battery-backed state, four-screen
@@ -24,6 +24,21 @@ Mapper 79 selects 32 KiB PRG and 8 KiB CHR banks. Mapper 71 uses a UxROM-like
 layout with a switchable lower 16 KiB PRG bank and a fixed upper 16 KiB bank.
 Mapper 87 selects its CHR bank through writes in the `$6000-$7FFF` range and
 does not expose PRG-RAM through that range.
+
+Mapper 30 selects a lower 16 KiB PRG bank while keeping the upper 16 KiB bank
+fixed to the final PRG bank. It also selects 8 KiB banks of CHR-RAM and applies
+submapper-specific register-write and bus-conflict behavior. Submappers 0
+through 4 are accepted, and PRG-RAM is not exposed. Flash programming, flash
+persistence, and submapper 4 LED outputs are not modeled. Header mirroring and
+submapper 3 register mirroring are supported. See the [UNROM 512 board
+description](https://www.nesdev.org/wiki/UNROM512) for the board variants
+represented by Mapper 30.
+
+Mapper 113 selects 32 KiB PRG and 8 KiB CHR banks. Writes to the register's
+decoded address aliases select both banks and horizontal or vertical nametable
+mirroring. The mapper does not expose PRG-RAM. See the [Mapper 113
+description](https://www.nesdev.org/wiki/INES_Mapper_113) for the register
+layout and address decoding.
 
 ## ROM verification evidence
 

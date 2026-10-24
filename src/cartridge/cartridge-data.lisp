@@ -10,11 +10,14 @@
                             battery-backed-p four-screen-p
                             (submapper 0) bus-conflict-p
                             (chr-writable-p (null chr-rom))
-                            (prg-ram-size +prg-ram-bank-size+)
+                            (prg-ram-size (if (member mapper (list 30 113)) 0 +prg-ram-bank-size+))
                             (mapper4-variant :mmc3))
   (%ensure-supported-mapper! mapper)
+  (%ensure-valid-mapper30-submapper! mapper submapper)
   (%ensure-valid-mapper4-variant! mapper4-variant)
   (%ensure-valid-prg-ram-size! prg-ram-size)
+  (%ensure-mapper-has-no-prg-ram! mapper prg-ram-size)
+  (%ensure-mapper30-chr-ram! mapper chr-writable-p)
   (let ((prg (%octet-vector prg-rom))
         (chr (%octet-vector (or chr-rom (%default-chr-rom mapper))))
         (prg-ram (make-array prg-ram-size

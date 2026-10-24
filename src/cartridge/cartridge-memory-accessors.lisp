@@ -30,6 +30,8 @@
              (+ (* fixed-bank +prg-bank-size+)
                 (- offset +prg-bank-size+)))))
       (4 (%mapper4-prg-offset cartridge address))
+      (30 (%mapper30-prg-offset cartridge address))
+      (113 (%mapper113-prg-offset cartridge address))
       ((7 11 34 66 87) (%banked-32k-prg-offset cartridge address))
       (69 (%mapper69-prg-offset cartridge address))
       (79 (%mapper79-prg-offset cartridge address))
@@ -47,6 +49,8 @@
     ((= (cartridge-mapper cartridge) 28)
      (or (<= #x5000 address #x5FFF)
          (<= #x8000 address #xFFFF)))
+    ((= (cartridge-mapper cartridge) 113)
+     (%mapper113-register-address-p address))
     (t (<= #x8000 address #xFFFF))))
 
 (defun %cartridge-bus-conflict-value (cartridge address value)
@@ -143,8 +147,8 @@
 
 (defun cartridge-write-prg! (cartridge address value &optional cpu-cycle)
   (when (%cartridge-prg-write-address-p cartridge address)
-    (let ((value (if (and (cartridge-bus-conflict-p cartridge)
-                          (member (cartridge-mapper cartridge) '(2 3 7 11)))
+      (let ((value (if (and (cartridge-bus-conflict-p cartridge)
+                            (member (cartridge-mapper cartridge) '(2 3 7 11 30)))
                      (%cartridge-bus-conflict-value cartridge address value)
                      value)))
       (case (cartridge-mapper cartridge)
@@ -161,6 +165,8 @@
         (79 (%mapper79-write! cartridge value))
         (22 (%mapper22-write! cartridge address value))
         (28 (%mapper28-write! cartridge address value))
+        (30 (%mapper30-write! cartridge address value))
+        (113 (%mapper113-write! cartridge address value))
         ((9 10) (%mapper9-10-write! cartridge address value))
         (34
          (if (%mapper34-nina-p cartridge)

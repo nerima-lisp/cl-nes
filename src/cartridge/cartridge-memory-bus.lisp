@@ -42,6 +42,9 @@
 (defun cartridge-cpu-write! (cartridge address value &optional cpu-cycle)
   (when cartridge
     (cond
+      ((and (= (cartridge-mapper cartridge) 113)
+            (%mapper113-register-address-p address))
+       (cartridge-write-prg! cartridge address value cpu-cycle))
       ((and (= (cartridge-mapper cartridge) 79)
             (= address #x4100))
        (cartridge-write-prg! cartridge address value))

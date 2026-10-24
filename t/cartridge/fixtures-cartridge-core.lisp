@@ -10,7 +10,9 @@
 
 (defun make-patterned-cartridge
     (&key mapper prg-banks chr-banks
-          (prg-ram-size (* 8 cl-nes::+prg-ram-bank-size+))
+          (prg-ram-size (if (member mapper (list 30 113))
+                              0
+                              (* 8 cl-nes::+prg-ram-bank-size+)))
           (mapper4-variant :mmc3)
           (submapper 0)
           four-screen-p)

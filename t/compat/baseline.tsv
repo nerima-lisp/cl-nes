@@ -1,10 +1,10 @@
 # id\tstatus\tmapper from the 1800-frame shard run
-31in1realgame-multicart	unsupported-mapper	113
+31in1realgame-multicart	pass	113
 3in12ppak	pass	0
 ambushed	pass	0
 assimilate	pass	1
-babelblox	unsupported-mapper	30
-blackboxchallenge	unsupported-mapper	30
+babelblox	pass	30
+blackboxchallenge	pass	30
 blaster	pass	0
 bombarray	pass	0
 bootee	pass	0

@@ -1,22 +1,37 @@
 (in-package #:cl-nes)
 
 (defun %ensure-supported-mapper! (mapper)
-  (unless (member mapper '(0 1 2 3 4 5 7 9 10 11 22 28 34 66 69 71 79 87))
+  (unless (member mapper '(0 1 2 3 4 5 7 9 10 11 22 28 30 34 66 69 71 79 87 113))
     (error 'unsupported-mapper :number mapper)))
 
 (defun %ensure-valid-mapper4-variant! (mapper4-variant)
   (unless (member mapper4-variant '(:mmc3 :mmc3-rev-a :mmc6 :mmc3-alt))
     (error 'invalid-rom
            :reason "MMC3 variant must be :MMC3, :MMC3-REV-A, :MMC6, or :MMC3-ALT")))
+(defun %ensure-valid-mapper30-submapper! (mapper submapper)
+  (when (and (= mapper 30)
+             (not (member submapper (list 0 1 2 3 4))))
+    (error (quote invalid-rom)
+           :reason "Mapper 30 submapper must be 0, 1, 2, 3, or 4")))
+(defun %ensure-mapper30-chr-ram! (mapper chr-writable-p)
+  (when (and (= mapper 30)
+             (not chr-writable-p))
+    (error (quote invalid-rom)
+           :reason "Mapper 30 requires CHR-RAM")))
+(defun %ensure-mapper-has-no-prg-ram! (mapper prg-ram-size)
+  (when (and (member mapper (list 30 113))
+             (plusp prg-ram-size))
+    (error (quote invalid-rom)
+           :reason "Mapper 30 and 113 do not support PRG-RAM")))
 
 (defun %ensure-valid-prg-ram-size! (prg-ram-size)
   (unless (and (integerp prg-ram-size) (>= prg-ram-size 0))
     (error 'invalid-rom :reason "PRG-RAM size must be a non-negative integer")))
 
 (defun %default-chr-rom (mapper)
-  (make-array (if (= mapper 28)
-                  (* 4 +chr-bank-size+)
-                  +chr-bank-size+)
+  (make-array (case mapper
+                ((28 30) (* 4 +chr-bank-size+))
+                (otherwise +chr-bank-size+))
               :element-type '(unsigned-byte 8)
               :initial-element 0))
 
@@ -56,6 +71,22 @@
                (zerop (mod (length prg) (* 32 1024))))
     (error 'invalid-rom :reason "32 KiB banked PRG data is required")))
 
+(defun %ensure-mapper30-prg-layout! (prg)
+  (unless (and (<= (* 2 +prg-bank-size+)
+                   (length prg)
+                   (* 32 +prg-bank-size+))
+               (zerop (mod (length prg) +prg-bank-size+)))
+    (error 'invalid-rom
+           :reason "Mapper 30 PRG data must use 16 KiB banks up to 512 KiB")))
+
+(defun %ensure-mapper113-prg-layout! (prg)
+  (unless (and (<= (* 2 +prg-bank-size+)
+                   (length prg)
+                   (* 8 2 +prg-bank-size+))
+               (zerop (mod (length prg) (* 2 +prg-bank-size+))))
+    (error 'invalid-rom
+           :reason "Mapper 113 PRG data must use 32 KiB banks up to 256 KiB")))
+
 (defun %ensure-vrc2-prg-layout! (prg)
   (unless (and (>= (length prg) +prg-bank-size+)
                (zerop (mod (length prg) +prg-bank-8k-size+)))
@@ -87,6 +118,8 @@
     ((= mapper 1) (%ensure-mmc1-prg-layout! prg))
     ((= mapper 3) (%ensure-cnrom-prg-layout! prg))
     ((= mapper 7) (%ensure-axrom-prg-layout! prg))
+    ((= mapper 30) (%ensure-mapper30-prg-layout! prg))
+    ((= mapper 113) (%ensure-mapper113-prg-layout! prg))
     ((member mapper '(11 34 66 87)) (%ensure-32k-banked-prg-layout! prg))
     ((= mapper 71) (%ensure-uxrom-prg-layout! prg))
     ((= mapper 69) (%ensure-valid-prg-layout! 4 prg))
@@ -98,6 +131,13 @@
 
 (defun %ensure-valid-chr-layout! (mapper chr)
   (unless (case mapper
+            (30 (member (length chr)
+                        (list +chr-bank-size+
+                              (* 2 +chr-bank-size+)
+                              (* 4 +chr-bank-size+))))
+            (113 (and (<= +chr-bank-size+ (length chr)
+                          (* 16 +chr-bank-size+))
+                      (zerop (mod (length chr) +chr-bank-size+))))
             (22 (and (plusp (length chr))
                      (zerop (mod (length chr) +chr-bank-1k-size+))))
             (3 (and (<= +chr-bank-size+ (length chr) (* 4 +chr-bank-size+))

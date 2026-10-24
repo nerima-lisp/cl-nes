@@ -25,4 +25,21 @@
     "rejects malformed constructor options as ~A"
     (condition-type &rest initargs)
     (let ((condition (apply #'make-cartridge-condition initargs)))
-      (expect (typep condition condition-type) :to-be t))))
+      (expect (typep condition condition-type) :to-be t)))
+  (it "rejects unsupported Mapper 30 submappers, CHR-ROM, and PRG-RAM"
+    (expect-cartridge-condition invalid-rom
+      :mapper 30
+      :submapper 5
+      :prg-rom (contract-octets #x8000))
+    (expect-cartridge-condition invalid-rom
+      :mapper 30
+      :prg-ram-size #x2000
+      :prg-rom (contract-octets #x8000))
+    (expect-cartridge-condition invalid-rom
+      :mapper 30
+      :chr-rom (contract-octets #x2000)
+      :prg-rom (contract-octets #x8000))
+    (expect-cartridge-condition invalid-rom
+      :mapper 113
+      :prg-ram-size #x2000
+      :prg-rom (contract-octets #x8000))))

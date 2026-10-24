@@ -6,8 +6,8 @@ cl-nes is a headless Nintendo Entertainment System core written in Common
 Lisp. Its only runtime dependency is [cl-host-kit](https://github.com/nerima-lisp/cl-host-kit),
 used for cartridge ROM file reads. It supports iNES cartridges, the
 supported subset of NES 2.0, mappers 0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28,
-34, 66, 69, 71, 79, and 87, and headless CPU, PPU, controller, and APU
-execution.
+30, 34, 66, 69, 71, 79, 87, and 113, and headless CPU, PPU, controller, and
+APU execution.
 
 ## Quick Start
 
@@ -147,20 +147,21 @@ select `mmc3`, `mmc6`, or `mmc3-alt` explicitly for mapper 4. The core API
 additionally accepts `:mmc3-rev-a` for the MMC3 revision-A contract; the
 frontend option is intentionally narrower.
 
-The implemented mapper set is 0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28, 34,
-66, 69, 71, 79, and 87. Mapper 4 defaults to MMC3 behavior; NES 2.0 submapper
-1 selects MMC6 and submapper 2 selects the alternate MMC3 behavior unless an
-explicit frontend option is supplied.
+The implemented mapper set is 0, 1, 2, 3, 4, 5, 7, 9, 10, 11, 22, 28, 30,
+34, 66, 69, 71, 79, 87, and 113. Mapper 4 defaults to MMC3 behavior; NES 2.0
+submapper 1 selects MMC6 and submapper 2 selects the alternate MMC3 behavior
+unless an explicit frontend option is supplied.
 
 Known limitations include intentionally coarse timing in selected PPU and
 mapper paths, incomplete exact CPU/PPU trace compatibility, selected APU/DMA
 edge cases, no Sunsoft 5B audio extension for mapper 69, and no built-in
-window or audio device in the core. Unsupported mapper numbers, unsupported
-header features, malformed ROMs, and unsupported CPU opcodes signal
-conditions. `rom-test` is a bounded startup/protocol smoke check, not a full
-instruction, timing, audio, mapper, or game-compatibility certification. The
-commands do not download or distribute ROM files; use a legally obtained
-corpus. See the
+window or audio device in the core. Mapper 30 flash programming, flash
+persistence, and submapper 4 LED outputs are not modeled. Unsupported mapper
+numbers, unsupported header features, malformed ROMs, and unsupported CPU
+opcodes signal conditions. `rom-test` performs a bounded startup/protocol
+smoke check. It does not certify instruction, timing, audio, mapper, or game
+compatibility. The commands do not download or distribute ROM files; use a
+legally obtained corpus. See the
 [compatibility reference](docs/src/reference/compatibility.md) for the
 ratcheted ROM results.
 

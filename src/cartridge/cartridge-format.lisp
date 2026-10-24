@@ -48,8 +48,24 @@
                                (ash (logand byte8 #x0F) 8)
                                0)))
            (trainer-p (logbitp 2 flags6))
-           (four-screen-p (logbitp 3 flags6))
-           (mirroring (if (logbitp 0 flags6) :vertical :horizontal))
+           (four-screen-p
+             (if (= mapper 30)
+                 (and (/= submapper 3)
+                      (logbitp 3 flags6)
+                      (logbitp 0 flags6))
+                 (logbitp 3 flags6)))
+           (mirroring
+             (cond
+               ((and (= mapper 30) (= submapper 3)) :horizontal)
+               ((and (= mapper 30)
+                     (/= submapper 3)
+                     (logbitp 3 flags6)
+                     (not (logbitp 0 flags6)))
+                :single-screen-lower)
+               ((= mapper 30)
+                (if (logbitp 0 flags6) :horizontal :vertical))
+               ((logbitp 0 flags6) :vertical)
+               (t :horizontal)))
            (battery-backed-p (logbitp 1 flags6))
            (chr-ram-size (if nes2-p
                              (+ (%nes2-ram-size
@@ -57,13 +73,16 @@
                                 (%nes2-ram-size
                                  (ldb (byte 4 4) (aref octets 11))))
                              0))
-           (prg-ram-size (if nes2-p
-                             (+ (%nes2-ram-size
-                                 (ldb (byte 4 0) (aref octets 10)))
-                                (%nes2-ram-size
-                                 (ldb (byte 4 4) (aref octets 10))))
-                             (* (if (zerop byte8) 1 byte8)
-                                +prg-ram-bank-size+)))
+           (prg-ram-size
+             (if (member mapper (list 30 113))
+                 0
+                 (if nes2-p
+                     (+ (%nes2-ram-size
+                         (ldb (byte 4 0) (aref octets 10)))
+                        (%nes2-ram-size
+                         (ldb (byte 4 4) (aref octets 10))))
+                     (* (if (zerop byte8) 1 byte8)
+                        +prg-ram-bank-size+))))
            (prg-banks (floor prg-size +prg-bank-size+))
            (chr-banks (floor chr-size +chr-bank-size+))
            (effective-mapper4-variant
@@ -89,8 +108,13 @@
                                   :initial-element 0)))
        :mapper mapper
        :submapper submapper
-       :bus-conflict-p (and (member mapper '(2 3 7 11))
-                            (zerop submapper))
+       :bus-conflict-p
+       (or (and (member mapper '(2 3 7 11))
+                (zerop submapper))
+           (and (= mapper 30)
+                (or (= submapper 2)
+                    (and (= submapper 0)
+                         (not battery-backed-p)))))
        :mirroring mirroring
        :battery-backed-p battery-backed-p
        :four-screen-p four-screen-p

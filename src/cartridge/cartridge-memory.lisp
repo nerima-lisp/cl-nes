@@ -41,6 +41,8 @@
 
 (defun %cartridge-chr-offset-by-mapper (cartridge address &optional (sprite-p t))
   (case (cartridge-mapper cartridge)
+    (30 (%mapper30-chr-offset cartridge address))
+    (113 (%mapper113-chr-offset cartridge address))
     (1 (%mapper1-chr-offset cartridge address))
     ((3 11 28)
      (+ (* (cartridge-chr-bank cartridge) +chr-bank-size+)
