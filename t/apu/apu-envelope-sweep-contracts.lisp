@@ -98,3 +98,91 @@
         (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 47)
         (expect (cl-nes::apu-triangle-length-counter triangle) :to-be 47)
         (expect (cl-nes::apu-noise-length-counter noise) :to-be 47))))
+
+(describe "APU length counter timing contracts"
+  (it "expires a reload before the next length clock"
+    (with-fixture-apu (apu pulse)
+      (setf (cl-nes::apu-pulse-enabled-p pulse) t
+            (cl-nes::apu-pulse-length-counter pulse) 2)
+      (seed-apu-frame-state! apu :frame-step 1 :frame-cycle 14911)
+      (apu-write-register! apu #x4003 #x38)
+      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 6)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 6)
+      (expect (cl-nes::apu-pulse-length-reload-p pulse) :to-be nil)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 5)))
+
+  (it "ignores a same-cycle reload when the pre-clock counter is nonzero"
+    (with-fixture-apu (apu pulse)
+      (setf (cl-nes::apu-pulse-enabled-p pulse) t
+            (cl-nes::apu-pulse-length-counter pulse) 2)
+      (seed-apu-frame-state! apu :frame-step 1 :frame-cycle 14912)
+      (apu-write-register! apu #x4003 #x38)
+      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 2)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 1)))
+
+  (it "accepts a same-cycle reload when the pre-clock counter is zero"
+    (with-fixture-apu (apu pulse)
+      (setf (cl-nes::apu-pulse-enabled-p pulse) t
+            (cl-nes::apu-pulse-length-counter pulse) 0)
+      (seed-apu-frame-state! apu :frame-step 1 :frame-cycle 14912)
+      (apu-write-register! apu #x4003 #x38)
+      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 6)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 6)))
+
+  (it "applies length halt writes after the write CPU clock"
+    (with-fixture-apu (apu pulse)
+      (setf (cl-nes::apu-pulse-enabled-p pulse) t
+            (cl-nes::apu-pulse-length-counter pulse) 1)
+      (seed-apu-frame-state! apu :frame-step 1 :frame-cycle 14911)
+      (apu-write-register! apu #x4000 #x30)
+      (expect (cl-nes::apu-envelope-loop-p
+               (cl-nes::apu-pulse-envelope pulse))
+              :to-be nil)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-envelope-loop-p
+               (cl-nes::apu-pulse-envelope pulse))
+              :to-be t)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 1))
+    (with-fixture-apu (apu pulse)
+      (setf (cl-nes::apu-pulse-enabled-p pulse) t
+            (cl-nes::apu-pulse-length-counter pulse) 1)
+      (seed-apu-frame-state! apu :frame-step 1 :frame-cycle 14912)
+      (apu-write-register! apu #x4000 #x30)
+      (expect (cl-nes::apu-envelope-loop-p
+               (cl-nes::apu-pulse-envelope pulse))
+              :to-be nil)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 0)
+      (expect (cl-nes::apu-envelope-loop-p
+               (cl-nes::apu-pulse-envelope pulse))
+              :to-be t))
+    (with-fixture-apu (apu pulse)
+      (setf (cl-nes::apu-pulse-enabled-p pulse) t
+            (cl-nes::apu-pulse-length-counter pulse) 1
+            (cl-nes::apu-envelope-loop-p
+             (cl-nes::apu-pulse-envelope pulse)) t)
+      (seed-apu-frame-state! apu :frame-step 1 :frame-cycle 14911)
+      (apu-write-register! apu #x4000 #x10)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-envelope-loop-p
+               (cl-nes::apu-pulse-envelope pulse))
+              :to-be nil)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 0))
+    (with-fixture-apu (apu pulse)
+      (setf (cl-nes::apu-pulse-enabled-p pulse) t
+            (cl-nes::apu-pulse-length-counter pulse) 1
+            (cl-nes::apu-envelope-loop-p
+             (cl-nes::apu-pulse-envelope pulse)) t)
+      (seed-apu-frame-state! apu :frame-step 1 :frame-cycle 14912)
+      (apu-write-register! apu #x4000 #x10)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 1)
+      (expect (cl-nes::apu-envelope-loop-p
+               (cl-nes::apu-pulse-envelope pulse))
+              :to-be nil))))

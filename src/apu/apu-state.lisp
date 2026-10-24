@@ -90,9 +90,11 @@
    (frame-reset-five-step-p nil nil apu-frame-reset-five-step-p)
    (frame-reset-irq-inhibit-p nil nil apu-frame-reset-irq-inhibit-p)
    (cycle-parity 0 fixnum apu-cycle-parity)
+   (length-halt-write-mask 0 fixnum)
+   (length-halt-write-values 0 fixnum)
    (memory-reader nil nil apu-memory-reader))
   :reset-preserve (memory-reader)
-  :exclude (memory-reader)
+  :exclude (memory-reader length-halt-write-mask length-halt-write-values)
   :console-reset apu-console-reset!
   :console-reset-values (((frame-reset-delay) 3))
   :console-preserve

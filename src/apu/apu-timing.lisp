@@ -49,8 +49,32 @@
                 (if (apu-five-step-p apu)
                     (setf (apu-frame-step apu) 0
                           (apu-frame-cycle apu) 0)
-                    ;; Four-step mode continues through FRAME-TAIL-STEP.
                     nil))
               (unless (= step (1- (length events)))
-                (incf (apu-frame-step apu))))))))
+                (incf (apu-frame-step apu)))))))
+    ;; Frame clocks use old halt bits; reloads suppress only a same-tick
+    ;; length clock. Expire markers, then apply queued halt-bit changes.
+    (setf (apu-pulse-length-reload-p (apu-pulse-1 apu)) nil
+          (apu-pulse-length-reload-p (apu-pulse-2 apu)) nil
+          (apu-triangle-length-reload-p (apu-triangle apu)) nil
+          (apu-noise-length-reload-p (apu-noise apu)) nil)
+    (let ((mask (apu-length-halt-write-mask apu))
+          (values (apu-length-halt-write-values apu)))
+      (when (logbitp 0 mask)
+        (setf (apu-envelope-loop-p
+               (apu-pulse-envelope (apu-pulse-1 apu)))
+              (logbitp 0 values)))
+      (when (logbitp 1 mask)
+        (setf (apu-envelope-loop-p
+               (apu-pulse-envelope (apu-pulse-2 apu)))
+              (logbitp 1 values)))
+      (when (logbitp 2 mask)
+        (setf (apu-triangle-control-p (apu-triangle apu))
+              (logbitp 2 values)))
+      (when (logbitp 3 mask)
+        (setf (apu-envelope-loop-p
+               (apu-noise-envelope (apu-noise apu)))
+              (logbitp 3 values)))
+      (setf (apu-length-halt-write-mask apu) 0
+            (apu-length-halt-write-values apu) 0)))
   apu)

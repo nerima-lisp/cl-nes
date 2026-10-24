@@ -25,6 +25,23 @@
     (%apu-clock-sweep! pulse-1 t)
     (%apu-clock-sweep! pulse-2 nil)))
 
+(defun %apu-length-clock-on-next-tick-p (apu)
+  (cond
+    ((= (apu-frame-reset-delay apu) 1)
+     (apu-frame-reset-five-step-p apu))
+    ((plusp (apu-frame-tail-step apu))
+     nil)
+    (t
+     (let* ((events (if (apu-five-step-p apu)
+                        +apu-five-step-events+
+                        +apu-four-step-events+))
+            (step (apu-frame-step apu)))
+       (and (< step (length events))
+            (>= (1+ (apu-frame-cycle apu)) (aref events step))
+            (or (= step 1)
+                (and (= step 3) (not (apu-five-step-p apu)))
+                (and (= step 4) (apu-five-step-p apu))))))))
+
 (defun %apu-frame-event! (apu)
   (case (apu-frame-step apu)
     (0 (%apu-clock-quarter-frame! apu))

@@ -234,7 +234,7 @@
                 :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
                 :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-05" :path "blargg_apu_2005.07.30/05.len_timing_mode0.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
                 :failure-text "result $F0 = 2; length timing mode 0 failed")
                (:id "blargg-apu-06" :path "blargg_apu_2005.07.30/06.len_timing_mode1.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :known-fail
@@ -252,7 +252,7 @@
                 :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
                 :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-11" :path "blargg_apu_2005.07.30/11.len_reload_timing.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
                 :failure-text "result $F0 = 2; length reload timing case failed")))
     (:suite "dma" :category :dma
      :subroms ((:id "dmc-dma" :path "dmc_dma_during_read4/dma_2007_read.nes"
