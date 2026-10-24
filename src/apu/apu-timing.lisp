@@ -23,32 +23,29 @@
     (incf (apu-frame-cycle apu))
     (if (plusp (apu-frame-tail-step apu))
         (case (apu-frame-tail-step apu)
-          (1
-           (%apu-clock-quarter-frame! apu)
-           (%apu-clock-half-frame! apu)
-           (unless (apu-frame-irq-inhibit-p apu)
-             (setf (apu-frame-irq-pending-p apu) t))
-           (setf (apu-frame-tail-step apu) 2))
-          (2
-           (unless (apu-frame-irq-inhibit-p apu)
-             (setf (apu-frame-irq-pending-p apu) t))
-           (setf (apu-frame-tail-step apu) 0
-                 (apu-frame-step apu) 0
-                 ;; Leave the two tail clocks in the elapsed count.  With
-                 ;; the first event at 7458, this makes the next step land
-                 ;; at the documented 37289-clock boundary.
-                 (apu-frame-cycle apu) 1)))
+  (1 (setf (apu-frame-tail-step apu) 2))
+  (2
+   (setf (apu-frame-tail-step apu) 0
+         (apu-frame-step apu) 0
+         ;; Leave the two tail clocks in the elapsed count. With the first event at 7458, this makes
+         ;; the next step land at the documented 37289-clock boundary.
+         (apu-frame-cycle apu) 1))
+  (3
+   (setf (apu-frame-tail-step apu) 0
+         (apu-frame-cycle apu) 0)))
         (let* ((events (if (apu-five-step-p apu)
                            +apu-five-step-events+
                            +apu-four-step-events+))
                (step (apu-frame-step apu)))
           (let ((event-cycle (aref events step)))
+            ;; The five-step counter resets on the APU cycle after its terminal event.
             (when (>= (apu-frame-cycle apu) event-cycle)
               (%apu-frame-event! apu)
               (when (= step (1- (length events)))
                 (if (apu-five-step-p apu)
                     (setf (apu-frame-step apu) 0
-                          (apu-frame-cycle apu) 0)
+                          (apu-frame-cycle apu) 0
+                          (apu-frame-tail-step apu) 3)
                     nil))
               (unless (= step (1- (length events)))
                 (incf (apu-frame-step apu)))))))

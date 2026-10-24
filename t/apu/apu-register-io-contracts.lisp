@@ -47,11 +47,11 @@
   (it "orders a $4015 read before the same-cycle frame clock"
     (let* ((apu (make-apu))
            (bus (make-bus :apu apu)))
-      (setf (cl-nes::apu-frame-step apu) 3
-            (cl-nes::apu-frame-cycle apu) 22371
+      (setf (cl-nes::apu-frame-step apu) 1
+            (cl-nes::apu-frame-cycle apu) 14912
             (cl-nes::apu-frame-irq-inhibit-p apu) nil
             (cl-nes::apu-frame-irq-pending-p apu) nil
-            (cl-nes::apu-frame-tail-step apu) 1
+            (cl-nes::apu-frame-tail-step apu) 0
             (cl-nes::apu-pulse-length-counter
              (cl-nes::apu-pulse-1 apu)) 1)
       (setf (cl-nes::bus-cpu-access-hook bus)
@@ -59,5 +59,4 @@
       (expect (logand (bus-read bus #x4015) 1) :to-be 1)
       (expect (cl-nes::apu-pulse-length-counter
                (cl-nes::apu-pulse-1 apu))
-              :to-be 0)
-      (expect (apu-irq-pending-p apu) :to-be t))))
+              :to-be 0))))

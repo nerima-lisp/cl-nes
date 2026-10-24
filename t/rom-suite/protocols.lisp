@@ -237,13 +237,13 @@
                 :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
                 :failure-text "result $F0 = 2; length timing mode 0 failed")
                (:id "blargg-apu-06" :path "blargg_apu_2005.07.30/06.len_timing_mode1.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
                 :failure-text "result $F0 = 2; length timing mode 1 failed")
                (:id "blargg-apu-07" :path "blargg_apu_2005.07.30/07.irq_flag_timing.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
                 :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-apu-08" :path "blargg_apu_2005.07.30/08.irq_timing.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :known-fail
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass
                 :failure-text "result $F0 = 2; IRQ timing failed")
                (:id "blargg-apu-09" :path "blargg_apu_2005.07.30/09.reset_timing.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 60 :state :pass

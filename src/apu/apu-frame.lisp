@@ -48,41 +48,37 @@
     (1 (%apu-clock-quarter-frame! apu)
        (%apu-clock-half-frame! apu))
     (2 (%apu-clock-quarter-frame! apu))
-    ;; In five-step mode this slot is the idle step.  In four-step mode the
-    ;; terminal quarter/half clocks and the frame IRQ edge share this cycle;
-    ;; the tail only preserves the short IRQ visibility window.
+    ;; In four-step mode the terminal quarter/half clocks and IRQ edge share this cycle.
     (3 (unless (apu-five-step-p apu)
          (%apu-clock-quarter-frame! apu)
          (%apu-clock-half-frame! apu)
          (unless (apu-frame-irq-inhibit-p apu)
            (setf (apu-frame-irq-pending-p apu) t
-                 ;; The frame IRQ edge is observable for the following
-                 ;; three CPU clocks.  Keep reasserting it after a status
-                 ;; read during those clocks.
-                 (apu-frame-irq-repeat-count apu) 2))
-         (setf (apu-frame-tail-step apu) 1)))
-    ;; The fifth five-step event clocks quarter/half-frame units before the
-    ;; sequence starts over.
+                 ;; Reassert once on the next APU tick if $4015 read cleared it.
+                 (apu-frame-irq-repeat-count apu) 1))
+         (setf (apu-frame-event-offset apu) 0
+               (apu-frame-tail-step apu) 1)))
+    ;; The fifth five-step event clocks quarter/half-frame units before reset.
     (4 (%apu-clock-quarter-frame! apu)
        (%apu-clock-half-frame! apu)))
   apu)
 
 (defun %apu-apply-frame-reset! (apu)
-  ;; A $4017 reset is delayed from the write.  Length reload markers only
-  ;; suppress a half-frame clock on the same sequencer event as the reload;
-  ;; the reset's immediate five-step clock is a later event and must count.
+  ;; Length reloads only suppress a half-frame clock on their own sequencer event.
   (setf (apu-pulse-length-reload-p (apu-pulse-1 apu)) nil
         (apu-pulse-length-reload-p (apu-pulse-2 apu)) nil
         (apu-triangle-length-reload-p (apu-triangle apu)) nil
         (apu-noise-length-reload-p (apu-noise apu)) nil)
-  (setf (apu-frame-cycle apu) 0
-        (apu-frame-step apu) 0
-        (apu-five-step-p apu) (apu-frame-reset-five-step-p apu)
-        (apu-frame-irq-inhibit-p apu) (apu-frame-reset-irq-inhibit-p apu)
-        (apu-frame-event-offset apu) 0
-        (apu-frame-irq-repeat-count apu) 0
-        (apu-frame-tail-step apu) 0
-        (apu-frame-reset-delay apu) 0)
+  (let ((event-offset (apu-frame-event-offset apu)))
+    (setf (apu-frame-cycle apu) event-offset
+          (apu-frame-step apu) 0
+          (apu-five-step-p apu) (apu-frame-reset-five-step-p apu)
+          (apu-frame-irq-inhibit-p apu) (apu-frame-reset-irq-inhibit-p apu)
+          ;; Mode 0 uses this parity marker to expose a coincident IRQ read.
+          (apu-frame-event-offset apu) (if (apu-frame-reset-five-step-p apu) 0 event-offset)
+          (apu-frame-irq-repeat-count apu) 0
+          (apu-frame-tail-step apu) 0
+          (apu-frame-reset-delay apu) 0))
   (when (apu-five-step-p apu)
     (%apu-clock-quarter-frame! apu)
     (%apu-clock-half-frame! apu))
