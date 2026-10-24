@@ -14,7 +14,7 @@
    (x 0 (unsigned-byte 8))
    (y 0 (unsigned-byte 8))
    (p #x24 (unsigned-byte 8))
-   (sp #xFD (unsigned-byte 8))
+   (sp 0 (unsigned-byte 8))
    (pc 0 (unsigned-byte 16))
    (cycles 0 fixnum)
   ;; CLI/PLP/RTI expose a cleared I flag one instruction before IRQ sampling.

@@ -1,19 +1,15 @@
 (in-package #:cl-nes)
 
 (defun %nes-reset-cpu-and-clock! (nes)
+  ;; Clock reset bus accesses on the normal CPU timing path.
   (setf (nes-irq-line-sample-p nes) nil
         (nes-irq-seen-p nes) nil
         (nes-irq-seen-before-last-p nes) nil
-        (nes-nmi-hijacked-p nes) nil)
-  ;; The CPU reset sequence consumes seven clocks before fetching the reset
-  ;; vector.  The APU's power/reset phase must include those clocks, and the
-  ;; PPU must advance three dots for each of them.  Direct PPU reset still
-  ;; starts at dot zero; this phase belongs to the complete NES reset.
-  (cpu-reset! (nes-cpu nes) (nes-bus nes))
-  (setf (bus-cpu-cycle-phase (nes-bus nes))
-        (mod (cpu-cycles (nes-cpu nes)) 2))
-  (ppu-tick! (nes-ppu nes) 21)
-  (apu-tick! (nes-apu nes) 7)
+        (nes-nmi-hijacked-p nes) nil
+        (bus-cpu-cycle-phase (nes-bus nes)) 0)
+  (with-nes-cpu-operation (nes)
+    (cpu-reset! (nes-cpu nes) (nes-bus nes))
+    7)
   nes)
 
 (defun make-nes (&key cartridge ppu controller-1 controller-2 apu)

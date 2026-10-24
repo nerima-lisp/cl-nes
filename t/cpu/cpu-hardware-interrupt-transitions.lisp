@@ -49,4 +49,27 @@
       (setf (cpu-p cpu) 0
             (cpu-pc cpu) #x8123)
       (expect (cpu-interrupt! cpu bus :irq nil (lambda () t)) :to-be 7)
-      (expect (cpu-pc cpu) :to-be #xB000))))
+      (expect (cpu-pc cpu) :to-be #xB000)))
+  (it "preserves registers and stack memory during reset"
+    (let* ((cartridge (set-fixture-vector!
+                       (make-fixture-cartridge)
+                       #xFFFC
+                       #x9000))
+           (bus (make-bus :cartridge cartridge))
+           (cpu (make-cpu)))
+      (setf (cpu-a cpu) #x11
+            (cpu-x cpu) #x22
+            (cpu-y cpu) #x33
+            (cpu-p cpu) #x28
+            (cpu-sp cpu) 0
+            (cpu-pc cpu) #x8123)
+      (bus-write! bus #x0100 #xA0)
+      (bus-write! bus #x01FF #xA1)
+      (bus-write! bus #x01FE #xA2)
+      (expect (cpu-reset! cpu bus) :to-be cpu)
+      (expect (list (cpu-a cpu) (cpu-x cpu) (cpu-y cpu) (cpu-p cpu)
+                    (cpu-sp cpu) (cpu-pc cpu) (cpu-cycles cpu))
+              :to-equal (list #x11 #x22 #x33 #x2C #xFD #x9000 7))
+      (expect (bus-read bus #x0100) :to-be #xA0)
+      (expect (bus-read bus #x01FF) :to-be #xA1)
+      (expect (bus-read bus #x01FE) :to-be #xA2))))

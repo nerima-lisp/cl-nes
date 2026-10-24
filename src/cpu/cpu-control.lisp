@@ -33,17 +33,20 @@
     5))
 
 (defun cpu-reset! (cpu bus)
-  (setf (cpu-a cpu) 0
-        (cpu-x cpu) 0
-        (cpu-y cpu) 0
-        (cpu-p cpu) #x24
-        (cpu-sp cpu) #xFD
-        (cpu-pc cpu) (logior (bus-read bus #xFFFC)
-                            (ash (bus-read bus #xFFFD) 8))
+  (setf (cpu-p cpu) (logior (cpu-p cpu) +flag-interrupt-disable+)
         (cpu-cycles cpu) 0
         (cpu-irq-delay cpu) 0
         (cpu-irq-poll-delay cpu) nil
         (cpu-stopped-p cpu) nil)
+  (bus-read bus (cpu-pc cpu))
+  (bus-read bus (cpu-pc cpu))
+  (dotimes (i 3)
+    (declare (ignore i))
+    (bus-read bus (+ #x100 (cpu-sp cpu)))
+    (setf (cpu-sp cpu) (logand (1- (cpu-sp cpu)) #xFF)))
+  (setf (cpu-pc cpu)
+        (logior (bus-read bus #xFFFC)
+                (ash (bus-read bus #xFFFD) 8)))
   (incf (cpu-cycles cpu) 7)
   cpu)
 
