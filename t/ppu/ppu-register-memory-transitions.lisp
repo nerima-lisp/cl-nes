@@ -181,4 +181,56 @@
       (expect (cl-nes::ppu-dot ppu) :to-be 322)
       (expect (cl-nes::ppu-rendering-mask ppu) :to-be #x10)
       (expect (cl-nes::ppu-background-shift-low ppu) :to-be #x2468)
-      (expect (cl-nes::ppu-background-shift-high ppu) :to-be #xACF1))))
+      (expect (cl-nes::ppu-background-shift-high ppu) :to-be #xACF1)))
+  (it "preserves fine Y when a second $2006 write follows $2005 writes"
+    (let ((ppu (make-ppu)))
+      (ppu-write-register! ppu 6 #x2C)
+      (ppu-write-register! ppu 5 #x17)
+      (ppu-write-register! ppu 5 #x17)
+      (expect (cl-nes::ppu-temporary-address ppu) :to-be #x7C42)
+      (ppu-write-register! ppu 6 #x00)
+      (expect (cl-nes::ppu-temporary-address ppu) :to-be #x7C00)
+      (expect (cl-nes::ppu-vram-address ppu) :to-be #x7C00)
+      (expect (cl-nes::ppu-write-toggle ppu) :to-be nil)))
+  (it "reads primary and secondary OAM buses during rendering phases"
+    (let ((ppu (make-ppu)))
+      (setf (cl-nes::ppu-mask ppu) #x18
+            (cl-nes::ppu-scanline ppu) 0
+            (cl-nes::ppu-dot ppu) 0
+            (ppu-oam-address ppu) 0
+            (aref (ppu-oam ppu) 0) #x5A
+            (aref (cl-nes::ppu-secondary-oam ppu) 0) #x7F
+            (aref (cl-nes::ppu-secondary-oam ppu) 1) #x7E
+            (aref (cl-nes::ppu-secondary-oam ppu) 2) #x61
+            (aref (cl-nes::ppu-secondary-oam ppu) 3) #x7C)
+      (expect (ppu-read-register ppu 4 t) :to-be #x7F)
+      (setf (cl-nes::ppu-dot ppu) 1)
+      (expect (ppu-read-register ppu 4 t) :to-be #xFF)
+      (setf (cl-nes::ppu-dot ppu) 64)
+      (expect (ppu-read-register ppu 4 t) :to-be #xFF)
+      (setf (cl-nes::ppu-sprite-evaluation-latch ppu) #xA5
+            (cl-nes::ppu-dot ppu) 65)
+      (expect (ppu-read-register ppu 4 t) :to-be #xA5)
+      (setf (cl-nes::ppu-dot ppu) 66)
+      (expect (ppu-read-register ppu 4 t) :to-be #xA5)
+      (setf (cl-nes::ppu-dot ppu) 256)
+      (expect (ppu-read-register ppu 4 t) :to-be #xA5)
+      (setf (cl-nes::ppu-dot ppu) 257)
+      (expect (ppu-read-register ppu 4 t) :to-be #x7F)
+      (setf (cl-nes::ppu-dot ppu) 258)
+      (expect (ppu-read-register ppu 4 t) :to-be #x7E)
+      (setf (cl-nes::ppu-dot ppu) 259)
+      (expect (ppu-read-register ppu 4 t) :to-be #x61)
+      (setf (cl-nes::ppu-dot ppu) 260)
+      (expect (ppu-read-register ppu 4 t) :to-be #x7C)
+      (setf (cl-nes::ppu-dot ppu) 264)
+      (expect (ppu-read-register ppu 4 t) :to-be #x7C)
+      (setf (cl-nes::ppu-dot ppu) 320)
+      (expect (ppu-read-register ppu 4 t) :to-be #xFF)
+      (setf (cl-nes::ppu-dot ppu) 321)
+      (expect (ppu-read-register ppu 4 t) :to-be #x7F)
+      (setf (cl-nes::ppu-dot ppu) 340)
+      (expect (ppu-read-register ppu 4 t) :to-be #x7F)
+      (setf (cl-nes::ppu-scanline ppu) 240
+            (cl-nes::ppu-dot ppu) 1)
+      (expect (ppu-read-register ppu 4 t) :to-be #x5A))))

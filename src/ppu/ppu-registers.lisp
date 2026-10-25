@@ -21,11 +21,45 @@
             (setf (ppu-nmi-delay-p ppu) 0))))))
 
 (defun %ppu-read-oam-data-register (ppu bus-access-p)
-  (let* ((raw (aref (ppu-oam ppu) (ppu-oam-address ppu)))
-         (value (if (and bus-access-p
-                         (= (logand (ppu-oam-address ppu) 3) 2))
-                    (logand raw #xE3)
-                    raw)))
+  (let* ((oam-address (ppu-oam-address ppu))
+         (dot (ppu-dot ppu))
+         (rendering-p
+           (and (or (< (ppu-scanline ppu) +ppu-height+)
+                    (= (ppu-scanline ppu) 261))
+                (let ((mask (%ppu-effective-mask ppu)))
+                  (or (logbitp 3 mask) (logbitp 4 mask)))))
+         (phase-p (and bus-access-p rendering-p))
+         (clear-bus-p (and phase-p (<= 1 dot 64)))
+         (evaluation-bus-p (and phase-p (<= 65 dot 256)))
+         (sprite-fetch-p (and phase-p (<= 257 dot 320)))
+         (secondary-bus-p
+           (and phase-p (or (zerop dot) (<= 321 dot 340))))
+         (overflow-secondary-p
+           (and evaluation-bus-p
+                (ppu-sprite-evaluation-done-p ppu)
+                (evenp dot)))
+         (raw
+           (cond
+             (clear-bus-p #xFF)
+             (sprite-fetch-p
+              (let* ((offset (mod (- dot 257) 8))
+                     (sprite (floor (- dot 257) 8))
+                     (oam2-index (+ (* sprite 4) (min offset 3))))
+                (aref (ppu-secondary-oam ppu) oam2-index)))
+             ((or secondary-bus-p overflow-secondary-p)
+              (aref (ppu-secondary-oam ppu) 0))
+             (evaluation-bus-p
+              (if (ppu-sprite-evaluation-done-p ppu)
+                  (aref (ppu-oam ppu) oam-address)
+                  (ppu-sprite-evaluation-latch ppu)))
+             (t (aref (ppu-oam ppu) oam-address))))
+         (value
+           (if (and bus-access-p (not clear-bus-p)
+                    (not sprite-fetch-p) (not secondary-bus-p)
+                    (not overflow-secondary-p)
+                    (= (logand oam-address 3) 2))
+               (logand raw #xE3)
+               raw)))
     (%ppu-drive-decay! ppu value)
     value))
 
@@ -99,7 +133,7 @@
                     (ash (logand value #x3F) 8))
             (ppu-write-toggle ppu) t)
       (setf (ppu-temporary-address ppu)
-            (logior (logand (ppu-temporary-address ppu) #x3F00) value)
+            (logior (logand (ppu-temporary-address ppu) #x7F00) value)
             (ppu-vram-address ppu) (ppu-temporary-address ppu)
             (ppu-write-toggle ppu) nil)))
 
