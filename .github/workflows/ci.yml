@@ -44,6 +44,7 @@ jobs:
         with:
           cachix-cache: ${{ vars.CACHIX_CACHE }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          cachix-extra-pull-names: takeokunn-paredit-cli
       - name: Build paredit CLI for Cachix
         timeout-minutes: 15
         run: timeout -k 30 840 nix build --print-build-logs ".#packages.x86_64-linux.paredit-cli"

@@ -10,6 +10,10 @@ inputs:
     description: Cachix authentication token.
     required: false
     default: ""
+  cachix-extra-pull-names:
+    description: Comma-separated Cachix cache names to pull from.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -21,3 +25,4 @@ runs:
       with:
         name: ${{ inputs.cachix-cache }}
         authToken: ${{ inputs.cachix-auth-token }}
+        extraPullNames: ${{ inputs.cachix-extra-pull-names }}
