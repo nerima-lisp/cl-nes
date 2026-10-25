@@ -14,9 +14,17 @@
             (cpu-y cpu) #xFF
             (cl-nes::apu-frame-irq-pending-p (cl-nes::bus-apu bus)) t)
       (expect-cpu-step-cycles cpu bus 5)
-      (expect (cl-nes::apu-frame-irq-pending-p
-               (cl-nes::bus-apu bus))
-              :to-be nil))
+      (progn
+        (expect (cl-nes::apu-frame-irq-pending-p
+                 (cl-nes::bus-apu bus))
+                :to-be t)
+        (expect (cl-nes::apu-frame-irq-clear-pending-p
+                 (cl-nes::bus-apu bus))
+                :to-be t)
+        (apu-tick! (cl-nes::bus-apu bus) 2)
+        (expect (cl-nes::apu-frame-irq-pending-p
+                 (cl-nes::bus-apu bus))
+                :to-be nil)))
     (with-fixture-cpu-system
         (cpu bus :program (list #x9B #x18 #x40))
       (setf (cpu-a cpu) #xFF
@@ -24,18 +32,34 @@
             (cpu-y cpu) #xFD
             (cl-nes::apu-frame-irq-pending-p (cl-nes::bus-apu bus)) t)
       (expect-cpu-step-cycles cpu bus 5)
-      (expect (cl-nes::apu-frame-irq-pending-p
-               (cl-nes::bus-apu bus))
-              :to-be nil))
+      (progn
+        (expect (cl-nes::apu-frame-irq-pending-p
+                 (cl-nes::bus-apu bus))
+                :to-be t)
+        (expect (cl-nes::apu-frame-irq-clear-pending-p
+                 (cl-nes::bus-apu bus))
+                :to-be t)
+        (apu-tick! (cl-nes::bus-apu bus) 2)
+        (expect (cl-nes::apu-frame-irq-pending-p
+                 (cl-nes::bus-apu bus))
+                :to-be nil)))
     (with-fixture-cpu-system
         (cpu bus :program (list #x9E #x18 #x40))
       (setf (cpu-x cpu) #xFF
             (cpu-y cpu) #xFD
             (cl-nes::apu-frame-irq-pending-p (cl-nes::bus-apu bus)) t)
       (expect-cpu-step-cycles cpu bus 5)
-      (expect (cl-nes::apu-frame-irq-pending-p
-               (cl-nes::bus-apu bus))
-              :to-be nil))
+      (progn
+        (expect (cl-nes::apu-frame-irq-pending-p
+                 (cl-nes::bus-apu bus))
+                :to-be t)
+        (expect (cl-nes::apu-frame-irq-clear-pending-p
+                 (cl-nes::bus-apu bus))
+                :to-be t)
+        (apu-tick! (cl-nes::bus-apu bus) 2)
+        (expect (cl-nes::apu-frame-irq-pending-p
+                 (cl-nes::bus-apu bus))
+                :to-be nil)))
     (with-fixture-cpu-system
         (cpu bus :program (list #x9F #x18 #x40))
       (setf (cpu-a cpu) #xFF
@@ -43,9 +67,17 @@
             (cpu-y cpu) #xFD
             (cl-nes::apu-frame-irq-pending-p (cl-nes::bus-apu bus)) t)
       (expect-cpu-step-cycles cpu bus 5)
-      (expect (cl-nes::apu-frame-irq-pending-p
-               (cl-nes::bus-apu bus))
-              :to-be nil))
+      (progn
+        (expect (cl-nes::apu-frame-irq-pending-p
+                 (cl-nes::bus-apu bus))
+                :to-be t)
+        (expect (cl-nes::apu-frame-irq-clear-pending-p
+                 (cl-nes::bus-apu bus))
+                :to-be t)
+        (apu-tick! (cl-nes::bus-apu bus) 2)
+        (expect (cl-nes::apu-frame-irq-pending-p
+                 (cl-nes::bus-apu bus))
+                :to-be nil)))
     (with-fixture-cpu-system
         (cpu bus :program (list #x93 #x00))
       (bus-write! bus #x0000 #x18)
@@ -55,9 +87,17 @@
             (cpu-y cpu) #xFD
             (cl-nes::apu-frame-irq-pending-p (cl-nes::bus-apu bus)) t)
       (expect-cpu-step-cycles cpu bus 6)
-      (expect (cl-nes::apu-frame-irq-pending-p
-               (cl-nes::bus-apu bus))
-              :to-be nil))))
+      (progn
+        (expect (cl-nes::apu-frame-irq-pending-p
+                 (cl-nes::bus-apu bus))
+                :to-be t)
+        (expect (cl-nes::apu-frame-irq-clear-pending-p
+                 (cl-nes::bus-apu bus))
+                :to-be t)
+        (apu-tick! (cl-nes::bus-apu bus) 2)
+        (expect (cl-nes::apu-frame-irq-pending-p
+                 (cl-nes::bus-apu bus))
+                :to-be nil)))))
 
 (define-cpu-semantic-case "LDA immediate sets N for a negative value"
   :program (#xA9 #x80) :p 0 :expected-a #x80 :expected-x 0 :expected-y 0

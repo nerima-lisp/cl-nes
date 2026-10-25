@@ -1,7 +1,7 @@
 (in-package #:cl-nes/test)
 
 (describe "APU frame sequencer contracts"
-  (it "preserves the mode-0 parity marker through the terminal IRQ"
+  (it "reads $4015 before the terminal frame IRQ clock"
     (let ((apu (make-apu)))
       (apu-write-register! apu #x4017 0)
       (apu-tick! apu 5)
@@ -12,37 +12,36 @@
     (let* ((apu (make-apu))
            (bus (make-bus :apu apu)))
       (setf (cl-nes::apu-frame-step apu) 3
-            (cl-nes::apu-frame-cycle apu) (1- (aref cl-nes::+apu-four-step-events+ 3))
+            (cl-nes::apu-frame-cycle apu)
+            (1- (aref cl-nes::+apu-four-step-events+ 3))
             (cl-nes::apu-frame-event-offset apu) 1
+            (cl-nes::apu-frame-irq-cycle apu) 29826
             (cl-nes::bus-cpu-access-hook bus) (lambda () (apu-tick! apu 1)))
-      (expect (logand (bus-read bus #x4015) #x40) :to-be #x40)
+      (expect (logand (bus-read bus #x4015) #x40) :to-be 0)
       (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be t))
     (let* ((apu (make-apu))
            (bus (make-bus :apu apu)))
       (setf (cl-nes::apu-frame-step apu) 3
-            (cl-nes::apu-frame-cycle apu) (1- (aref cl-nes::+apu-four-step-events+ 3))
+            (cl-nes::apu-frame-cycle apu)
+            (1- (aref cl-nes::+apu-four-step-events+ 3))
+            (cl-nes::apu-frame-irq-cycle apu) 29826
             (cl-nes::bus-cpu-access-hook bus) (lambda () (apu-tick! apu 1)))
       (expect (logand (bus-read bus #x4015) #x40) :to-be 0)
       (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be t)))
 
   (it "matches AccuracyCoin Test C at the four-step terminal-event boundary"
-    (let ((apu (make-apu)))
-      ;; An odd-cycle $4017 write takes the four-CPU-cycle reset path.
-      (apu-tick! apu 1)
-      (apu-write-register! apu #x4017 0)
-      (apu-tick! apu 3)
-      (expect (logand (apu-read-register apu #x4015) #x40) :to-be 0)
-      (apu-tick! apu 1)
-      (expect (logand (apu-read-register apu #x4015) #x40) :to-be 0)
+    (let* ((apu (make-apu))
+           (bus (make-bus :apu apu)))
+      (setf (cl-nes::apu-frame-irq-cycle apu) 29826
+            (cl-nes::apu-frame-irq-pending-p apu) nil
+            (cl-nes::bus-cpu-access-hook bus) (lambda () (apu-tick! apu 1)))
+      (expect (logand (bus-read bus #x4015) #x40) :to-be 0)
+      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be t)
+      (expect (logand (bus-read bus #x4015) #x40) :to-be #x40)
+      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be t)
+      (expect (cl-nes::apu-frame-irq-clear-pending-p apu) :to-be nil)))
 
-      ;; The reset-application tick is frame-cycle 1; 29,827 more clocks
-      ;; leave frame-cycle 29,828, before the documented terminal event.
-      (apu-tick! apu 29827)
-      (expect (logand (apu-read-register apu #x4015) #x40) :to-be 0)
-      (apu-tick! apu 1)
-      (expect (logand (apu-read-register apu #x4015) #x40) :to-be #x40)))
-
-  (it "reasserts a four-step frame IRQ only in the first tail clock"
+  (it "tracks the three-cycle frame IRQ window independently of sequencer clocks"
     (with-fixture-apu (apu pulse)
       (setf (cl-nes::apu-pulse-length-counter pulse) 2)
       (seed-apu-frame-state! apu
@@ -52,29 +51,31 @@
         :frame-irq-repeat-count 0
         :frame-tail-step 0)
       (cl-nes::%apu-frame-event! apu)
+      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be nil)
+      (expect (cl-nes::apu-frame-tail-step apu) :to-be 1)
+      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 1))
+    (let ((apu (make-apu)))
+      (setf (cl-nes::apu-frame-irq-cycle apu) 29826)
+      (apu-tick! apu 1)
+      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be t)
+      (expect (cl-nes::apu-frame-irq-repeat-count apu) :to-be 2)
+      (expect (apu-irq-pending-p apu) :to-be nil)
+      (apu-tick! apu 1)
       (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be t)
       (expect (cl-nes::apu-frame-irq-repeat-count apu) :to-be 1)
-      (expect (cl-nes::apu-frame-tail-step apu) :to-be 1)
-      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 1)
+      (expect (apu-irq-pending-p apu) :to-be t)
       (expect (logand (apu-read-register apu #x4015) #x40) :to-be #x40)
+      (expect (cl-nes::apu-frame-irq-clear-pending-p apu) :to-be t)
+      (apu-tick! apu 2)
       (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be nil)
+      (expect (cl-nes::apu-frame-irq-clear-pending-p apu) :to-be nil))
+    (let ((apu (make-apu)))
+      (setf (cl-nes::apu-frame-irq-cycle apu) 29827
+            (cl-nes::apu-frame-irq-inhibit-p apu) t)
       (apu-tick! apu 1)
       (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be t)
-      (expect (cl-nes::apu-frame-irq-repeat-count apu) :to-be 0)
-      (expect (cl-nes::apu-frame-tail-step apu) :to-be 2)
-      (expect (cl-nes::apu-pulse-length-counter pulse) :to-be 1)
-      (expect (logand (apu-read-register apu #x4015) #x40) :to-be #x40)
-      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be nil)
+      (expect (apu-irq-pending-p apu) :to-be nil)
       (apu-tick! apu 1)
-      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be nil)
-      (expect (cl-nes::apu-frame-irq-repeat-count apu) :to-be 0)
-      (expect (cl-nes::apu-frame-tail-step apu) :to-be 0)
-      (seed-apu-frame-state! apu
-        :frame-step 3
-        :frame-irq-inhibit-p t
-        :frame-irq-pending-p nil
-        :frame-tail-step 0)
-      (cl-nes::%apu-frame-event! apu)
       (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be nil)))
 
   (it "defers the next mode-1 length clock by one APU cycle"

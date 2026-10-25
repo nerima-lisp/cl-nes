@@ -48,14 +48,10 @@
     (1 (%apu-clock-quarter-frame! apu)
        (%apu-clock-half-frame! apu))
     (2 (%apu-clock-quarter-frame! apu))
-    ;; In four-step mode the terminal quarter/half clocks and IRQ edge share this cycle.
+    ;; The four-step terminal event clocks the quarter- and half-frame units.
     (3 (unless (apu-five-step-p apu)
          (%apu-clock-quarter-frame! apu)
          (%apu-clock-half-frame! apu)
-         (unless (apu-frame-irq-inhibit-p apu)
-           (setf (apu-frame-irq-pending-p apu) t
-                 ;; Reassert once on the next APU tick if $4015 read cleared it.
-                 (apu-frame-irq-repeat-count apu) 1))
          (setf (apu-frame-event-offset apu) 0
                (apu-frame-tail-step apu) 1)))
     ;; The fifth five-step event clocks quarter/half-frame units before reset.
@@ -74,8 +70,10 @@
           (apu-frame-step apu) 0
           (apu-five-step-p apu) (apu-frame-reset-five-step-p apu)
           (apu-frame-irq-inhibit-p apu) (apu-frame-reset-irq-inhibit-p apu)
-          ;; Mode 0 uses this parity marker to expose a coincident IRQ read.
-          (apu-frame-event-offset apu) (if (apu-frame-reset-five-step-p apu) 0 event-offset)
+          (apu-frame-event-offset apu) (if (apu-frame-reset-five-step-p apu)
+                                           0
+                                           event-offset)
+          (apu-frame-irq-cycle apu) 0
           (apu-frame-irq-repeat-count apu) 0
           (apu-frame-tail-step apu) 0
           (apu-frame-reset-delay apu) 0))

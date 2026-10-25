@@ -44,7 +44,8 @@
         (apu-frame-irq-inhibit-p apu) (logbitp 6 value))
   (when (logbitp 6 value)
     (setf (apu-frame-irq-pending-p apu) nil
-          (apu-frame-irq-repeat-count apu) 0)))
+          (apu-frame-irq-repeat-count apu) 0
+          (apu-frame-irq-clear-pending-p apu) nil)))
 
 (defun apu-read-register (apu address)
   (case (logand address #xFFFF)
@@ -52,35 +53,38 @@
      (when (and (= (apu-frame-reset-delay apu) 1)
                 (apu-frame-reset-five-step-p apu))
        (%apu-apply-frame-reset! apu))
-     (let* ((same-cycle-frame-irq-p
-             (and (not (apu-five-step-p apu))
-                  (= (apu-frame-event-offset apu) 1)
-                  (zerop (apu-frame-reset-delay apu))
-                  (zerop (apu-frame-tail-step apu))
-                  (= (apu-frame-step apu) 3)
-                  (= (1+ (apu-frame-cycle apu))
-                     (aref +apu-four-step-events+ 3))
-                  (not (apu-frame-irq-inhibit-p apu))))
-            (value (logior (if (plusp (apu-pulse-length-counter (apu-pulse-1 apu))) 1 0)
-                           (if (plusp (apu-pulse-length-counter (apu-pulse-2 apu))) 2 0)
-                           (if (plusp (apu-triangle-length-counter (apu-triangle apu))) 4 0)
-                           (if (plusp (apu-noise-length-counter (apu-noise apu))) 8 0)
-                           (if (or (plusp (apu-dmc-bytes-remaining (apu-dmc apu)))
-                                   (and (apu-dmc-enabled-p (apu-dmc apu))
-                                        (not (apu-dmc-sample-buffer-empty-p
-                                              (apu-dmc apu)))))
-                               16
-                             0)
-                           (if (or (apu-frame-irq-pending-p apu)
-                                   same-cycle-frame-irq-p)
-                               #x40
-                             0)
-                           (if (apu-dmc-irq-pending-p (apu-dmc apu)) #x80 0))))
-       ;; $4015 reads acknowledge the frame IRQ latch after sampling its value.
-       (setf (apu-frame-irq-pending-p apu) nil)
-       value))
+     (let ((value
+             (logior
+              (if (plusp (apu-pulse-length-counter (apu-pulse-1 apu)))
+                  1
+                  0)
+              (if (plusp (apu-pulse-length-counter (apu-pulse-2 apu)))
+                  2
+                  0)
+              (if (plusp (apu-triangle-length-counter (apu-triangle apu)))
+                  4
+                  0)
+              (if (plusp (apu-noise-length-counter (apu-noise apu)))
+                  8
+                  0)
+              (if (or (plusp (apu-dmc-bytes-remaining (apu-dmc apu)))
+                      (and (apu-dmc-enabled-p (apu-dmc apu))
+                           (not (apu-dmc-sample-buffer-empty-p (apu-dmc apu)))))
+                  16
+                  0)
+              (if (apu-frame-irq-pending-p apu)
+                  #x40
+                  0)
+              (if (apu-dmc-irq-pending-p (apu-dmc apu))
+                  #x80
+                  0))))
+        (when (apu-frame-irq-pending-p apu)
+          (setf (apu-frame-irq-clear-pending-p apu) t))
+        value))
     (otherwise nil)))
 
 (defun apu-irq-pending-p (apu)
-  (or (apu-frame-irq-pending-p apu)
-      (apu-dmc-irq-pending-p (apu-dmc apu))))
+  (or (apu-dmc-irq-pending-p (apu-dmc apu))
+      (and (apu-frame-irq-pending-p apu)
+           (<= (apu-frame-irq-repeat-count apu) 1)
+           (not (apu-frame-irq-inhibit-p apu)))))

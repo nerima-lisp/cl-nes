@@ -15,4 +15,9 @@
       (apu-write-register! apu #x400F 0)
       (setf (cl-nes::apu-frame-irq-pending-p apu) t)
       (expect (logand (apu-read-register apu #x4015) #x4F) :to-be #x4F)
-      (expect (apu-irq-pending-p apu) :to-be nil))))
+      (progn
+        (expect (apu-irq-pending-p apu) :to-be t)
+        (expect (cl-nes::apu-frame-irq-clear-pending-p apu) :to-be t)
+        (apu-tick! apu 2)
+        (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be nil)
+        (expect (apu-irq-pending-p apu) :to-be nil)))))

@@ -40,7 +40,13 @@
       (setf (cl-nes::apu-frame-irq-pending-p apu) t
             (cl-nes::apu-dmc-irq-pending-p dmc) t)
       (expect (apu-read-register apu #x4015) :to-be #xDE)
-      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be nil)
+      (progn
+        (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be t)
+        (expect (cl-nes::apu-frame-irq-clear-pending-p apu) :to-be t)
+        (expect (cl-nes::apu-dmc-irq-pending-p dmc) :to-be t)
+        (apu-tick! apu 2)
+        (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be nil)
+        (expect (cl-nes::apu-frame-irq-clear-pending-p apu) :to-be nil))
       (expect (cl-nes::apu-dmc-irq-pending-p dmc) :to-be t)
       (apu-write-register! apu #x4010 #x4F)
       (expect (cl-nes::apu-dmc-irq-pending-p dmc) :to-be nil)))

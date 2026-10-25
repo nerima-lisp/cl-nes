@@ -221,8 +221,8 @@
                 :failure-text "result $F0; 1 means PASSED")))
     (:suite "apu" :category :apu
                :subroms ((:id "apu-test" :path "apu_test/apu_test.nes"
-                 :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
-                 :failure-text "status 128; #19 one-byte buffer timing")
+                 :protocol :blargg :expected 0 :max-frames 360 :state :pass
+                 :failure-text "status 0; 8-dmc_rates..Passed.All 8 tests passed")
                (:id "apu-dmc-basics" :path "apu_test/rom_singles/7-dmc_basics.nes"
                 :protocol :ram-result :expected 0 :result-address #x6000
                 :running-value #x80 :max-frames 360 :state :pass
@@ -364,7 +364,7 @@
                   (:name "PPU Palette RAM" :category :power-on-state
                    :address #x03ff :expected :pass))
     :items nil
-    :ratchet-pass-count 105
+    :ratchet-pass-count 112
     :ratchet-pass-items
     ("ROM is not writable" "RAM Mirroring" "PC Wraparound"
      "The Decimal Flag" "The B Flag" "Dummy read cycles" "Dummy write cycles"
@@ -394,7 +394,7 @@
      "$9C   SHY absolute,X" "$9E   SHX absolute,Y" "$8B   ANE Immediate"
      "Internal Data Bus"
      "NMI Overlap IRQ" "DMA + Open Bus" "DMA + $2007 Read"
-     "Length Counter" "Length Table" "Frame Counter 4-step"
+     "Length Counter" "Length Table" "Frame Counter IRQ" "Frame Counter 4-step"
      "Frame Counter 5-step" "Controller Strobing" "Controller Clocking"
      "Instruction Timing" "Branch Dummy Reads" "JSR Edge Cases"
      "CHR ROM is not writable" "PPU Register Mirroring"
