@@ -1,12 +1,11 @@
 (in-package #:cl-nes)
 
 (defun %cpu-poll-interrupt-vector-nmi! ()
-  (when (boundp (quote *cpu-interrupt-vector-nmi-poll-hook*))
-    (when *cpu-interrupt-vector-nmi-poll-hook*
-      (let ((poll-hook *cpu-interrupt-vector-nmi-poll-hook*))
-        (setf *cpu-interrupt-vector-nmi-poll-hook* nil
-              *cpu-interrupt-vector-nmi-poll-result* (funcall poll-hook))))
-    *cpu-interrupt-vector-nmi-poll-result*))
+  (when *cpu-interrupt-vector-nmi-poll-hook*
+    (let ((poll-hook *cpu-interrupt-vector-nmi-poll-hook*))
+      (setf *cpu-interrupt-vector-nmi-poll-hook* nil
+            *cpu-interrupt-vector-nmi-poll-result* (funcall poll-hook))))
+  *cpu-interrupt-vector-nmi-poll-result*)
 
 (defun %branch! (cpu bus condition)
   (let ((offset (%fetch-byte cpu bus)))

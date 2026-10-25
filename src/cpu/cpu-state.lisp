@@ -1,5 +1,6 @@
 (in-package #:cl-nes)
-(declaim (special *cpu-interrupt-vector-nmi-poll-hook* *cpu-interrupt-vector-nmi-poll-result*))
+(defvar *cpu-interrupt-vector-nmi-poll-hook* nil)
+(defvar *cpu-interrupt-vector-nmi-poll-result* nil)
 
 (defconstant +flag-carry+ #x01)
 (defconstant +flag-zero+ #x02)
