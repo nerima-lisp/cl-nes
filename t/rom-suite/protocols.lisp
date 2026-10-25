@@ -198,8 +198,9 @@
                 :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 360 :state :pass
                 :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-ppu-power-up-palette" :path "blargg_ppu_tests_2005.09.15b/power_up_palette.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 360 :state :known-fail
-                :failure-text "result $F0; power-up palette differs from reference NES")
+                :protocol :ram-result :expected 1 :result-address #x00F0
+                :max-frames 360 :state :pass
+                :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-ppu-sprite-ram" :path "blargg_ppu_tests_2005.09.15b/sprite_ram.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 360 :state :pass
                 :failure-text "result $F0; 1 means PASSED")

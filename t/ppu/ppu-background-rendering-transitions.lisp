@@ -9,6 +9,7 @@
       (ppu-write-vram! ppu #x2001 #x01)
       (ppu-write-vram! ppu #x1010 #x80)
       (ppu-write-vram! ppu #x3F01 #x22)
+      (ppu-write-vram! ppu #x3F00 0)
       (multiple-value-bind (color present)
           (cl-nes::%background-pixel ppu 8 0)
         (expect color :to-be #x22)

@@ -22,8 +22,14 @@
         vector)
    (nametable (make-array 2048 :element-type '(unsigned-byte 8) :initial-element 0)
               vector)
-   (palette (make-array 32 :element-type '(unsigned-byte 8) :initial-element 0)
-            vector)
+   (palette
+    (make-array 32 :element-type '(unsigned-byte 8)
+                :initial-contents
+                '(#x09 #x01 #x00 #x01 #x00 #x02 #x02 #x0D
+                  #x08 #x10 #x08 #x24 #x00 #x00 #x04 #x2C
+                  #x09 #x01 #x34 #x03 #x00 #x04 #x00 #x14
+                  #x08 #x3A #x00 #x02 #x00 #x20 #x2C #x08))
+    vector)
    (vram-address 0 fixnum)
    (address-bus 0 fixnum)
    (temporary-address 0 fixnum)

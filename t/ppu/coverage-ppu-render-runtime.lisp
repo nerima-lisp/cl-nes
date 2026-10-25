@@ -52,6 +52,7 @@
       (ppu-write-vram! ppu #x1000 #xFF)
       (ppu-write-vram! ppu #x2000 0)
       (ppu-write-vram! ppu #x3F01 #x21)
+      (ppu-write-vram! ppu #x3F00 0)
       (multiple-value-bind (color solid)
           (cl-nes::%ppu-background-pixel-at-dot ppu)
         (expect color :to-be #x21)
