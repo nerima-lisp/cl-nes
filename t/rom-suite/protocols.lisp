@@ -27,7 +27,7 @@
                  :failure-text "status 0; 04-dummy_reads_apu..Passed.All 4 tests passed")
                (:id "cpu-interrupts-v2" :path "cpu_interrupts_v2/cpu_interrupts.nes"
                  :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
-                 :failure-text "status 128; failed while running test 5 of 5 (branch delays IRQ)")
+                 :failure-text "status 128; incomplete at text test_jmp.T+ CK PC.00 02 04")
                (:id "cpu-dummy-reads" :path "cpu_dummy_reads/cpu_dummy_reads.nes"
                  :protocol :ram-result :expected 0 :result-address #x6000
                  :max-frames 60 :state :pass

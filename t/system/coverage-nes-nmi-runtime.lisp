@@ -12,6 +12,15 @@
         (expect (cpu-pc (nes-cpu nes)) :to-be #x9000)
         (expect (logand (bus-read (nes-bus nes) #x01FB) #x10) :to-be #x10)
         (expect (cl-nes::ppu-nmi-pending-p (nes-ppu nes)) :to-be nil))))
+  (it "keeps the IRQ vector for BRK without an NMI event"
+    (let* ((cartridge (make-fixture-cartridge :program (quote (#x00))))
+           (nes (make-nes :cartridge cartridge)))
+      (set-fixture-vector! cartridge #xFFFA #x9000)
+      (set-fixture-vector! cartridge #xFFFE #xA000)
+      (let ((cycles (nes-step/k nes (function identity))))
+        (expect cycles :to-be 7)
+        (expect (cpu-pc (nes-cpu nes)) :to-be #xA000)
+        (expect (cl-nes::ppu-nmi-pending-p (nes-ppu nes)) :to-be nil))))
 
   (it "takes an external NMI after an instruction"
     (let* ((cartridge (make-fixture-cartridge :program '(#xEA)))

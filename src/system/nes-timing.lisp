@@ -4,7 +4,9 @@
                               &optional (ppu-ticks 3))
   (when pre-cycle-hook
     (funcall pre-cycle-hook))
-  (ppu-tick! (nes-ppu nes) ppu-ticks)
+  (progn
+    (ppu-tick! (nes-ppu nes) ppu-ticks)
+    (%cpu-poll-interrupt-vector-nmi!))
   (apu-tick! (nes-apu nes) 1)
   (let ((cartridge (bus-cartridge bus)))
     (when (and cartridge (cartridge-cpu-clock-required-p cartridge))

@@ -17,6 +17,7 @@
       (setf *nes-step-first-irq-poll-seen-p* (nes-irq-seen-p nes)))))
 
 (defun %nes-poll-nmi-event! ()
+  (setf *nes-step-nmi-poll-seen-p* t)
   (let ((nes *nes-step-context*))
     (when (%nes-poll-nmi-during-operation! nes)
       (setf (nes-nmi-hijacked-p nes) t)

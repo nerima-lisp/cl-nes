@@ -1,4 +1,5 @@
 (in-package #:cl-nes)
+(declaim (special *nes-step-nmi-poll-seen-p*))
 
 (define-hardware-state nes
   ((cpu nil nil)
