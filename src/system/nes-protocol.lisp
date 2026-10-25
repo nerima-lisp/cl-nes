@@ -34,8 +34,15 @@ allowing tests to supply the mapping established by that ROM's source."
   (= actual expected))
 
 (defun protocol-text-result-p (text expected)
-  "Return true when TEXT contains the expected ROM result marker."
-  (not (null (search (string-upcase expected) (string-upcase text)))))
+  "Return true when TEXT contains any expected ROM result marker."
+  (let ((text (string-upcase text))
+        (markers (if (stringp expected) (list expected) expected)))
+    (and (listp markers)
+         (not (null
+               (some (lambda (marker)
+                       (and (stringp marker)
+                            (search (string-upcase marker) text)))
+                     markers))))))
 
 (defun protocol-blargg-complete-p (status signature-p running-observed)
   (and running-observed

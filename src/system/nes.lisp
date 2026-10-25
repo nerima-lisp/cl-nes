@@ -33,8 +33,12 @@
     (setf (bus-dma-stall-cycles bus) 0
           (bus-oam-dma-active-p bus) nil
           (bus-oam-dma-index bus) 0
+          (bus-oam-dma-data bus) 0
           (bus-oam-dma-stage bus) :halt
           (bus-oam-dma-alignment-p bus) nil
+          (bus-dmc-dma-stage bus) :idle
+          (bus-dmc-dma-wait bus) 0
+          (bus-dmc-dma-kind bus) :reload
           (bus-dmc-dma-remaining bus) 0
           (bus-dmc-read-replay-p bus) nil
           (bus-dma-cycle-preempted-p bus) nil))
@@ -57,8 +61,12 @@
     (setf (bus-dma-stall-cycles bus) 0
           (bus-oam-dma-active-p bus) nil
           (bus-oam-dma-index bus) 0
+          (bus-oam-dma-data bus) 0
           (bus-oam-dma-stage bus) :halt
           (bus-oam-dma-alignment-p bus) nil
+          (bus-dmc-dma-stage bus) :idle
+          (bus-dmc-dma-wait bus) 0
+          (bus-dmc-dma-kind bus) :reload
           (bus-dmc-dma-remaining bus) 0
           (bus-dmc-read-replay-p bus) nil
           (bus-dma-cycle-preempted-p bus) nil))

@@ -64,6 +64,7 @@
    (current-address #xC000 fixnum)
    (sample-length 1 fixnum)
    (bytes-remaining 0 fixnum)
+   (load-pending-p nil nil)
    (sample-buffer 0 fixnum)
    (sample-buffer-empty-p t nil)
    (shift-register 0 fixnum)

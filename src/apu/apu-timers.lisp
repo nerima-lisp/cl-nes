@@ -33,10 +33,10 @@
       (decf (apu-noise-timer noise))))
 
 (defun %apu-dmc-restart! (dmc)
-  ;; $4015 reloads the DMA address and length.  It does not discard a byte
-  ;; that has already been prefetched, nor does it reset the output unit.
+  ;; $4015 reloads the DMA address and length without discarding a prefetched byte.
   (setf (apu-dmc-current-address dmc) (apu-dmc-sample-address dmc)
-        (apu-dmc-bytes-remaining dmc) (apu-dmc-sample-length dmc)))
+        (apu-dmc-bytes-remaining dmc) (apu-dmc-sample-length dmc)
+        (apu-dmc-load-pending-p dmc) (apu-dmc-sample-buffer-empty-p dmc)))
 
 (defun %apu-dmc-advance-address! (dmc)
   ;; The DMC wraps from $FFFF to $8000, unlike the sample start address
@@ -46,29 +46,36 @@
             #x8000
             (1+ (apu-dmc-current-address dmc)))))
 
+(defun %apu-dmc-fetch-complete! (apu value)
+  (let ((dmc (apu-dmc apu)))
+    (when (and (apu-dmc-enabled-p dmc)
+               (apu-dmc-sample-buffer-empty-p dmc)
+               (plusp (apu-dmc-bytes-remaining dmc)))
+      (setf (apu-dmc-sample-buffer dmc) (logand value #xFF)
+            (apu-dmc-sample-buffer-empty-p dmc) nil
+            (apu-dmc-load-pending-p dmc) nil)
+      (%apu-dmc-advance-address! dmc)
+      (decf (apu-dmc-bytes-remaining dmc))
+      (when (zerop (apu-dmc-bytes-remaining dmc))
+        (if (apu-dmc-loop-p dmc)
+            (setf (apu-dmc-current-address dmc) (apu-dmc-sample-address dmc)
+                  (apu-dmc-bytes-remaining dmc) (apu-dmc-sample-length dmc))
+            (when (apu-dmc-irq-enabled-p dmc)
+              (setf (apu-dmc-irq-pending-p dmc) t)))))
+    value))
+
 (defun %apu-dmc-fetch! (apu)
   (let ((dmc (apu-dmc apu)))
     (when (and (apu-dmc-enabled-p dmc)
                (apu-dmc-sample-buffer-empty-p dmc)
                (plusp (apu-dmc-bytes-remaining dmc)))
-      (let ((reader (apu-memory-reader apu)))
-        ;; APUs created through MAKE-APU do not necessarily belong to a bus.
-        ;; A missing reader still consumes the byte as zero, so a malformed
-        ;; standalone setup cannot leave the DMC active forever.
-        (setf (apu-dmc-sample-buffer dmc)
-              (logand (or (and reader
-                                (funcall reader (apu-dmc-current-address dmc)))
-                          0)
-                      #xFF)
-              (apu-dmc-sample-buffer-empty-p dmc) nil)
-        (%apu-dmc-advance-address! dmc)
-        (decf (apu-dmc-bytes-remaining dmc))
-        (if (zerop (apu-dmc-bytes-remaining dmc))
-            (if (apu-dmc-loop-p dmc)
-                (setf (apu-dmc-current-address dmc) (apu-dmc-sample-address dmc)
-                      (apu-dmc-bytes-remaining dmc) (apu-dmc-sample-length dmc))
-                (when (apu-dmc-irq-enabled-p dmc)
-                  (setf (apu-dmc-irq-pending-p dmc) t))))))))
+      (let* ((reader (apu-memory-reader apu))
+             (value (if reader
+                        (funcall reader (apu-dmc-current-address dmc))
+                        0)))
+        (unless (eq value :pending)
+          (%apu-dmc-fetch-complete! apu (or value 0)))))))
+
 
 (defun %apu-clock-dmc! (dmc)
   (if (zerop (apu-dmc-timer dmc))

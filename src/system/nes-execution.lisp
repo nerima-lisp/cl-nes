@@ -73,12 +73,17 @@ continuation's result."
            (%flag-set-p cpu +flag-interrupt-disable+)))
     (setf (nes-nmi-hijacked-p nes) nil)
     (let ((*nes-step-context* nes)
-          (*nes-step-first-irq-poll-seen-p* nil))
+          (*nes-step-first-irq-poll-seen-p* nil)
+          (*nes-step-dma-cycles* 0))
       (let ((cycles
               (%nes-run-instruction!
                nes cycle-hook #'%nes-poll-irq-before-cycle!)))
         (let ((dma-cycles (bus-take-dma-stall-cycles! (nes-bus nes))))
           (when (plusp dma-cycles)
+            (when (bus-oam-dma-active-p (nes-bus nes))
+              (setf (bus-last-cpu-access-kind (nes-bus nes)) :read
+                    (bus-last-cpu-access-address (nes-bus nes))
+                    (cpu-pc cpu)))
             (incf cycles
                   (%nes-run-dma-stalls! nes dma-cycles
                                          cycle-hook)))
@@ -105,7 +110,7 @@ continuation's result."
           ;; CLI/SEI/PLP delay IRQ recognition for the following instruction.
           (when (plusp (cpu-irq-delay cpu))
             (decf (cpu-irq-delay cpu)))
-          (funcall continuation cycles))))))
+          (funcall continuation (+ cycles *nes-step-dma-cycles*)))))))
 
 (defun nes-run-frame/k (nes continuation &key cycle-hook input-continuation)
   "Run until a frame is ready and pass its framebuffer to CONTINUATION.

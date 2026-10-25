@@ -473,7 +473,11 @@
        result-address running-value timeout-ms-per-frame)
       (it "has a declarative protocol and bounded execution"
           (unless (and (stringp id) (keywordp category) (stringp path)
-                       (or (numberp expected) (stringp expected))
+                       (or (numberp expected)
+                           (stringp expected)
+                           (and (member protocol '(:text-progress :nametable-text))
+                                (consp expected)
+                                (every (function stringp) expected)))
                        (stringp failure-text)
                        (or (null mapper) (keywordp mapper))
                        (member protocol '(:blargg :ram-result :text-progress

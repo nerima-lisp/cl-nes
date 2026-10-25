@@ -266,8 +266,9 @@
                 :failure-text "result $F0 = 2; length reload timing case failed")))
     (:suite "dma" :category :dma
      :subroms ((:id "dmc-dma" :path "dmc_dma_during_read4/dma_2007_read.nes"
-                 :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                 :failure-text "status 0 but signature mismatch")
+                 :protocol :nametable-text :expected ("159A7A8F" "5E3DF9C4")
+                 :max-frames 60 :state :pass
+                 :failure-text "CRC neither 159A7A8F nor 5E3DF9C4")
                (:id "sprite-dma-and-dmc" :path "sprdma_and_dmc_dma/sprdma_and_dmc_dma.nes"
                  :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
                  :failure-text "status 128; incomplete at text T+ Clocks")))
@@ -632,18 +633,10 @@
                               :mapper4-variant
                               (rom-contract-mapper4-variant contract)))
 
-(defun mmc1-a12-tile-map (tile)
-  (cond ((<= #x10 tile #x19) (code-char (+ (char-code #\0) (- tile #x10))))
-        ((<= #x20 tile #x39) (code-char (+ (char-code #\A) (- tile #x20))))
-        ((= tile #x1c) #\=)
-        ((= tile #x1e) #\?)
-        ((= tile #x1f) #\ )
-        ((= tile #x3b) #\/)))
-
 (defun run-nametable-text-contract (path contract)
   (run-nametable-text-protocol path (rom-contract-max-frames contract)
                                 (rom-contract-expected contract)
-                                :start #x2000 :tile-map #'mmc1-a12-tile-map))
+                                :start #x2000))
 
 (defun run-mmc1-a12-contract (path contract)
   (run-mmc1-a12-protocol path (rom-contract-max-frames contract)))

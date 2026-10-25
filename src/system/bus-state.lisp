@@ -13,18 +13,22 @@
    (oam-dma-active-p nil nil)
    (oam-dma-page 0 (unsigned-byte 8))
    (oam-dma-index 0 fixnum)
+   (oam-dma-data 0 (unsigned-byte 8))
    (oam-dma-stage :halt)
    (oam-dma-alignment-p nil nil)
+   (dmc-dma-stage :idle)
+   (dmc-dma-wait 0 fixnum)
+   (dmc-dma-kind :reload)
    (dmc-dma-remaining 0 fixnum)
    (dmc-read-replay-p nil nil)
    (dma-cycle-preempted-p nil nil)
-  ;; The last CPU bus operation is repeated on DMC halt/dummy cycles.
+   ;; The last CPU bus operation is repeated on DMC halt/dummy cycles.
    (last-cpu-access-kind :read)
    (last-cpu-access-address 0 (unsigned-byte 16))
-  ;; Parity of the next CPU bus cycle, used by OAM DMA timing.
+   ;; Parity of the next CPU bus cycle, used by OAM DMA timing.
    (cpu-cycle-phase 0 fixnum)
-  ;; NES installs this only while executing a CPU operation. Device-internal
-  ;; reads (for example DMC and OAM DMA) deliberately run with it disabled.
+   ;; NES installs this only while executing a CPU operation. Device-internal
+   ;; reads (for example DMC and OAM DMA) deliberately run with it disabled.
    (cpu-access-hook nil)
    (cpu-access-active-p nil nil)
    (cpu-access-nes nil nil)

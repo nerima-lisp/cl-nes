@@ -1,4 +1,5 @@
 (in-package #:cl-nes)
+(defvar *nes-step-dma-cycles* nil)
 
 (defun make-bus (&key cartridge ppu controller-1 controller-2 apu)
   (let* ((ppu (or ppu (make-ppu cartridge)))
@@ -8,48 +9,47 @@
          (bus nil))
     (ppu-load-cartridge! ppu cartridge)
     (setf bus (%make-bus :cartridge cartridge :ppu ppu
-                          :controller-1 controller-1 :controller-2 controller-2
-                          :apu apu))
-    ;; DMC reads use the same address decoder as the CPU, including PRG-ROM,
-    ;; PRG-RAM and open-bus behavior.
+                         :controller-1 controller-1 :controller-2 controller-2
+                         :apu apu))
     (apu-set-memory-reader!
      apu
      (lambda (address)
-       ;; A DMC fetch is an internal device read.  It must use the CPU address
-       ;; decoder, but it must not re-enter NES's per-CPU-access clock hook
-       ;; while APU-TICK is already running.
-       ;; The APU requests the byte synchronously, while the bus retains the
-       ;; DMA's dummy/alignment cycles for the clocked DMA state machine.
-       (with-bus-cpu-access-hook (bus nil)
-         (let* ((write-p (eq (bus-last-cpu-access-kind bus) :write))
-                (stall (if (and write-p (oddp (bus-cpu-cycle-phase bus)))
-                           3
-                           4)))
-           (if (bus-oam-dma-active-p bus)
+       (let* ((nes-owned-p (and (bus-cpu-access-active-p bus)
+                                (bus-cpu-access-nes bus)))
+              (dma-owned-p (or (bus-oam-dma-active-p bus)
+                               (not (eq (bus-dmc-dma-stage bus) :idle)))))
+         (with-bus-cpu-access-hook (bus nil)
+           (if (or nes-owned-p dma-owned-p)
                (progn
-                 (setf (bus-dmc-dma-remaining bus) (1- stall))
-                 ;; The sample get is performed by the DMA request.  It must
-                 ;; not enter BUS-READ while OAM arbitration is active.
-                 (let ((value (logand (or (%bus-read-device bus address)
-                                          (bus-open-bus bus))
-                                      #xFF)))
-                   (setf (bus-open-bus bus) value)
-                   value))
-               (progn
-               (incf (bus-dma-stall-cycles bus) stall)
-                 (setf (bus-dmc-read-replay-p bus) (not write-p))
-                 ;; Preserve the established standalone DMC timing path.
+                 (when (eq (bus-dmc-dma-stage bus) :idle)
+                   (setf (bus-dmc-dma-kind bus)
+                         (if (apu-dmc-load-pending-p (apu-dmc apu))
+                             :load
+                             :reload)
+                         (bus-dmc-dma-wait bus)
+                         (case (bus-dmc-dma-kind bus)
+                           (:load
+                            (if (= (bus-cpu-cycle-phase bus) 1) 2 3))
+                           (:reload
+                            (if (= (bus-cpu-cycle-phase bus) 0) 0 1)))
+                         (bus-dmc-dma-stage bus) :new))
+                 :pending)
+               (let* ((write-p (eq (bus-last-cpu-access-kind bus) :write))
+                      (stall (if (and write-p
+                                      (oddp (bus-cpu-cycle-phase bus)))
+                                 3
+                                 4)))
+                 (incf (bus-dma-stall-cycles bus) stall)
                  (loop repeat (if write-p
                                   (1- stall)
                                   (if (zerop (bus-cpu-cycle-phase bus)) 1 2))
                        do (%bus-read-device
                            bus (bus-last-cpu-access-address bus)))
-                 (let ((value (logand (or (%bus-read-device bus address)
-                                          (bus-open-bus bus))
-                                      #xFF)))
-                   (setf (bus-open-bus bus) value)
-                   value)))))))
+                 (logand (or (%bus-read-device bus address)
+                             (bus-open-bus bus))
+                         #xFF)))))))
     bus))
+
 
 (defun %bus-read-device (bus address)
   (cond
@@ -74,8 +74,9 @@
     (setf (bus-last-cpu-access-kind bus) :read
           (bus-last-cpu-access-address bus) address
           (bus-dmc-read-replay-p bus) nil)
-    ;; A CPU read observes PPU status late in its cycle. Advance to the final
-    ;; two dots before the device read and charge the last dot below.
+    (%bus-run-dmc-dma-on-read! bus address)
+    ;; A CPU read observes PPU status late in its cycle. Advance the PPU to
+    ;; the final two dots before the device read and charge the last dot below.
     (let ((ppu-ticks 3))
       (when (and (bus-cpu-access-active-p bus)
                  (< address #x4000)
@@ -122,37 +123,110 @@
   (%bus-read-device bus (bus-last-cpu-access-address bus)))
 
 (defun %bus-advance-dma-cycle! (bus)
-  (setf (bus-dma-cycle-preempted-p bus) nil)
-  (let ((dmc-active-p (plusp (bus-dmc-dma-remaining bus))))
-    (when (plusp (bus-dmc-dma-remaining bus))
-      (when (> (bus-dmc-dma-remaining bus) 1)
-        (%bus-dma-dummy-read! bus))
+  (let* ((oam-active-p (bus-oam-dma-active-p bus))
+         (dmc-stage-this-cycle nil)
+         (dmc-active-p nil)
+         (dmc-get-p nil)
+         (oam-access-p nil))
+    (setf (bus-dma-cycle-preempted-p bus) nil)
+    (case (bus-dmc-dma-stage bus)
+      (:new
+       (if (plusp (bus-dmc-dma-wait bus))
+           (progn
+             (setf (bus-dmc-dma-stage bus) :wait)
+             (decf (bus-dmc-dma-wait bus)))
+           (setf (bus-dmc-dma-stage bus) :ready)))
+      (:wait
+       (when (plusp (bus-dmc-dma-wait bus))
+         (decf (bus-dmc-dma-wait bus)))
+       (when (zerop (bus-dmc-dma-wait bus))
+         (setf (bus-dmc-dma-stage bus) :ready))))
+    (when (and (eq (bus-dmc-dma-stage bus) :ready)
+               (eq (bus-last-cpu-access-kind bus) :write))
+      (setf (bus-dmc-dma-stage bus) :retry))
+    (when (and oam-active-p
+               (or (eq (bus-dmc-dma-stage bus) :retry)
+                   (and (eq (bus-dmc-dma-stage bus) :ready)
+                        (case (bus-dmc-dma-kind bus)
+                          (:load (zerop (bus-cpu-cycle-phase bus)))
+                          (:reload (= (bus-cpu-cycle-phase bus) 1))
+                          (t nil))))
+               (not (eq (bus-last-cpu-access-kind bus) :write)))
+      (setf (bus-dmc-dma-stage bus) :active-halt
+            (bus-dmc-dma-remaining bus)
+            (if (zerop (bus-cpu-cycle-phase bus)) 3 4)))
+    (setf dmc-stage-this-cycle (bus-dmc-dma-stage bus)
+          dmc-active-p
+          (or (eq dmc-stage-this-cycle :active-halt)
+              (eq dmc-stage-this-cycle :dummy)
+              (eq dmc-stage-this-cycle :alignment)
+              (eq dmc-stage-this-cycle :get))
+          dmc-get-p
+          (and (eq dmc-stage-this-cycle :get)
+               (zerop (bus-cpu-cycle-phase bus))))
+    (when dmc-active-p
+      (case dmc-stage-this-cycle
+        (:active-halt
+         (setf (bus-dmc-dma-stage bus) :dummy))
+        (:dummy
+         (setf (bus-dmc-dma-stage bus)
+               (if (= (bus-cpu-cycle-phase bus) 1)
+                   :get
+                   :alignment)))
+        (:alignment
+         (when (= (bus-cpu-cycle-phase bus) 1)
+           (setf (bus-dmc-dma-stage bus) :get)))
+        (:get
+         (when dmc-get-p
+           (let* ((apu (bus-apu bus))
+                  (dmc (apu-dmc apu))
+                  (address (apu-dmc-current-address dmc))
+                  (value (%bus-read-value bus address)))
+             (%apu-dmc-fetch-complete! apu value)
+             (setf (bus-dmc-dma-stage bus) :idle))))))
+    (when (and dmc-active-p
+               (or (not (eq dmc-stage-this-cycle :get))
+                   dmc-get-p)
+               (plusp (bus-dmc-dma-remaining bus)))
       (decf (bus-dmc-dma-remaining bus)))
-    (when (bus-oam-dma-active-p bus)
+    (when (eq (bus-dmc-dma-stage bus) :idle)
+      (setf (bus-dmc-dma-remaining bus) 0))
+    (when oam-active-p
       (case (bus-oam-dma-stage bus)
         (:halt
-         (setf (bus-oam-dma-stage bus)
-               (if (bus-oam-dma-alignment-p bus) :alignment :get)))
+         (unless (eq (bus-last-cpu-access-kind bus) :write)
+           (setf (bus-oam-dma-stage bus)
+                 (if (bus-oam-dma-alignment-p bus) :alignment :get))))
         (:alignment
-         (%bus-dma-dummy-read! bus)
          (setf (bus-oam-dma-stage bus) :get))
         (:get
-         (if dmc-active-p
+         (if (or dmc-get-p (not (zerop (bus-cpu-cycle-phase bus))))
              (setf (bus-dma-cycle-preempted-p bus) t)
-             (progn
-               (let ((address (+ (ash (bus-oam-dma-page bus) 8)
-                                 (bus-oam-dma-index bus))))
-                 (setf (bus-open-bus bus)
-                       (logand (or (%bus-read-device bus address)
-                                   (bus-open-bus bus))
-                               #xFF)))
-               (setf (bus-oam-dma-stage bus) :put))))
+             (let ((address (+ (ash (bus-oam-dma-page bus) 8)
+                               (bus-oam-dma-index bus))))
+               (setf (bus-oam-dma-data bus)
+                     (logand (or (%bus-read-value bus address)
+                                 (bus-open-bus bus))
+                             #xFF)
+                     (bus-oam-dma-stage bus) :put
+                     oam-access-p t))))
         (:put
-         (ppu-write-register! (bus-ppu bus) 4 (bus-open-bus bus))
-         (incf (bus-oam-dma-index bus))
-         (if (= (bus-oam-dma-index bus) 256)
-             (setf (bus-oam-dma-active-p bus) nil)
-             (setf (bus-oam-dma-stage bus) :get)))))))
+         (if (= (bus-cpu-cycle-phase bus) 1)
+             (progn
+               (ppu-write-register! (bus-ppu bus) 4 (bus-oam-dma-data bus))
+               (incf (bus-oam-dma-index bus))
+               (setf oam-access-p t)
+               (if (= (bus-oam-dma-index bus) 256)
+                   (setf (bus-oam-dma-active-p bus) nil)
+                   (setf (bus-oam-dma-stage bus) :get)))
+             (setf (bus-dma-cycle-preempted-p bus) t)))))
+    (when (and oam-active-p
+               (not dmc-get-p)
+               (not oam-access-p)
+               (not (eq (bus-last-cpu-access-kind bus) :write)))
+      (%bus-dma-dummy-read! bus))
+    nil))
+
 
 (defun bus-take-dma-stall-cycles! (bus)
   (prog1 (bus-dma-stall-cycles bus)
@@ -238,3 +312,33 @@
       (let ((hook (bus-cpu-access-hook bus)))
         (when hook
           (funcall hook)))))
+(defun %bus-run-dmc-dma-on-read! (bus address)
+  (let* ((phase (bus-cpu-cycle-phase bus))
+         (stage (bus-dmc-dma-stage bus))
+         (kind (bus-dmc-dma-kind bus))
+         (eligible-p
+           (or (eq stage :retry)
+               (and (eq stage :ready)
+                    (case kind
+                      (:load (zerop phase))
+                      (:reload (= phase 1))
+                      (t nil))))))
+    (when (and eligible-p
+               (bus-cpu-access-active-p bus)
+               (not (bus-oam-dma-active-p bus)))
+      (setf (bus-dmc-dma-stage bus) :active-halt
+            (bus-dmc-dma-remaining bus) (if (zerop phase) 3 4))
+      (loop while (member (bus-dmc-dma-stage bus)
+                          '(:active-halt :dummy :alignment :get))
+            do (let ((ppu-ticks 3))
+                 (unless (eq (bus-dmc-dma-stage bus) :get)
+                   (when (and (< address #x4000)
+                              (= (logand address 7) 2))
+                     (ppu-tick! (bus-ppu bus) 2)
+                     (setf ppu-ticks 1))
+                   (%bus-read-value bus address))
+                 (%bus-cpu-access-before-cycle! bus)
+                 (%bus-cpu-access! bus ppu-ticks)
+                 (when *nes-step-dma-cycles*
+                   (incf *nes-step-dma-cycles*))))))
+  nil)

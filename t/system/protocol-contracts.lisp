@@ -15,6 +15,12 @@
     (expect (protocol-text-result-p "MMC3 IRQ COUNTER PASSED" "PASSED")
             :to-be-truthy)
     (expect (protocol-text-result-p "MMC3 IRQ COUNTER FAILED #2" "PASSED")
+            :to-be nil)
+    (expect (protocol-text-result-p "159A7A8F" (list "159A7A8F" "5E3DF9C4"))
+            :to-be-truthy)
+    (expect (protocol-text-result-p "5E3DF9C4" (list "159A7A8F" "5E3DF9C4"))
+            :to-be-truthy)
+    (expect (protocol-text-result-p "DEADBEEF" (list "159A7A8F" "5E3DF9C4"))
             :to-be nil))
   (it "decodes a synthetic nametable with the supplied font mapping"
     (let ((ppu (make-ppu)))
