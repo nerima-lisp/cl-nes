@@ -271,7 +271,7 @@
                  :failure-text "CRC neither 159A7A8F nor 5E3DF9C4")
                (:id "sprite-dma-and-dmc" :path "sprdma_and_dmc_dma/sprdma_and_dmc_dma.nes"
                  :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                 :failure-text "status 128; incomplete at text T+ Clocks")))
+                 :failure-text "status 128; incomplete at text T+ Clocks (decimal).00 527.01 528.02 527.03 528")))
     (:suite "mapper" :category :mapper
      :subroms ((:id "mmc3-test-2" :path "mmc3_test_2/rom_singles/1-clocking.nes"
                  :protocol :blargg :expected 0 :max-frames 60 :state :pass
@@ -397,6 +397,7 @@
      "NMI Overlap IRQ" "DMA + Open Bus" "DMA + $2007 Read"
      "Length Counter" "Length Table" "Frame Counter IRQ" "Frame Counter 4-step"
      "Frame Counter 5-step" "Controller Strobing" "Controller Clocking"
+     "Implied Dummy Reads"
      "Instruction Timing" "Branch Dummy Reads" "JSR Edge Cases"
      "CHR ROM is not writable" "PPU Register Mirroring"
      "PPU Register Open Bus" "PPU Read Buffer" "Palette RAM Quirks"

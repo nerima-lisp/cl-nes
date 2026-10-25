@@ -1,5 +1,7 @@
 (in-package #:cl-nes)
 
+(declaim (special *nes-step-dma-cycles*))
+
 (defun %ora! (cpu value)
   (%update-zn! cpu (setf (cpu-a cpu) (logior (cpu-a cpu) value))))
 
@@ -157,12 +159,16 @@
                             base-high)
                         8)
                    (logand address #xFF)))
-         (dma-stall-cycles (bus-dma-stall-cycles bus)))
+         (dma-stall-cycles (bus-dma-stall-cycles bus))
+         (dma-step-cycles *nes-step-dma-cycles*))
     ;; DMC DMA skips the H+1 data mask, but not the page-cross address mask.
+    ;; Staged DMA cycles have already advanced the step clock.
     (bus-read bus (logior (logand base #xFF00)
                           (logand address #x00FF)))
     (bus-write! bus write-address
-                (if (> (bus-dma-stall-cycles bus) dma-stall-cycles)
+                (if (or (> (bus-dma-stall-cycles bus) dma-stall-cycles)
+                        (and dma-step-cycles
+                             (> *nes-step-dma-cycles* dma-step-cycles)))
                     (logand value #xFF)
                     (logand value high-plus-one)))))
 

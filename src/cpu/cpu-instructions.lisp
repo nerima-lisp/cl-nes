@@ -82,13 +82,13 @@
     2))
 
 (defun %rts-op! (cpu bus)
-  ;; RTS performs a next-PC dummy read, a stack dummy read, pulls the
-  ;; return address, then reads from the resumed PC.
+  ;; RTS reads the pulled return address on cycle 6 before incrementing PC.
   (bus-read bus (cpu-pc cpu))
   (%dummy-stack-read cpu bus)
-  (setf (cpu-pc cpu)
-        (logand (1+ (%pop-word! cpu bus)) #xFFFF))
-  (bus-read bus (cpu-pc cpu))
+  (let ((return-address (%pop-word! cpu bus)))
+    (setf (cpu-pc cpu) return-address)
+    (bus-read bus return-address)
+    (setf (cpu-pc cpu) (logand (1+ return-address) #xFFFF)))
   6)
 
 (defun %pla-op! (cpu bus)
@@ -108,7 +108,10 @@
   (declare (optimize (speed 3) (safety 1) (debug 1)))
   (if (cpu-stopped-p cpu)
       0
-      (let ((opcode (%fetch-byte cpu bus)))
+      (let* ((accesses-before
+               (and (bus-cpu-access-active-p bus)
+                    (bus-cpu-access-count bus)))
+             (opcode (%fetch-byte cpu bus)))
         (setf (cpu-irq-poll-delay cpu) nil)
         ;; Implied instructions use their second cycle to read the next PC.
         (when (case opcode
@@ -119,5 +122,10 @@
                 (otherwise nil))
           (bus-read bus (cpu-pc cpu)))
         (let ((cycles (%dispatch-cpu-opcode cpu bus opcode nmi-poll)))
+          ;; Implied operations still read the next PC on their second cycle.
+          (when (and accesses-before
+                     (= cycles 2)
+                     (= 1 (- (bus-cpu-access-count bus) accesses-before)))
+            (bus-read bus (cpu-pc cpu)))
           (incf (cpu-cycles cpu) cycles)
           cycles))))
