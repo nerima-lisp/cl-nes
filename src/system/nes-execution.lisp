@@ -74,7 +74,8 @@ continuation's result."
     (setf (nes-nmi-hijacked-p nes) nil)
     (let ((*nes-step-context* nes)
           (*nes-step-first-irq-poll-seen-p* nil)
-          (*nes-step-dma-cycles* 0))
+          (*nes-step-dma-cycles* 0)
+          (*nes-step-nmi-poll-seen-p* nil))
       (let ((cycles
               (%nes-run-instruction!
                nes cycle-hook #'%nes-poll-irq-before-cycle!)))
@@ -90,7 +91,8 @@ continuation's result."
           ;; NMI is sampled before maskable IRQ, matching the 6502 priority.
           (let ((nmi-taken-p
                   (or (nes-nmi-hijacked-p nes)
-                      (ppu-take-nmi! (nes-ppu nes)))))
+                      (and (not *nes-step-nmi-poll-seen-p*)
+                           (ppu-take-nmi! (nes-ppu nes))))))
             (when (and nmi-taken-p (not (nes-nmi-hijacked-p nes)))
               (incf cycles (%nes-run-interrupt!
                             nes :nmi nil cycle-hook nil)))

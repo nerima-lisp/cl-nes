@@ -18,13 +18,17 @@
                nes bus nil 0 nil nil)
               :to-be nil)))
 
-  (it "polls IRQ before each DMA stall cycle"
+  (it "does not poll IRQ during DMA stall cycles"
     (let* ((nes (make-nes))
            (poll-count 0))
+      (setf (cl-nes::nes-irq-line-sample-p nes) t)
       (expect (cl-nes::%nes-run-dma-stalls!
                nes 3 (lambda () (incf poll-count)))
               :to-be 3)
       (expect poll-count :to-be 3)
+      (expect (cl-nes::nes-irq-seen-p nes) :to-be nil)
+      (expect (cl-nes::nes-irq-seen-before-last-p nes) :to-be nil)
+      (expect (cl-nes::nes-irq-line-sample-p nes) :to-be nil)
       (expect (cl-nes::bus-cpu-cycle-phase
                (cl-nes::nes-bus nes))
               :to-be 1))))

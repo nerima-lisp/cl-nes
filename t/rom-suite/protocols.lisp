@@ -27,7 +27,7 @@
                  :failure-text "status 0; 04-dummy_reads_apu..Passed.All 4 tests passed")
                (:id "cpu-interrupts-v2" :path "cpu_interrupts_v2/cpu_interrupts.nes"
                  :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
-                 :failure-text "2-nmi_and_brk..Failed")
+                 :failure-text "status 128; failed while running test 5 of 5 (branch delays IRQ)")
                (:id "cpu-dummy-reads" :path "cpu_dummy_reads/cpu_dummy_reads.nes"
                  :protocol :ram-result :expected 0 :result-address #x6000
                  :max-frames 60 :state :pass
@@ -85,9 +85,9 @@
       (:id "cpu-interrupts-v2-01-cli" :path "cpu_interrupts_v2/rom_singles/1-cli_latency.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; Passed")
       (:id "cpu-interrupts-v2-02-nmi-brk" :path "cpu_interrupts_v2/rom_singles/2-nmi_and_brk.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 128")
       (:id "cpu-interrupts-v2-03-nmi-irq" :path "cpu_interrupts_v2/rom_singles/3-nmi_and_irq.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+       :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 128")
       (:id "cpu-interrupts-v2-04-irq-dma" :path "cpu_interrupts_v2/rom_singles/4-irq_and_dma.nes"
        :protocol :blargg :expected 0 :max-frames 120
        :timeout-ms-per-frame 126 :state :pass :failure-text "status 128")

@@ -1,5 +1,16 @@
 (in-package #:cl-nes)
 
+(defvar *cpu-interrupt-vector-nmi-poll-hook* nil)
+
+(defvar *cpu-interrupt-vector-nmi-poll-result* nil)
+
+(defun %cpu-poll-interrupt-vector-nmi! ()
+  (when *cpu-interrupt-vector-nmi-poll-hook*
+    (let ((poll-hook *cpu-interrupt-vector-nmi-poll-hook*))
+      (setf *cpu-interrupt-vector-nmi-poll-hook* nil
+            *cpu-interrupt-vector-nmi-poll-result* (funcall poll-hook))))
+  *cpu-interrupt-vector-nmi-poll-result*)
+
 (defun %branch! (cpu bus condition)
   (let ((offset (%fetch-byte cpu bus)))
     (if condition
@@ -55,22 +66,20 @@
             (and (eq type :irq)
                  (or force-p
                      (not (%flag-set-p cpu +flag-interrupt-disable+)))))
-    ;; An interrupt response is a seven-cycle instruction.  The first two
-    ;; cycles are discarded reads from the current PC; keeping them as bus
-    ;; accesses matters for PPU/APU timing and mapper side effects.
+    ;; Keep the discarded reads as bus accesses for device timing.
     (bus-read bus (cpu-pc cpu))
     (bus-read bus (cpu-pc cpu))
     (%push-word! cpu bus (cpu-pc cpu))
-    ;; NMI polling follows the return-address pushes and precedes status.
-    (let ((vector-type
-            (if (and nmi-poll (funcall nmi-poll))
-                :nmi
-                type)))
+    (let ((*cpu-interrupt-vector-nmi-poll-hook* nmi-poll)
+          (*cpu-interrupt-vector-nmi-poll-result* nil))
       (%push-byte! cpu bus (%status-for-stack cpu nil))
+      ;; Direct CPU callers have no NES cycle hook to consume the poll.
+      (%cpu-poll-interrupt-vector-nmi!)
       (%set-flag! cpu +flag-interrupt-disable+ t)
       (setf (cpu-irq-delay cpu) 0)
       (setf (cpu-pc cpu)
-            (if (eq vector-type :nmi)
+            (if (or (eq type :nmi)
+                    *cpu-interrupt-vector-nmi-poll-result*)
                 (logior (bus-read bus #xFFFA)
                         (ash (bus-read bus #xFFFB) 8))
                 (logior (bus-read bus #xFFFE)

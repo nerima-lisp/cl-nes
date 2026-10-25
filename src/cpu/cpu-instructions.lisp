@@ -13,15 +13,14 @@
   (bus-read bus (cpu-pc cpu))
   (setf (cpu-pc cpu) (logand (1+ (cpu-pc cpu)) #xFFFF))
   (%push-word! cpu bus (cpu-pc cpu))
-  ;; BRK polls NMI after pushing its return address and before status.
-  (let ((vector-type
-          (if (and nmi-poll (funcall nmi-poll))
-              :nmi
-              :irq)))
+  (let ((*cpu-interrupt-vector-nmi-poll-hook* nmi-poll)
+        (*cpu-interrupt-vector-nmi-poll-result* nil))
     (%push-byte! cpu bus (%status-for-stack cpu t))
+    ;; Direct CPU callers have no NES cycle hook to consume the poll.
+    (%cpu-poll-interrupt-vector-nmi!)
     (%set-flag! cpu +flag-interrupt-disable+ t)
     (setf (cpu-pc cpu)
-          (if (eq vector-type :nmi)
+          (if *cpu-interrupt-vector-nmi-poll-result*
               (logior (bus-read bus #xFFFA)
                       (ash (bus-read bus #xFFFB) 8))
               (logior (bus-read bus #xFFFE)
