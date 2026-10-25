@@ -884,6 +884,15 @@
        (unwind-protect
             (progn
               (sb-thread:wait-on-semaphore started)
+              (let ((real-time-deadline
+                      (+ (get-internal-real-time)
+                         (* 30 internal-time-units-per-second))))
+                (loop until (or
+                              (>= (rom-thread-cpu-time-nanoseconds sibling)
+                                  25000000)
+                              (>= (get-internal-real-time)
+                                  real-time-deadline))
+                      do (sleep 0.01d0)))
               (cl-weave:expect
                (call-with-thread-cpu-timeout
                 "sibling CPU probe"
