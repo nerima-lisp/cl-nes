@@ -110,7 +110,7 @@
             (cl-nes::ppu-sprite-render-count ppu) 1)
       (ppu-tick! ppu 66)
       (expect (logand (ppu-status ppu) #x40) :to-be #x40)))
-  (it "starts sprite evaluation at OAMADDR and identifies the first slot as sprite zero"
+  (it "starts sprite evaluation at OAMADDR and retains the original OAM index"
   (let* ((ppu (make-ppu (make-fixture-cartridge)))
          (oam (ppu-oam ppu))
          (secondary (cl-nes::ppu-secondary-oam ppu)))
@@ -136,7 +136,7 @@
           (aref (cl-nes::ppu-sprite-shift-high ppu) 0) 0
           (aref (cl-nes::ppu-sprite-attributes ppu) 0) 0)
     (cl-nes::%ppu-sprite-pixel-at-shifts ppu 8 t)
-    (expect (logand (ppu-status ppu) #x40) :to-be #x40)
+    (expect (logand (ppu-status ppu) #x40) :to-be 0)
     (setf (cl-nes::ppu-scanline ppu) 0
           (cl-nes::ppu-dot ppu) 257
           (ppu-oam-address ppu) #x80)
