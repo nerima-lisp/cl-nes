@@ -67,6 +67,21 @@
     ((bus-cartridge bus)
      (cartridge-cpu-read (bus-cartridge bus) address))
     (t nil)))
+(defun %bus-read-dmc-sample (bus address)
+  (let* ((sample-value (%bus-read-value bus address))
+         (cpu-address (bus-last-cpu-access-address bus))
+         (conflict-address
+           (logior (logand cpu-address #xFFE0)
+                   (logand address #x001F))))
+    ;; The halted CPU supplies the high bits of the internal register address.
+    (if (or (<= #x2000 conflict-address #x3FFF)
+            (and (<= #x4000 conflict-address #x4017)
+                 (/= conflict-address #x4014)))
+        (let ((conflict-value (%bus-read-value bus conflict-address)))
+          (if (= conflict-address #x4015)
+              conflict-value
+              (logand sample-value conflict-value)))
+        sample-value)))
 
 (defun %bus-read (bus address update-internal-data-bus-p)
   (declare (optimize (speed 3) (safety 1) (debug 1)))
@@ -180,7 +195,7 @@
              (let* ((apu (bus-apu bus))
                     (dmc (apu-dmc apu))
                     (address (apu-dmc-current-address dmc))
-                    (value (%bus-read-value bus address)))
+                    (value (%bus-read-dmc-sample bus address)))
                (%apu-dmc-fetch-complete! apu value)
                (setf (bus-dmc-dma-stage bus) :idle))))))
       (when (and dmc-active-p

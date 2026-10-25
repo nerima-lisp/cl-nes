@@ -95,6 +95,41 @@
             (cl-nes::bus-cpu-cycle-phase bus) 1)
       (funcall (cl-nes::apu-memory-reader apu) #x8000)
       (expect (cl-nes::bus-take-dma-stall-cycles! bus) :to-be 3)))
+  (it "lets DMC register conflicts clock both controllers"
+    (let* ((controller-1 (make-controller))
+           (controller-2 (make-controller))
+           (cartridge (make-fixture-cartridge
+                       :program (list #x00 #x00)
+                       :start #xC016))
+           (apu (make-apu))
+           (bus (make-bus :cartridge cartridge
+                          :controller-1 controller-1
+                          :controller-2 controller-2
+                          :apu apu))
+           (dmc (cl-nes::apu-dmc apu)))
+      (dolist (controller (list controller-1 controller-2))
+        (controller-set-buttons! controller 1)
+        (controller-write! controller 1)
+        (controller-write! controller 0))
+      (setf (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-current-address dmc) #xC016
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bytes-remaining dmc) 2
+            (cl-nes::bus-last-cpu-access-kind bus) :read
+            (cl-nes::bus-last-cpu-access-address bus) #x4000
+            (cl-nes::bus-dmc-dma-stage bus) :get
+            (cl-nes::bus-dmc-dma-remaining bus) 4)
+      (cl-nes::%bus-advance-dma-cycle! bus)
+      (expect (cl-nes::bus-open-bus bus) :to-be 1)
+      (expect (cl-nes::controller-read-count controller-1) :to-be 1)
+      (expect (cl-nes::apu-dmc-sample-buffer dmc) :to-be 0)
+      (setf (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::bus-dmc-dma-stage bus) :get
+            (cl-nes::bus-dmc-dma-remaining bus) 4)
+      (cl-nes::%bus-advance-dma-cycle! bus)
+      (expect (cl-nes::bus-open-bus bus) :to-be 1)
+      (expect (cl-nes::controller-read-count controller-2) :to-be 1)
+      (expect (cl-nes::apu-dmc-sample-buffer dmc) :to-be 0)))
 
   ;; DMC dummy reads must not re-enter the active CPU operation and recursively
   ;; clock the APU while the fetch is already in progress.
