@@ -9,26 +9,8 @@
           (getf result :status)
           (getf result :error)))
 
-(defun run-contract (contract)
-  (let ((path (resolve-rom-path contract)))
-    (unless (probe-file path)
-      (error "ROM input missing for ~A: ~A" (rom-contract-id contract) path))
-    (handler-case
-        (call-with-rom-test-timeout
-         (rom-contract-id contract)
-         (lambda ()
-           (case (rom-contract-protocol contract)
-             (:blargg (run-blargg-contract path contract))
-             (:ram-result (run-ram-result-contract path contract))
-             (:text-progress (run-text-progress-contract path contract))
-             (:nametable-text (run-nametable-text-contract path contract))
-             (:mmc1-a12 (run-mmc1-a12-contract path contract))
-             (otherwise (error "Unknown ROM protocol ~S"
-                               (rom-contract-protocol contract)))))
-         (rom-contract-max-frames contract))
-      (error (condition)
-        (list :passed nil :error (princ-to-string condition)
-              :text "condition signaled")))))
+(defparameter *rom-test-timeout-ms-per-frame* 73
+  "Maximum observed wall-clock milliseconds per completed NES frame, rounded up.")
 
 (defun enforce-ratchet (contract result)
   (let ((passed (getf result :passed)))
@@ -76,9 +58,30 @@
 
 (defparameter *default-rom-test-timeout-ms* 120000
   "Bounded fallback for protocols without a frame limit.")
-(defparameter *rom-test-timeout-ms-per-frame* 73
-  "Maximum observed wall-clock milliseconds per completed NES frame, rounded up.")
-(defparameter *rom-test-timeout-margin* 1.5d0
+(defun run-contract (contract)
+  (let ((path (resolve-rom-path contract))
+        (*rom-test-timeout-ms-per-frame*
+          (or (rom-contract-timeout-ms-per-frame contract)
+              *rom-test-timeout-ms-per-frame*)))
+    (unless (probe-file path)
+      (error "ROM input missing for ~A: ~A" (rom-contract-id contract) path))
+    (handler-case
+        (call-with-rom-test-timeout
+         (rom-contract-id contract)
+         (lambda ()
+           (case (rom-contract-protocol contract)
+             (:blargg (run-blargg-contract path contract))
+             (:ram-result (run-ram-result-contract path contract))
+             (:text-progress (run-text-progress-contract path contract))
+             (:nametable-text (run-nametable-text-contract path contract))
+             (:mmc1-a12 (run-mmc1-a12-contract path contract))
+             (otherwise (error "Unknown ROM protocol ~S"
+                               (rom-contract-protocol contract)))))
+         (rom-contract-max-frames contract))
+      (error (condition)
+        (list :passed nil :error (princ-to-string condition)
+              :text "condition signaled")))))
+(defparameter *rom-test-timeout-margin* 2.0d0
   "Multiplier applied to the measured wall-clock cost per frame.")
 (defparameter *rom-test-timeout-startup-ms* 1000
   "Allowance for runner startup before frame execution.")
@@ -193,14 +196,17 @@
           collect (cons contract (aref results index)))))
 
 (defun run-accuracy-contract ()
-  (let ((path (accuracy-coin-path)))
+  (let* ((contract *accuracy-coin-contract*)
+         (path (accuracy-coin-path))
+         (*rom-test-timeout-ms-per-frame*
+           (or (getf contract :timeout-ms-per-frame)
+               *rom-test-timeout-ms-per-frame*)))
     (unless (and path (probe-file path))
       (error "AccuracyCoin input missing: ~A" path))
     (call-with-rom-test-timeout
      "accuracy-coin"
      (lambda ()
-       (let* ((contract *accuracy-coin-contract*)
-              (result (run-accuracy-coin path contract)))
+       (let ((result (run-accuracy-coin path contract)))
          (format t
                  "accuracy-coin frames=~D complete=~A completed=~D total=~D reserved=~D pass=~D fail=~D skip=~D running=~D~%"
                  (getf result :frames) (getf result :completed-p)
@@ -225,7 +231,7 @@
                   (getf contract :max-frames)))
          (enforce-accuracy-ratchet contract result)
          result))
-     (getf *accuracy-coin-contract* :max-frames))))
+     (getf contract :max-frames))))
 
 (defun run-rom-suite ()
   (let ((results nil)
@@ -260,7 +266,7 @@
       ,*rom-contract-test-data*
       "ROM contract ~A"
       (id category path protocol expected max-frames state failure-text mapper
-       result-address running-value)
+       result-address running-value timeout-ms-per-frame)
       (it "has a declarative protocol and bounded execution"
           (unless (and (stringp id) (keywordp category) (stringp path)
                        (or (numberp expected) (stringp expected))
@@ -270,7 +276,10 @@
                                           :nametable-text :mmc1-a12 :accuracy-coin))
                        (plusp max-frames)
                        (or (null result-address) (integerp result-address))
-                       (or (null running-value) (integerp running-value))
+                       (and (or (null running-value) (integerp running-value))
+                            (or (null timeout-ms-per-frame)
+                                (and (integerp timeout-ms-per-frame)
+                                     (plusp timeout-ms-per-frame))))
                        (member state '(:pass :known-fail)))
             (error "invalid ROM contract"))))
      (cl-weave:describe "ROM suite table"
@@ -278,8 +287,11 @@
         ,*rom-contract-test-data*
         "table row ~A"
         (id category path protocol expected max-frames state failure-text mapper
-         result-address running-value)
-        (unless (and (stringp id) (stringp path))
+         result-address running-value timeout-ms-per-frame)
+        (unless (and (stringp id) (stringp path)
+                     (or (null timeout-ms-per-frame)
+                         (and (integerp timeout-ms-per-frame)
+                              (plusp timeout-ms-per-frame))))
           (error "invalid table row")))
        (it "classifies AccuracyCoin result values"
          (cl-weave:expect (accuracy-result-kind #xff) :to-be :skipped)
@@ -329,8 +341,19 @@
                (*rom-test-timeout-startup-ms* 7))
            (cl-weave:expect (rom-test-timeout-ms 10 nil)
                             :to-equal 45)
-           (cl-weave:expect (rom-test-timeout-ms 100 nil)
-                            :to-equal 382)))
+           (cl-weave:expect
+            (let* ((contract
+                     (find-if (lambda (row)
+                                (string= (rom-contract-id row) "blargg-ppu-palette-ram"))
+                              (rom-contract-table)))
+                   (rate (rom-contract-timeout-ms-per-frame contract))
+                   (timeout
+                     (let ((*rom-test-timeout-ms-per-frame* (or rate 3))
+                           (*rom-test-timeout-margin* 1.5d0)
+                           (*rom-test-timeout-startup-ms* 1000))
+                       (rom-test-timeout-ms (rom-contract-max-frames contract) nil))))
+              (list (rom-test-timeout-ms 100 nil) rate timeout))
+            :to-equal (list 382 208 113320))))
        (it "keeps the global override and no-frame fallback"
          (cl-weave:expect (rom-test-timeout-ms nil nil)
                           :to-equal *default-rom-test-timeout-ms*)
@@ -357,7 +380,7 @@
             (handler-case (progn (rom-test-timeout-for-frames 10) nil)
               (error () t))
             :to-be t)))
-       (it "uses each contract's frame limit for its timeout"
+       (it "uses each contract frame limit and calibrated timeout rate"
          (let ((*rom-test-timeout-ms-per-frame* 2)
                (*rom-test-timeout-margin* 1d0)
                (*rom-test-timeout-startup-ms* 5))
@@ -369,7 +392,34 @@
             (rom-test-timeout-ms
              (getf *accuracy-coin-contract* :max-frames) nil)
             :to-equal
-            (+ 5 (* 2 (getf *accuracy-coin-contract* :max-frames)))))))))
+            (+ 5 (* 2 (getf *accuracy-coin-contract* :max-frames)))))
+         (let ((*rom-test-timeout-ms-per-frame*
+                 (getf *accuracy-coin-contract* :timeout-ms-per-frame))
+               (*rom-test-timeout-margin* 2.0d0)
+               (*rom-test-timeout-startup-ms* 1000))
+           (cl-weave:expect
+            (rom-test-timeout-ms
+             (getf *accuracy-coin-contract* :max-frames) nil)
+            :to-equal 451248))
+         (let ((*rom-test-timeout-margin* 2.0d0)
+               (*rom-test-timeout-startup-ms* 1000))
+           (cl-weave:expect
+            (sort
+             (loop for contract in (rom-contract-table)
+                   for rate = (rom-contract-timeout-ms-per-frame contract)
+                   when rate
+                     collect
+                       (list (rom-contract-id contract)
+                             (let ((*rom-test-timeout-ms-per-frame* rate))
+                               (rom-test-timeout-ms
+                                (rom-contract-max-frames contract) nil))))
+             (function string<) :key (function first))
+            :to-equal
+            (quote (("blargg-ppu-palette-ram" 150760)
+                    ("cpu-exec-space-apu" 103900)
+                    ("cpu-interrupts-v2-04-irq-dma" 31240)
+                    ("cpu-interrupts-v2-05-branch" 22360)
+                    ("cpu-reset-registers" 105000)))))))))
 
 (define-rom-contract-tests)
 

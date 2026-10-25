@@ -1,11 +1,11 @@
 (in-package #:cl-nes/rom-suite)
 
-(defstruct (rom-contract (:constructor make-rom-contract
-                              (id category path protocol expected max-frames state
-                               failure-text &optional mapper4-variant suite
-                               result-address running-value)))
-  id category path protocol expected max-frames state failure-text mapper4-variant suite
-  result-address running-value)
+(defstruct (rom-contract
+  (:constructor make-rom-contract
+    (id category path protocol expected max-frames state failure-text
+     &optional mapper4-variant suite result-address running-value timeout-ms-per-frame)))
+  id category path protocol expected max-frames state failure-text
+  mapper4-variant suite result-address running-value timeout-ms-per-frame)
 
 (defparameter *rom-root-environment* "CL_NES_TEST_ROMS")
 (defparameter *accuracy-coin-environment* "CL_NES_ACCURACY_COIN")
@@ -89,11 +89,14 @@
       (:id "cpu-interrupts-v2-03-nmi-irq" :path "cpu_interrupts_v2/rom_singles/3-nmi_and_irq.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
       (:id "cpu-interrupts-v2-04-irq-dma" :path "cpu_interrupts_v2/rom_singles/4-irq_and_dma.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+       :protocol :blargg :expected 0 :max-frames 120
+       :timeout-ms-per-frame 126 :state :known-fail :failure-text "status 128")
       (:id "cpu-interrupts-v2-05-branch" :path "cpu_interrupts_v2/rom_singles/5-branch_delays_irq.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+       :protocol :blargg :expected 0 :max-frames 120
+       :timeout-ms-per-frame 89 :state :known-fail :failure-text "status 128")
       (:id "cpu-exec-space-apu" :path "cpu_exec_space/test_cpu_exec_space_apu.nes"
-       :protocol :blargg :expected 0 :max-frames 350 :state :pass
+       :protocol :blargg :expected 0 :max-frames 350
+       :timeout-ms-per-frame 147 :state :pass
        :failure-text "status 0; 40FF Passed")
       (:id "cpu-exec-space-ppuio" :path "cpu_exec_space/test_cpu_exec_space_ppuio.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; Passed")
@@ -105,7 +108,8 @@
        :protocol :blargg :expected 0 :max-frames 200 :state :pass
        :failure-text "status 0; Passed")
       (:id "cpu-reset-registers" :path "cpu_reset/registers.nes"
-       :protocol :blargg :expected 0 :max-frames 200 :state :pass
+       :protocol :blargg :expected 0 :max-frames 200
+       :timeout-ms-per-frame 260 :state :pass
        :failure-text "status 0; Passed")))
     (:suite "ppu" :category :ppu
      :subroms ((:id "ppu-vbl-nmi" :path "ppu_vbl_nmi/ppu_vbl_nmi.nes"
@@ -199,7 +203,8 @@
                 :protocol :ram-result :expected 0 :result-address #x6000 :running-value #x80 :max-frames 360 :state :pass
                 :failure-text "status $6000; 0 means PASSED")
                (:id "blargg-ppu-palette-ram" :path "blargg_ppu_tests_2005.09.15b/palette_ram.nes"
-                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 360 :state :pass
+                :protocol :ram-result :expected 1 :result-address #x00F0 :max-frames 360
+                :timeout-ms-per-frame 208 :state :pass
                 :failure-text "result $F0; 1 means PASSED")
                (:id "blargg-ppu-power-up-palette" :path "blargg_ppu_tests_2005.09.15b/power_up_palette.nes"
                 :protocol :ram-result :expected 1 :result-address #x00F0
@@ -345,7 +350,7 @@
 
 (defparameter *accuracy-coin-contract*
   '(:id "accuracy-coin" :category :accuracy-coin :path "AccuracyCoin.nes"
-    :protocol :accuracy-coin :expected 146 :max-frames 4894 :state :known-fail
+    :protocol :accuracy-coin :expected 146 :max-frames 4894 :timeout-ms-per-frame 46 :state :known-fail
     :failure-text "named result item mismatch"
     :accepted-values (#x01 #x05 #x09 #x0D #x11 #x39 #x41)
     :shared-draw ((:name "PPU Reset Flag" :category :power-on-state
@@ -573,7 +578,8 @@
                                    (getf subrom :failure-text)
                                    (getf subrom :mapper4-variant)
                                    (getf subrom :result-address)
-                                   (getf subrom :running-value)))))
+                                   (getf subrom :running-value)
+                                   (getf subrom :timeout-ms-per-frame)))))
 
 (defun rom-contract-table ()
   (loop for suite in *rom-contract-data*
@@ -587,7 +593,8 @@
                               (getf subrom :failure-text)
                               (getf subrom :mapper4-variant) suite-name
                               (getf subrom :result-address)
-                              (getf subrom :running-value)))))
+                              (getf subrom :running-value)
+                              (getf subrom :timeout-ms-per-frame)))))
 
 (defun env-path (name)
   (uiop:getenv name))
