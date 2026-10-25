@@ -24,7 +24,8 @@
              (:nametable-text (run-nametable-text-contract path contract))
              (:mmc1-a12 (run-mmc1-a12-contract path contract))
              (otherwise (error "Unknown ROM protocol ~S"
-                               (rom-contract-protocol contract))))))
+                               (rom-contract-protocol contract)))))
+         (rom-contract-max-frames contract))
       (error (condition)
         (list :passed nil :error (princ-to-string condition)
               :text "condition signaled")))))
@@ -74,23 +75,51 @@
   "Deterministic fallback when the runner does not select a worker count.")
 
 (defparameter *default-rom-test-timeout-ms* 120000
-  "Default wall-clock limit for one ROM protocol execution.")
+  "Bounded fallback for protocols without a frame limit.")
+(defparameter *rom-test-timeout-ms-per-frame* 73
+  "Maximum observed wall-clock milliseconds per completed NES frame, rounded up.")
+(defparameter *rom-test-timeout-margin* 1.5d0
+  "Multiplier applied to the measured wall-clock cost per frame.")
+(defparameter *rom-test-timeout-startup-ms* 1000
+  "Allowance for runner startup before frame execution.")
+
+(defun positive-integer-value (name value)
+  (let ((parsed (ignore-errors (parse-integer value :junk-allowed nil))))
+    (if (and parsed (plusp parsed))
+        parsed
+        (error "~A must be a positive integer: ~A" name value))))
 
 (defun positive-environment-integer (name default)
   (let ((value (uiop:getenv name)))
     (if (null value)
         default
-        (let ((parsed (ignore-errors (parse-integer value :junk-allowed nil))))
-          (if (and parsed (plusp parsed))
-              parsed
-              (error "~A must be a positive integer: ~A" name value))))))
+        (positive-integer-value name value))))
 
-(defun rom-test-timeout-ms ()
-  (positive-environment-integer "CL_NES_ROM_TEST_TIMEOUT_MS"
-                                *default-rom-test-timeout-ms*))
+(defun rom-test-timeout-ms (&optional max-frames
+                            (override (uiop:getenv "CL_NES_ROM_TEST_TIMEOUT_MS")))
+  (if override
+      (positive-integer-value "CL_NES_ROM_TEST_TIMEOUT_MS" override)
+      (if max-frames
+          (rom-test-timeout-for-frames max-frames)
+          *default-rom-test-timeout-ms*)))
 
-(defun call-with-rom-test-timeout (label thunk)
-  (let ((timeout-ms (rom-test-timeout-ms)))
+(defun rom-test-timeout-for-frames (max-frames)
+  (unless (and (integerp max-frames) (plusp max-frames))
+    (error "ROM max-frames must be a positive integer: ~S" max-frames))
+  (unless (and (realp *rom-test-timeout-ms-per-frame*)
+               (plusp *rom-test-timeout-ms-per-frame*)
+               (realp *rom-test-timeout-margin*)
+               (>= *rom-test-timeout-margin* 1)
+               (integerp *rom-test-timeout-startup-ms*)
+               (not (minusp *rom-test-timeout-startup-ms*)))
+    (error "Invalid ROM test timeout calibration"))
+  (+ *rom-test-timeout-startup-ms*
+     (ceiling (* max-frames
+                 *rom-test-timeout-ms-per-frame*
+                 *rom-test-timeout-margin*))))
+
+(defun call-with-rom-test-timeout (label thunk &optional max-frames)
+  (let ((timeout-ms (rom-test-timeout-ms max-frames)))
     #+sbcl
     (handler-case
         (sb-ext:with-timeout (/ timeout-ms 1000.0d0)
@@ -195,7 +224,8 @@
            (error "AccuracyCoin automatic run reached max-frames=~D before completion"
                   (getf contract :max-frames)))
          (enforce-accuracy-ratchet contract result)
-         result)))))
+         result))
+     (getf *accuracy-coin-contract* :max-frames))))
 
 (defun run-rom-suite ()
   (let ((results nil)
@@ -292,7 +322,54 @@
            (setf (aref ram #x35) 0)
            (cl-weave:expect
             (cl-nes::protocol-accuracy-coin-complete-p ram nil addresses)
-            :to-be nil))))))
+            :to-be nil)))
+       (it "derives the timeout from frames with a startup allowance"
+         (let ((*rom-test-timeout-ms-per-frame* 3)
+               (*rom-test-timeout-margin* 1.25d0)
+               (*rom-test-timeout-startup-ms* 7))
+           (cl-weave:expect (rom-test-timeout-ms 10 nil)
+                            :to-equal 45)
+           (cl-weave:expect (rom-test-timeout-ms 100 nil)
+                            :to-equal 382)))
+       (it "keeps the global override and no-frame fallback"
+         (cl-weave:expect (rom-test-timeout-ms nil nil)
+                          :to-equal *default-rom-test-timeout-ms*)
+         (cl-weave:expect (rom-test-timeout-ms 10 "2500")
+                          :to-equal 2500))
+       (it "rejects invalid frame limits and timeout settings"
+         (dolist (max-frames '(0 -1 1.5 "10" nil))
+           (cl-weave:expect
+            (handler-case
+                (progn (rom-test-timeout-for-frames max-frames) nil)
+              (error () t))
+            :to-be t))
+         (cl-weave:expect
+          (handler-case (progn (rom-test-timeout-ms 10 "0") nil)
+            (error () t))
+          :to-be t)
+         (let ((*rom-test-timeout-ms-per-frame* 0))
+           (cl-weave:expect
+            (handler-case (progn (rom-test-timeout-for-frames 10) nil)
+              (error () t))
+            :to-be t))
+         (let ((*rom-test-timeout-margin* 0.5d0))
+           (cl-weave:expect
+            (handler-case (progn (rom-test-timeout-for-frames 10) nil)
+              (error () t))
+            :to-be t)))
+       (it "uses each contract's frame limit for its timeout"
+         (let ((*rom-test-timeout-ms-per-frame* 2)
+               (*rom-test-timeout-margin* 1d0)
+               (*rom-test-timeout-startup-ms* 5))
+           (let ((contract (first (rom-contract-table))))
+             (cl-weave:expect
+              (rom-test-timeout-ms (rom-contract-max-frames contract) nil)
+              :to-equal (+ 5 (* 2 (rom-contract-max-frames contract)))))
+           (cl-weave:expect
+            (rom-test-timeout-ms
+             (getf *accuracy-coin-contract* :max-frames) nil)
+            :to-equal
+            (+ 5 (* 2 (getf *accuracy-coin-contract* :max-frames)))))))))
 
 (define-rom-contract-tests)
 
