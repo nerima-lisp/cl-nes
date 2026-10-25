@@ -86,9 +86,6 @@
       (let ((value (%bus-read-value bus address)))
         (%bus-cpu-access-before-cycle! bus)
         (%bus-cpu-access! bus ppu-ticks)
-        (when (bus-dmc-read-replay-p bus)
-          (setf value (%bus-read-value bus address)
-                (bus-dmc-read-replay-p bus) nil))
         (when update-internal-data-bus-p
           (setf (bus-internal-data-bus bus) value))
         value))))
@@ -152,8 +149,7 @@
                      (and (eq (bus-dmc-dma-stage bus) :ready)
                           (case (bus-dmc-dma-kind bus)
                             (:load (zerop (bus-cpu-cycle-phase bus)))
-                            (:reload (= (bus-cpu-cycle-phase bus) 1))
-                            (t nil))))
+                            (:reload (= (bus-cpu-cycle-phase bus) 1)))))
                  (not (eq (bus-last-cpu-access-kind bus) :write)))
         (setf (bus-dmc-dma-stage bus) :active-halt
               (bus-dmc-dma-remaining bus)
@@ -208,9 +204,7 @@
                (let ((address (+ (ash (bus-oam-dma-page bus) 8)
                                  (bus-oam-dma-index bus))))
                  (setf (bus-oam-dma-data bus)
-                       (logand (or (%bus-read-value bus address)
-                                   (bus-open-bus bus))
-                               #xFF)
+                       (logand (%bus-read-value bus address) #xFF)
                        (bus-oam-dma-stage bus) :put
                        oam-access-p t))))
           (:put
@@ -324,8 +318,7 @@
                (and (eq stage :ready)
                     (case kind
                       (:load (zerop phase))
-                      (:reload (= phase 1))
-                      (t nil))))))
+                      (:reload (= phase 1)))))))
     (when (and eligible-p
                (bus-cpu-access-active-p bus)
                (not (bus-oam-dma-active-p bus)))

@@ -108,10 +108,7 @@
   (declare (optimize (speed 3) (safety 1) (debug 1)))
   (if (cpu-stopped-p cpu)
       0
-      (let* ((accesses-before
-               (and (bus-cpu-access-active-p bus)
-                    (bus-cpu-access-count bus)))
-             (opcode (%fetch-byte cpu bus)))
+      (let ((opcode (%fetch-byte cpu bus)))
         (setf (cpu-irq-poll-delay cpu) nil)
         ;; Implied instructions use their second cycle to read the next PC.
         (when (case opcode
@@ -122,10 +119,5 @@
                 (otherwise nil))
           (bus-read bus (cpu-pc cpu)))
         (let ((cycles (%dispatch-cpu-opcode cpu bus opcode nmi-poll)))
-          ;; Implied operations still read the next PC on their second cycle.
-          (when (and accesses-before
-                     (= cycles 2)
-                     (= 1 (- (bus-cpu-access-count bus) accesses-before)))
-            (bus-read bus (cpu-pc cpu)))
           (incf (cpu-cycles cpu) cycles)
           cycles))))
