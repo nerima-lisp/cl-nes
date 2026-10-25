@@ -25,20 +25,29 @@
   result)
 
 (defun enforce-accuracy-ratchet (contract result)
-  (let ((passed (getf result :passed))
-        (pass-count (getf result :pass-count))
-        (ratchet-count (getf contract :ratchet-pass-count))
-        (ratchet-items (getf contract :ratchet-pass-items))
-        (items (getf result :items)))
+  (let* ((passed (getf result :passed))
+         (pass-count (getf result :pass-count))
+         (ratchet-count (getf contract :ratchet-pass-count))
+         (ratchet-items (getf contract :ratchet-pass-items))
+         (items (getf result :items))
+         (lost-items
+           (loop for name in ratchet-items
+                 unless (some (lambda (item)
+                                (and (string= name (getf item :name))
+                                     (eq :pass (getf item :kind))))
+                              items)
+                   collect name))
+         (failures nil))
     (when (and ratchet-count (< pass-count ratchet-count))
-      (error "accuracy ratchet regression: ~A pass count ~D < baseline ~D"
-             (getf contract :id) pass-count ratchet-count))
-    (dolist (name ratchet-items)
-      (unless (some (lambda (item)
-                      (and (string= name (getf item :name))
-                           (eq :pass (getf item :kind))))
-                    items)
-        (error "accuracy ratchet regression: item lost: ~A" name)))
+      (push (format nil "pass count ~D < baseline ~D"
+                    pass-count ratchet-count)
+            failures))
+    (dolist (name lost-items)
+      (push (format nil "item lost: ~A" name) failures))
+    (when failures
+      (error "accuracy ratchet regression: ~A~%~{~A~%~}"
+             (getf contract :id)
+             (nreverse failures)))
     (ecase (getf contract :state)
       (:pass (unless passed
                (error "ratchet regression: ~A~%pass=~D completed=~D expected=~D"
@@ -50,8 +59,8 @@
                      (error "ratchet update required: ~A unexpectedly passes~%pass=~D completed=~D"
                             (getf contract :id)
                             (getf result :pass-count)
-                            (getf result :completed-count))))))
-  result)
+                            (getf result :completed-count)))))
+    result))
 
 (defparameter *default-rom-worker-count* 1
   "Deterministic fallback when the runner does not select a worker count.")
@@ -421,7 +430,33 @@
                     ("cpu-interrupts-v2-05-branch" 22360)
                     ("cpu-reset-registers" 105000)))))))))
 
-(define-rom-contract-tests)
+(progn
+  (define-rom-contract-tests)
+  (describe-each
+   (("multiple lost items"))
+   "AccuracyCoin ratchet ~A"
+   (scenario)
+   (it "reports every lost item on its own line"
+     (let ((message
+             (handler-case
+                 (progn
+                   (enforce-accuracy-ratchet
+                    '(:id "accuracy-coin"
+                      :state :known-fail
+                      :ratchet-pass-count 0
+                      :ratchet-pass-items ("NMI Overlap IRQ"
+                                           "Misaligned OAM behavior"))
+                    '(:passed nil :pass-count 0 :items nil))
+                   "")
+               (error (condition)
+                 (princ-to-string condition)))))
+       (cl-weave:expect
+        (not (null
+              (search
+               (format nil
+                       "item lost: NMI Overlap IRQ~%item lost: Misaligned OAM behavior")
+               message)))
+        :to-be t)))))
 
 (defun rom-suite-main ()
   (handler-case
