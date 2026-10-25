@@ -196,4 +196,66 @@
             (if (= dot 256) #x7000
                 (if (= dot 257) #x7BE0 #x041F)))
       (ppu-tick! ppu)
-      (expect (cl-nes::ppu-vram-address ppu) :to-be expected))))
+      (expect (cl-nes::ppu-vram-address ppu) :to-be expected)))
+  (it "mixes the first sprite garbage address across the horizontal reload"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (ppu-mask ppu) #x08
+            (cl-nes::ppu-scanline ppu) 1
+            (cl-nes::ppu-dot ppu) 256
+            (cl-nes::ppu-temporary-address ppu) #x0000
+            (cl-nes::ppu-vram-address ppu) #x2C02)
+      (ppu-tick! ppu)
+      (expect (cl-nes::ppu-dot ppu) :to-be 257)
+      (expect (cl-nes::ppu-vram-address ppu) :to-be #x2800)
+      (expect (cl-nes::ppu-address-bus ppu) :to-be #x2802)
+      (ppu-tick! ppu)
+      (expect (cl-nes::ppu-dot ppu) :to-be 258)
+      (expect (cl-nes::ppu-address-bus ppu) :to-be #x2802)))
+  (it "keeps the first sprite garbage fetch in the nametable range when fine Y is set"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (ppu-mask ppu) #x08
+            (cl-nes::ppu-scanline ppu) 1
+            (cl-nes::ppu-dot ppu) 255
+            (cl-nes::ppu-temporary-address ppu) #x0400
+            (cl-nes::ppu-vram-address ppu) #x2802)
+      (ppu-tick! ppu)
+      (expect (cl-nes::ppu-dot ppu) :to-be 256)
+      (expect (cl-nes::ppu-vram-address ppu) :to-be #x3803)
+      (ppu-tick! ppu)
+      (expect (cl-nes::ppu-dot ppu) :to-be 257)
+      (expect (cl-nes::ppu-vram-address ppu) :to-be #x3C00)
+      (expect (cl-nes::ppu-address-bus ppu) :to-be #x2C03)
+      (expect (logand (cl-nes::ppu-address-bus ppu) #xF000) :to-be #x2000)
+      (expect (logand (cl-nes::ppu-address-bus ppu) #x1000) :to-be 0)))
+  (it "uses the upcoming scanline nametable address for later sprite garbage fetches"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (ppu-mask ppu) #x08
+            (cl-nes::ppu-scanline ppu) 1
+            (cl-nes::ppu-dot ppu) 258
+            (cl-nes::ppu-vram-address ppu) #x2800)
+      (ppu-tick! ppu)
+      (expect (cl-nes::ppu-dot ppu) :to-be 259)
+      (expect (cl-nes::ppu-address-bus ppu) :to-be #x2800)
+      (ppu-tick! ppu)
+      (expect (cl-nes::ppu-dot ppu) :to-be 260)
+      (expect (cl-nes::ppu-address-bus ppu) :to-be #x2800)
+      (ppu-tick! ppu 5)
+      (expect (cl-nes::ppu-dot ppu) :to-be 265)
+      (expect (cl-nes::ppu-address-bus ppu) :to-be #x2800)))
+  (it-each ((0 #x0FF5)
+            (#x28 #x1FF5))
+    "fetches dummy sprite pattern data from FF secondary OAM in both sprite sizes"
+    (control expected-address)
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (ppu-control ppu) control
+            (ppu-mask ppu) #x08
+            (cl-nes::ppu-scanline ppu) 1
+            (cl-nes::ppu-secondary-oam-count ppu) 0)
+      (fill (cl-nes::ppu-secondary-oam ppu) #xFF)
+      (ppu-write-vram! ppu expected-address #xA5)
+      (cl-nes::%ppu-sprite-fetch! ppu 261 (cl-nes::ppu-vram-address ppu))
+      (expect (cl-nes::ppu-address-bus ppu) :to-be expected-address)
+      (multiple-value-bind (value data-p)
+          (cl-nes::%ppu-sprite-fetch! ppu 262 (cl-nes::ppu-vram-address ppu))
+        (expect value :to-be #xA5)
+        (expect data-p :to-be t)))))

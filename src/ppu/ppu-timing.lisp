@@ -81,139 +81,180 @@
       ((1)
        (multiple-value-bind (split-p split-x split-y)
            (%ppu-mmc5-split-state ppu dot)
-         (let ((address (+ #x2000 (logand (ppu-vram-address ppu) #x0FFF))))
-           (unless split-p
-             (%ppu-address-bus! ppu address))
-           (setf (ppu-next-tile ppu)
-                 (if split-p
-                     (%ppu-mmc5-exram-byte ppu split-x (floor split-y 8))
-                     (ppu-read-vram ppu address))))))
-      ((3) (let* ((v (ppu-vram-address ppu))
-                  (tile-x (logand v #x1F))
-                  (tile-y (logand (ash v -5) #x1F)))
-             (multiple-value-bind (split-p split-x split-y)
-                 (%ppu-mmc5-split-state ppu dot)
-               (let* ((effective-x (if split-p split-x tile-x))
-                      (effective-y (if split-p (floor split-y 8) tile-y))
-                      (exram (and (not split-p)
-                                  (%ppu-mmc5-exram-tile ppu tile-x tile-y)))
-                      (address (if split-p
-                                   (+ #x2000 #x3C0
-                                      (* (floor effective-y 4) 8)
-                                      (floor effective-x 4))
-                                   (+ #x23C0 (logand v #x0C00)
-                                      (ash (logand v #x0380) -4)
-                                      (ash (logand v #x001F) -2))))
-                      (value (or exram
-                                  (progn
-                                    (%ppu-address-bus! ppu address)
-                                    (ppu-read-vram ppu address))))
-                      (quadrant (%ppu-attribute-quadrant effective-x effective-y)))
-                 (setf (ppu-next-attribute ppu)
-                       (if exram
-                           (ldb (byte 2 6) exram)
-                           (ldb (byte 2 (* quadrant 2)) value)))))))
+         (declare (ignore split-x split-y))
+         (unless split-p
+           (%ppu-address-bus!
+            ppu (+ #x2000 (logand (ppu-vram-address ppu) #x0FFF))))))
+      ((2)
+       (multiple-value-bind (split-p split-x split-y)
+           (%ppu-mmc5-split-state ppu dot)
+         (let ((value (if split-p
+                          (%ppu-mmc5-exram-byte ppu split-x (floor split-y 8))
+                          (ppu-read-vram ppu (ppu-address-bus ppu)))))
+           (setf (ppu-next-tile ppu) value)
+           (values value t))))
+      ((3)
+       (let* ((v (ppu-vram-address ppu))
+              (tile-x (logand v #x1F))
+              (tile-y (logand (ash v -5) #x1F)))
+         (multiple-value-bind (split-p split-x split-y)
+             (%ppu-mmc5-split-state ppu dot)
+           (let* ((effective-x (if split-p split-x tile-x))
+                  (effective-y (if split-p (floor split-y 8) tile-y))
+                  (exram (and (not split-p)
+                              (%ppu-mmc5-exram-tile ppu tile-x tile-y)))
+                  (address (if split-p
+                               (+ #x2000 #x3C0
+                                  (* (floor effective-y 4) 8)
+                                  (floor effective-x 4))
+                               (+ #x23C0 (logand v #x0C00)
+                                  (ash (logand v #x0380) -4)
+                                  (ash (logand v #x001F) -2)))))
+             (unless exram
+               (%ppu-address-bus! ppu address))))))
+      ((4)
+       (let* ((v (ppu-vram-address ppu))
+              (tile-x (logand v #x1F))
+              (tile-y (logand (ash v -5) #x1F)))
+         (multiple-value-bind (split-p split-x split-y)
+             (%ppu-mmc5-split-state ppu dot)
+           (let* ((effective-x (if split-p split-x tile-x))
+                  (effective-y (if split-p (floor split-y 8) tile-y))
+                  (exram (and (not split-p)
+                              (%ppu-mmc5-exram-tile ppu tile-x tile-y)))
+                  (value (or exram
+                             (ppu-read-vram ppu (ppu-address-bus ppu))))
+                  (quadrant (%ppu-attribute-quadrant effective-x effective-y)))
+             (setf (ppu-next-attribute ppu)
+                   (if exram
+                       (ldb (byte 2 6) exram)
+                       (ldb (byte 2 (* quadrant 2)) value)))
+             (values value t)))))
       ((5)
        (multiple-value-bind (split-p split-x split-y)
            (%ppu-mmc5-split-state ppu dot)
          (declare (ignore split-x))
-         (let* ((address (+ (if (and (not split-p)
-                                     (logbitp 4 (ppu-control ppu)))
-                                #x1000
-                                0)
-                            (* (ppu-next-tile ppu) 16)
-                            (if split-p
-                                (logand split-y 7)
-                                (logand (ash (ppu-vram-address ppu) -12) 7))))
-                (exram (and (not split-p)
+         (let ((address (+ (if (and (not split-p)
+                                    (logbitp 4 (ppu-control ppu)))
+                               #x1000
+                               0)
+                           (* (ppu-next-tile ppu) 16)
+                           (if split-p
+                               (logand split-y 7)
+                               (logand (ash (ppu-vram-address ppu) -12) 7)))))
+           (%ppu-address-bus! ppu address))))
+      ((6)
+       (multiple-value-bind (split-p split-x split-y)
+           (%ppu-mmc5-split-state ppu dot)
+         (declare (ignore split-x))
+         (let* ((exram (and (not split-p)
                             (%ppu-mmc5-exram-tile
                              ppu (logand (ppu-vram-address ppu) #x1F)
-                             (logand (ash (ppu-vram-address ppu) -5) #x1F)))))
-           (%ppu-address-bus! ppu address)
-           (setf (ppu-next-pattern-low ppu)
-                 (%ppu-mmc5-background-chr ppu address split-p exram)))))
+                             (logand (ash (ppu-vram-address ppu) -5) #x1F))))
+                (value (%ppu-mmc5-background-chr
+                        ppu (ppu-address-bus ppu) split-p exram)))
+           (setf (ppu-next-pattern-low ppu) value)
+           (values value t))))
       ((7)
        (multiple-value-bind (split-p split-x split-y)
            (%ppu-mmc5-split-state ppu dot)
          (declare (ignore split-x))
-         (let* ((address (+ (if (and (not split-p)
-                                     (logbitp 4 (ppu-control ppu)))
-                                #x1000
-                                0)
-                            (* (ppu-next-tile ppu) 16)
-                            (if split-p
-                                (logand split-y 7)
-                                (logand (ash (ppu-vram-address ppu) -12) 7))
-                            8))
-                (exram (and (not split-p)
+         (let ((address (+ (if (and (not split-p)
+                                    (logbitp 4 (ppu-control ppu)))
+                               #x1000
+                               0)
+                           (* (ppu-next-tile ppu) 16)
+                           (if split-p
+                               (logand split-y 7)
+                               (logand (ash (ppu-vram-address ppu) -12) 7))
+                           8)))
+           (%ppu-address-bus! ppu address))))
+      ((0)
+       (multiple-value-bind (split-p split-x split-y)
+           (%ppu-mmc5-split-state ppu dot)
+         (declare (ignore split-x split-y))
+         (let* ((exram (and (not split-p)
                             (%ppu-mmc5-exram-tile
                              ppu (logand (ppu-vram-address ppu) #x1F)
-                             (logand (ash (ppu-vram-address ppu) -5) #x1F)))))
-           (%ppu-address-bus! ppu address)
-           (setf (ppu-next-pattern-high ppu)
-                 (%ppu-mmc5-background-chr ppu address split-p exram)))))
-      ((0)
-       (setf (ppu-background-shift-low ppu)
-             (logand #xFFFF
-                     (logior (logand #xFF00 (ppu-background-shift-low ppu))
-                             (ldb (byte 8 0) (ppu-next-pattern-low ppu))))
-             (ppu-background-shift-high ppu)
-             (logand #xFFFF
-                     (logior (logand #xFF00 (ppu-background-shift-high ppu))
-                             (ldb (byte 8 0) (ppu-next-pattern-high ppu))))
-             (ppu-attribute-shift-low ppu)
-             (logand #xFFFF
-                     (logior (logand #xFF00 (ppu-attribute-shift-low ppu))
-                             (if (logbitp 0 (ppu-next-attribute ppu))
-                                 #xFF
-                                 0)))
-             (ppu-attribute-shift-high ppu)
-             (logand #xFFFF
-                     (logior (logand #xFF00 (ppu-attribute-shift-high ppu))
-                             (if (logbitp 1 (ppu-next-attribute ppu))
-                                 #xFF
-                                 0))))
-       (%ppu-horizontal-increment! ppu)))))
+                             (logand (ash (ppu-vram-address ppu) -5) #x1F))))
+                (value (%ppu-mmc5-background-chr
+                        ppu (ppu-address-bus ppu) split-p exram)))
+           (setf (ppu-next-pattern-high ppu) value
+                 (ppu-background-shift-low ppu)
+                 (logand #xFFFF
+                         (logior (logand #xFF00 (ppu-background-shift-low ppu))
+                                 (ldb (byte 8 0) (ppu-next-pattern-low ppu))))
+                 (ppu-background-shift-high ppu)
+                 (logand #xFFFF
+                         (logior (logand #xFF00 (ppu-background-shift-high ppu))
+                                 (ldb (byte 8 0) (ppu-next-pattern-high ppu))))
+                 (ppu-attribute-shift-low ppu)
+                 (logand #xFFFF
+                         (logior (logand #xFF00 (ppu-attribute-shift-low ppu))
+                                 (if (logbitp 0 (ppu-next-attribute ppu))
+                                     #xFF
+                                     0)))
+                 (ppu-attribute-shift-high ppu)
+                 (logand #xFFFF
+                         (logior (logand #xFF00 (ppu-attribute-shift-high ppu))
+                                 (if (logbitp 1 (ppu-next-attribute ppu))
+                                     #xFF
+                                     0))))
+           (%ppu-horizontal-increment! ppu)
+           (values value t)))))))
 
-(defun %ppu-sprite-fetch! (ppu dot)
+(defun %ppu-sprite-fetch! (ppu dot v-before-dot)
   (let* ((sprite (floor (- dot 257) 8))
          (offset (mod (- dot 257) 8))
-         (address
-           (if (< sprite (ppu-secondary-oam-count ppu))
-               (let* ((base (* sprite 4))
-                      (tile (aref (ppu-secondary-oam ppu) (+ base 1)))
-                      (attributes (aref (ppu-secondary-oam ppu) (+ base 2)))
-                      (row (- (if (= (ppu-scanline ppu) 261)
-                                  0
-                                  (1+ (ppu-scanline ppu)))
-                              (1+ (aref (ppu-secondary-oam ppu) base)))))
-                 (%sprite-pattern-address ppu tile attributes row))
-               (if (logbitp 3 (ppu-control ppu)) #x1000 0))))
+         (base (* sprite 4))
+         (tile (aref (ppu-secondary-oam ppu) (+ base 1)))
+         (attributes (aref (ppu-secondary-oam ppu) (+ base 2)))
+         (height (if (logbitp 5 (ppu-control ppu)) 16 8))
+         (row (mod
+               (- (if (= (ppu-scanline ppu) 261)
+                      0
+                      (1+ (ppu-scanline ppu)))
+                  (1+ (aref (ppu-secondary-oam ppu) base)))
+               height))
+         ;; Empty sprite slots still fetch pattern data from their dummy tile.
+         (address (%sprite-pattern-address ppu tile attributes row)))
     (case offset
       ((0 2)
-       ;; Sprite pattern fetches are interleaved with two nametable garbage
-       ;; fetches.  Their address is on the nametable side of the bus.
-       (ppu-read-vram ppu #x2000 nil t))
+       ;; Sprite fetches first put an address on the bus, then read it one dot later.
+       ;; The first garbage fetch mixes v from before and after the horizontal reload.
+       (%ppu-address-bus!
+        ppu
+        (if (= dot 257)
+            (logior #x2000
+                    (logand (ppu-vram-address ppu) #x0F00)
+                    (logand v-before-dot #x00FF))
+            (+ #x2000 (logand (ppu-vram-address ppu) #x0FFF)))))
+      ((1 3)
+       (values (ppu-read-vram ppu (ppu-address-bus ppu)) t))
       ((4)
-       (let ((value (ppu-read-vram ppu address t t)))
+       (%ppu-address-bus! ppu address))
+      ((5)
+       (let ((value (ppu-read-vram ppu (ppu-address-bus ppu) t)))
          (when (< sprite (ppu-secondary-oam-count ppu))
-           (setf (aref (ppu-sprite-shift-low ppu) sprite) value))))
+           (setf (aref (ppu-sprite-shift-low ppu) sprite) value))
+         (values value t)))
       ((6)
-       (let ((value (ppu-read-vram ppu (+ address 8) t t)))
+       (%ppu-address-bus! ppu (+ address 8)))
+      ((7)
+       (let ((value (ppu-read-vram ppu (ppu-address-bus ppu) t)))
          (when (< sprite (ppu-secondary-oam-count ppu))
-           (let ((base (* sprite 4))
-                 (attributes (aref (ppu-secondary-oam ppu)
+           (let ((attributes (aref (ppu-secondary-oam ppu)
                                    (+ (* sprite 4) 2))))
-             (setf (aref (ppu-sprite-shift-high ppu) sprite) value)
-             (setf (aref (ppu-sprite-x-counter ppu) sprite)
+             (setf (aref (ppu-sprite-shift-high ppu) sprite) value
+                   (aref (ppu-sprite-x-counter ppu) sprite)
                    (aref (ppu-secondary-oam ppu) (+ (* sprite 4) 3))
-                   (aref (ppu-sprite-attributes ppu) sprite)
-                   attributes)
+                   (aref (ppu-sprite-attributes ppu) sprite) attributes)
              (when (logbitp 6 attributes)
                (setf (aref (ppu-sprite-shift-low ppu) sprite)
                      (%reverse-byte (aref (ppu-sprite-shift-low ppu) sprite))
                      (aref (ppu-sprite-shift-high ppu) sprite)
-                     (%reverse-byte (aref (ppu-sprite-shift-high ppu) sprite)))))))))))
+                     (%reverse-byte (aref (ppu-sprite-shift-high ppu) sprite))))))
+         (values value t))))))
 
 (defun %ppu-clock-pipeline!
     (ppu &optional (pipeline-scanline-p nil pipeline-scanline-p-supplied-p))
@@ -222,22 +263,35 @@
                                  (or (< (ppu-scanline ppu) 240)
                                      (= (ppu-scanline ppu) 261))))
         (scanline (ppu-scanline ppu))
-        (dot (ppu-dot ppu)))
+        (dot (ppu-dot ppu))
+        (v-before-dot (ppu-vram-address ppu))
+        (fetch-data-p nil)
+        (fetch-data nil))
     (when pipeline-scanline-p
-      (when (<= 1 dot 256)
-        (%ppu-background-fetch! ppu dot))
-      (when (<= 321 dot 336)
-        (%ppu-background-fetch! ppu dot))
+      (when (or (<= 1 dot 256) (<= 321 dot 336))
+        (multiple-value-bind (value data-p)
+            (%ppu-background-fetch! ppu dot)
+          (when data-p
+            (setf fetch-data-p t
+                  fetch-data value))))
       (when (or (= dot 337) (= dot 339))
-        (ppu-read-vram ppu
-                       (+ #x2000 (logand (ppu-vram-address ppu) #x0FFF))
-                       nil t))
+        (%ppu-address-bus!
+         ppu (+ #x2000 (logand (ppu-vram-address ppu) #x0FFF))))
+      (when (or (= dot 338) (= dot 340))
+        (setf fetch-data (ppu-read-vram ppu (ppu-address-bus ppu))
+              fetch-data-p t))
       (when (= dot 256)
         (%ppu-vertical-increment! ppu))
       (when (= dot 257)
         (%ppu-copy-horizontal! ppu))
       (when (<= 257 dot 320)
-        (progn (setf (ppu-oam-address ppu) 0) (%ppu-sprite-fetch! ppu dot))
+        (progn
+          (setf (ppu-oam-address ppu) 0)
+          (multiple-value-bind (value data-p)
+              (%ppu-sprite-fetch! ppu dot v-before-dot)
+            (when data-p
+              (setf fetch-data-p t
+                    fetch-data value))))
         (when (= dot 320)
           (setf (ppu-sprite-render-count ppu)
                 (ppu-secondary-oam-count ppu)
@@ -277,7 +331,8 @@
             (ppu-sprite-evaluation-index ppu) 1)
       (dotimes (sprite (ppu-sprite-render-count ppu))
         (setf (aref (ppu-sprite-indexes ppu) sprite)
-              (aref (ppu-sprite-evaluated-indexes ppu) sprite))))))
+              (aref (ppu-sprite-evaluated-indexes ppu) sprite))))
+    (values fetch-data-p fetch-data)))
 (defun %ppu-rendering-address-latch-p (scanline dot)
   (and (or (< scanline 240) (= scanline 261))
        (or (and (or (<= 1 dot 256)
@@ -286,19 +341,29 @@
            (and (<= 257 dot 320)
                 (member (mod (- dot 257) 8) '(0 2 4 6)))
            (member dot '(337 339)))))
-(defun %ppu-clock-read-buffer! (ppu scanline rendering-scanline-p)
-  (when (ppu-read-buffer-pending-p ppu)
-    (decf (ppu-read-buffer-pending-delay ppu))
-    (cond
-      ((= (ppu-read-buffer-pending-delay ppu) 2)
-       (unless (and rendering-scanline-p
-                    (%ppu-rendering-address-latch-p
-                     scanline (ppu-dot ppu)))
-         (%ppu-address-bus! ppu (ppu-read-buffer-pending-address ppu))))
-      ((zerop (ppu-read-buffer-pending-delay ppu))
-       (setf (ppu-read-buffer ppu)
-             (ppu-read-vram ppu (ppu-read-buffer-pending-address ppu) nil t)
-             (ppu-read-buffer-pending-p ppu) nil)))))
+(progn
+  (defvar *ppu-rendering-data-p* nil)
+  (defvar *ppu-rendering-data* nil)
+  (defun %ppu-clock-read-buffer!
+      (ppu scanline rendering-scanline-p)
+    (when (ppu-read-buffer-pending-p ppu)
+      (decf (ppu-read-buffer-pending-delay ppu))
+      (cond
+       ((= (ppu-read-buffer-pending-delay ppu) 2)
+        (unless (and rendering-scanline-p
+                     (%ppu-rendering-address-latch-p
+                      scanline (ppu-dot ppu)))
+          (%ppu-address-bus! ppu (ppu-read-buffer-pending-address ppu))))
+       ((zerop (ppu-read-buffer-pending-delay ppu))
+        (setf (ppu-read-buffer ppu)
+              (if *ppu-rendering-data-p*
+                  *ppu-rendering-data*
+                (ppu-read-vram ppu
+                               (ppu-read-buffer-pending-address ppu)
+                               nil t))
+              (ppu-read-buffer-pending-p ppu) nil)
+        (%ppu-horizontal-increment! ppu)
+        (%ppu-vertical-increment! ppu))))))
 
 (defun ppu-tick! (ppu &optional (ticks 1))
   (declare (type ppu ppu) (type fixnum ticks)
@@ -327,11 +392,14 @@
             (%ppu-shift-sprite-registers!
              ppu (%ppu-rendering-enabled-p ppu)))
           (when (and rendering-scanline-p
-                   (or (<= 1 (ppu-dot ppu) 256)
-                       (<= 321 (ppu-dot ppu) 336)))
+                     (or (<= 1 (ppu-dot ppu) 256)
+                         (<= 321 (ppu-dot ppu) 336)))
             (%ppu-shift-background-registers! ppu))
-          (%ppu-clock-pipeline! ppu rendering-scanline-p)
-          (%ppu-clock-read-buffer! ppu scanline rendering-scanline-p))
+          (multiple-value-bind (rendering-data-p rendering-data)
+              (%ppu-clock-pipeline! ppu rendering-scanline-p)
+            (let ((*ppu-rendering-data-p* rendering-data-p)
+                  (*ppu-rendering-data* rendering-data))
+              (%ppu-clock-read-buffer! ppu scanline rendering-scanline-p))))
         (when (and (= (ppu-scanline ppu) 241) (= (ppu-dot ppu) 1))
           (%start-vblank! ppu))
         (when (and (= (ppu-scanline ppu) 261) (= (ppu-dot ppu) 1))

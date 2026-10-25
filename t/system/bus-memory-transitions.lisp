@@ -12,6 +12,25 @@
       (expect (bus-read bus #x2002) :to-be #x80)
       (expect (cl-nes::ppu-dot ppu) :to-be 13)
       (expect (cl-nes::bus-cpu-access-count bus) :to-be 1)))
+  (it "samples OAMDATA during sprite evaluation at the end of an active CPU access"
+    (let* ((nes (make-nes))
+           (bus (nes-bus nes))
+           (ppu (nes-ppu nes)))
+      (setf (cl-nes::ppu-scanline ppu) 128
+            (cl-nes::ppu-dot ppu) 66
+            (ppu-mask ppu) #x18
+            (cl-nes::ppu-oam-address ppu) 4
+            (aref (ppu-oam ppu) 4) #xFB
+            (cl-nes::ppu-sprite-evaluation-n ppu) 1
+            (cl-nes::ppu-sprite-evaluation-m ppu) 0
+            (cl-nes::ppu-sprite-evaluation-latch ppu) #xFF
+            (cl-nes::ppu-sprite-evaluation-done-p ppu) nil
+            (cl-nes::ppu-secondary-oam-count ppu) 0
+            (cl-nes::bus-cpu-access-active-p bus) t
+            (cl-nes::bus-cpu-access-nes bus) nes)
+      (expect (bus-read bus #x2004) :to-be #xFB)
+      (expect (cl-nes::ppu-dot ppu) :to-be 69)
+      (expect (cl-nes::bus-cpu-access-count bus) :to-be 1)))
 
   (it "queues a DMC load request during an NES-owned open-bus read"
     (let* ((nes (make-nes))

@@ -29,30 +29,53 @@
                 (let ((mask (%ppu-effective-mask ppu)))
                   (or (logbitp 3 mask) (logbitp 4 mask)))))
          (phase-p (and bus-access-p rendering-p))
+         (secondary-count (ppu-secondary-oam-count ppu))
+         (first-empty-sprite-p
+           (and (< secondary-count 8)
+                (or (plusp secondary-count)
+                    (= (aref (ppu-secondary-oam ppu) 0) #xFF))))
+         (first-empty-dot (+ 257 (* 8 secondary-count)))
+         ;; CPU reads sample before the same cycle's PPU tick. Align the first
+         ;; empty-slot fetch with the preceding register-read callback dot.
+         (sprite-fetch-read-dot
+           (if (and phase-p
+                    first-empty-sprite-p
+                    (<= (1- first-empty-dot) dot (+ first-empty-dot 6)))
+               (1+ dot)
+               dot))
          (clear-bus-p (and phase-p (<= 0 dot 64)))
          (evaluation-bus-p (and phase-p (<= 65 dot 256)))
-         (sprite-fetch-p (and phase-p (<= 257 dot 320)))
+         (sprite-fetch-p (and phase-p (<= 257 sprite-fetch-read-dot 320)))
          (secondary-bus-p
            (and phase-p (<= 321 dot 340)))
          (secondary-full-read-p
            (and evaluation-bus-p
-                (= (ppu-secondary-oam-count ppu) 8)
+                (not (ppu-sprite-evaluation-done-p ppu))
+                (= secondary-count 8)
                 (zerop (ppu-sprite-evaluation-m ppu))
                 (evenp dot)))
          (raw
            (cond
              (clear-bus-p #xFF)
              (sprite-fetch-p
-              (let* ((offset (mod (- dot 257) 8))
-                     (sprite (floor (- dot 257) 8))
+              (let* ((offset (mod (- sprite-fetch-read-dot 257) 8))
+                     (sprite (floor (- sprite-fetch-read-dot 257) 8))
                      (oam2-index (+ (* sprite 4) (min offset 3))))
-                (aref (ppu-secondary-oam ppu) oam2-index)))
+                (cond
+                  ((< sprite secondary-count)
+                   (aref (ppu-secondary-oam ppu) oam2-index))
+                  ((and first-empty-sprite-p
+                        (= sprite secondary-count)
+                        (zerop offset))
+                   (aref (ppu-oam ppu) #xFC))
+                  (first-empty-sprite-p #xFF)
+                  (t (aref (ppu-secondary-oam ppu) oam2-index)))))
              ((or secondary-bus-p secondary-full-read-p)
               (aref (ppu-secondary-oam ppu) 0))
              (evaluation-bus-p
-              (if (evenp dot)
-                  (aref (ppu-oam ppu) oam-address)
-                  (ppu-sprite-evaluation-latch ppu)))
+              ;; CPU reads precede this cycle's PPU ticks, so the latch
+              ;; holds the primary OAM byte read on the preceding odd dot.
+              (ppu-sprite-evaluation-latch ppu))
              (t (aref (ppu-oam ppu) oam-address))))
          (value
            (if (and bus-access-p (not clear-bus-p)
@@ -86,17 +109,18 @@
                              (logand decay #xC0))
                      (ppu-read-buffer ppu))))
     (%ppu-drive-decay! ppu result (if palette-p #x3F #xFF))
-    (%ppu-vram-increment ppu)
     (if (and bus-access-p rendering-p)
         (setf (ppu-read-buffer-pending-address ppu)
               (if palette-p (- address #x1000) address)
-              ;; bus-read clocks three dots after this callback; PPUDATA updates four dots later.
+              ;; The rendering increment commits with the delayed read refill.
               (ppu-read-buffer-pending-delay ppu) 7
               (ppu-read-buffer-pending-p ppu) t)
-        (setf (ppu-read-buffer ppu)
-              (if palette-p
-                  (ppu-read-vram ppu (- address #x1000) nil t)
-                  value)))
+        (progn
+          (%ppu-vram-increment ppu)
+          (setf (ppu-read-buffer ppu)
+                (if palette-p
+                    (ppu-read-vram ppu (- address #x1000) nil t)
+                    value))))
     (unless (and bus-access-p rendering-p)
       (%ppu-address-bus! ppu (ppu-vram-address ppu)))
     result))

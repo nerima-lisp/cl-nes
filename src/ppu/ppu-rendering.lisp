@@ -262,9 +262,7 @@
                (and (<= top scanline)
                     (< scanline (+ top height))))))
     (when (and dot-supplied-p
-               (<= 65 dot 256)
-               (or (not (ppu-sprite-evaluation-done-p ppu))
-                   (plusp (ppu-sprite-evaluation-m ppu))))
+               (<= 65 dot 256))
       (if (oddp dot)
           (setf (ppu-sprite-evaluation-latch ppu)
                 (aref (ppu-oam ppu) (ppu-oam-address ppu)))
@@ -273,7 +271,17 @@
                  (m (ppu-sprite-evaluation-m ppu))
                  (value (ppu-sprite-evaluation-latch ppu)))
             (cond
-              ((plusp m) (setf (aref (ppu-secondary-oam ppu) (+ (* (1- count) 4) m)) value) (if (= m 3) (setf (ppu-sprite-evaluation-m ppu) 0) (incf (ppu-sprite-evaluation-m ppu))) (set-oam-address (1+ address)))
+              ((plusp m)
+               (setf (aref (ppu-secondary-oam ppu)
+                           (+ (* (1- count) 4) m))
+                     value)
+               (if (= m 3)
+                   (setf (ppu-sprite-evaluation-m ppu) 0)
+                   (incf (ppu-sprite-evaluation-m ppu)))
+               (set-oam-address (1+ address)))
+              ((ppu-sprite-evaluation-done-p ppu)
+               ;; Step 4 keeps reading OAM[n][0] and advances only N.
+               (set-oam-address (logand #xFC (+ address 4))))
               ((< count 8)
                (if (in-range-p value)
                    (progn
@@ -291,7 +299,11 @@
                  (when in-range-p
                    (setf (ppu-status ppu)
                          (logior (ppu-status ppu) #x20)))
-                 (set-oam-address (+ address (if (or in-range-p (= (logand address 3) 3)) 1 5)))))))))
+                 (set-oam-address
+                  (+ address
+                     (if (or in-range-p (= (logand address 3) 3))
+                         1
+                         5)))))))))
   (ppu-secondary-oam-count ppu)))
 
 (defun %ppu-sprite-pixel-at-shifts (ppu x background-solid)

@@ -33,7 +33,9 @@
           (setf (ppu-status ppu) (logand (ppu-status ppu) #xDF))
           (dotimes (sprite 9)
             (setf (aref oam (* sprite 4)) 0))
-          (cl-nes::%ppu-evaluate-sprites! ppu 1)
+          (progn
+            (setf (ppu-oam-address ppu) 0)
+            (cl-nes::%ppu-evaluate-sprites! ppu 1))
           (expect (logand (ppu-status ppu) #x20) :to-be #x20)))))
 
   (it "covers dot renderer visibility and render-mode branches"

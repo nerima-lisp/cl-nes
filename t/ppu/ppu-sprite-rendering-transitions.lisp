@@ -42,7 +42,7 @@
       (expect (cl-nes::%ppu-sprite-pixel-at-dot sprite-ppu 8 1 t)
               :to-be #x21)
       (expect (logand (ppu-status sprite-ppu) #x40) :to-be #x40)))
-  (it "fetches the flipped lower tile of an 8x16 sprite"
+  (it "fetches a flipped lower tile of an 8x16 sprite on its data dots"
     (let ((ppu (make-ppu (make-fixture-cartridge))))
       (setf (ppu-control ppu) #x20
             (cl-nes::ppu-scanline ppu) 1
@@ -54,7 +54,14 @@
       (ppu-write-vram! ppu #x1036 #xA5)
       (ppu-write-vram! ppu #x103E #x5A)
       (cl-nes::%ppu-clock-pipeline! ppu)
+      (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be 0)
+      (setf (cl-nes::ppu-dot ppu) 262)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be #xA5)
       (setf (cl-nes::ppu-dot ppu) 263)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (expect (cl-nes::ppu-address-bus ppu) :to-be #x103E)
+      (setf (cl-nes::ppu-dot ppu) 264)
       (cl-nes::%ppu-clock-pipeline! ppu)
       (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be #xA5)
       (expect (aref (cl-nes::ppu-sprite-shift-high ppu) 0) :to-be #x5A)))
@@ -152,4 +159,44 @@
     (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be #x80)
     (setf (ppu-mask ppu) #x10)
     (ppu-tick! ppu)
-    (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be 0))))
+    (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be 0)))
+  (it "reads OAM[252] at the first empty sprite fetch callback dot"
+      (let* ((ppu (make-ppu (make-fixture-cartridge)))
+             (oam (ppu-oam ppu))
+             (secondary (cl-nes::ppu-secondary-oam ppu)))
+        (setf (ppu-mask ppu) #x18
+              (cl-nes::ppu-scanline ppu) 128
+              (cl-nes::ppu-dot ppu) 257
+              (ppu-oam-address ppu) 0
+              (cl-nes::ppu-sprite-evaluation-n ppu) 26
+              (cl-nes::ppu-sprite-evaluation-m ppu) 0
+              (cl-nes::ppu-sprite-evaluation-latch ppu) #x9B
+              (cl-nes::ppu-sprite-evaluation-done-p ppu) t
+              (cl-nes::ppu-secondary-oam-count ppu) 2
+              (aref oam 0) #xFF
+              (aref oam #xFC) #x03
+              (aref secondary 0) #x7F
+              (aref secondary 1) #x7E
+              (aref secondary 2) #x7D
+              (aref secondary 3) #x7C
+              (aref secondary 4) #x7B
+              (aref secondary 5) #x7A
+              (aref secondary 6) #x79
+              (aref secondary 7) #x78)
+        (expect (ppu-read-register ppu 4 t) :to-be #x7F)
+        (setf (cl-nes::ppu-dot ppu) 265)
+        (expect (ppu-read-register ppu 4 t) :to-be #x7B)
+        (setf (cl-nes::ppu-dot ppu) 272)
+        (expect (cl-nes::ppu-secondary-oam-count ppu) :to-be 2)
+        (expect (aref secondary 0) :to-be #x7F)
+        (expect (aref secondary 1) :to-be #x7E)
+        (expect (aref secondary 2) :to-be #x7D)
+        (expect (aref secondary 3) :to-be #x7C)
+        (expect (aref secondary 7) :to-be #x78)
+        (expect (ppu-oam-address ppu) :to-be 0)
+        (expect (ppu-read-register ppu 4 t) :to-be #x03)
+        (loop for dot from 273 to 275
+              do (setf (cl-nes::ppu-dot ppu) dot)
+              (expect (ppu-read-register ppu 4 t) :to-be #xFF))
+        (setf (cl-nes::ppu-dot ppu) 281)
+        (expect (ppu-read-register ppu 4 t) :to-be #xFF))))

@@ -31,12 +31,21 @@
       (expect (cl-nes::%ppu-palette-pixel ppu #x2F)
               :to-be (logior #x20 (ash 7 6)))))
 
-  (it "selects the background pattern table for a normal fetch"
+  (it "latches a background pattern address before reading it on the next dot"
     (let ((ppu (make-ppu (make-fixture-cartridge))))
       (setf (ppu-control ppu) #x10
             (cl-nes::ppu-next-tile ppu) 1)
       (ppu-write-vram! ppu #x1010 #xA5)
-      (cl-nes::%ppu-background-fetch! ppu 5)
+      (multiple-value-bind (value data-p)
+          (cl-nes::%ppu-background-fetch! ppu 5)
+        (declare (ignore value))
+        (expect data-p :to-be nil))
+      (expect (cl-nes::ppu-address-bus ppu) :to-be #x1010)
+      (expect (cl-nes::ppu-next-pattern-low ppu) :to-be 0)
+      (multiple-value-bind (value data-p)
+          (cl-nes::%ppu-background-fetch! ppu 6)
+        (expect value :to-be #xA5)
+        (expect data-p :to-be t))
       (expect (cl-nes::ppu-next-pattern-low ppu) :to-be #xA5)))
 
   (it "selects MMC5 EXRAM tiles only in EXRAM mode one"

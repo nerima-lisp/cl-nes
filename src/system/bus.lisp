@@ -95,7 +95,7 @@
     (let ((ppu-ticks 3))
       (when (and (bus-cpu-access-active-p bus)
                  (< address #x4000)
-                 (= (logand address 7) 2))
+                 (or (= (logand address 7) 2) (= (logand address 7) 4)))
         (ppu-tick! (bus-ppu bus) 2)
         (setf ppu-ticks 1))
       (let ((value (%bus-read-value bus address)))

@@ -40,7 +40,7 @@
         (expect split-x :to-be 0)
         (expect split-y :to-be 0)))))
 
-  (it "renders split and normal pixels from fetched tiles and attributes"
+  (it "renders split and normal pixels from two-dot fetches"
     (let* ((cartridge (make-patterned-cartridge
                        :mapper 5
                        :prg-banks 16
@@ -57,18 +57,23 @@
             (aref chr 41) 0)
       (setf (cl-nes::ppu-dot ppu) 1)
       (cl-nes::%ppu-clock-pipeline! ppu)
-      (setf (cl-nes::ppu-next-tile ppu) 2)
-      (setf (cl-nes::ppu-dot ppu) 3)
+      (setf (cl-nes::ppu-dot ppu) 2)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (setf (cl-nes::ppu-next-tile ppu) 2
+            (cl-nes::ppu-dot ppu) 3)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (setf (cl-nes::ppu-dot ppu) 4)
       (cl-nes::%ppu-clock-pipeline! ppu)
       (setf (cl-nes::ppu-dot ppu) 5)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (setf (cl-nes::ppu-dot ppu) 6)
       (cl-nes::%ppu-clock-pipeline! ppu)
       (setf (cl-nes::ppu-dot ppu) 7)
       (cl-nes::%ppu-clock-pipeline! ppu)
       (setf (cl-nes::ppu-dot ppu) 8)
-      (progn
-        (cl-nes::%ppu-clock-pipeline! ppu)
-        (loop repeat 8 do
-          (cl-nes::%ppu-shift-background-registers! ppu)))
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (loop repeat 8 do
+        (cl-nes::%ppu-shift-background-registers! ppu))
       (setf (cl-nes::ppu-background-shift-low ppu) #x8000)
       (ppu-write-vram! ppu #x3F01 #x21)
       (multiple-value-bind (color solid)
@@ -81,21 +86,26 @@
             (cl-nes::ppu-dot ppu) 1)
       (ppu-write-vram! ppu #x2000 3)
       (ppu-write-vram! ppu #x23C0 1)
-      (setf (cl-nes::ppu-next-tile ppu) 3)
       (setf (aref chr 55) #x80
             (aref chr 63) 0)
       (cl-nes::%ppu-clock-pipeline! ppu)
-      (setf (cl-nes::ppu-dot ppu) 3)
+      (setf (cl-nes::ppu-dot ppu) 2)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (setf (cl-nes::ppu-next-tile ppu) 3
+            (cl-nes::ppu-dot ppu) 3)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (setf (cl-nes::ppu-dot ppu) 4)
       (cl-nes::%ppu-clock-pipeline! ppu)
       (setf (cl-nes::ppu-dot ppu) 5)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (setf (cl-nes::ppu-dot ppu) 6)
       (cl-nes::%ppu-clock-pipeline! ppu)
       (setf (cl-nes::ppu-dot ppu) 7)
       (cl-nes::%ppu-clock-pipeline! ppu)
       (setf (cl-nes::ppu-dot ppu) 8)
-      (progn
-        (cl-nes::%ppu-clock-pipeline! ppu)
-        (loop repeat 8 do
-          (cl-nes::%ppu-shift-background-registers! ppu)))
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (loop repeat 8 do
+        (cl-nes::%ppu-shift-background-registers! ppu))
       (setf (cl-nes::ppu-background-shift-low ppu) #x8000)
       (ppu-write-vram! ppu #x3F05 #x22)
       (multiple-value-bind (color solid)
