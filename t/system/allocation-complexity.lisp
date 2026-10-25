@@ -119,6 +119,7 @@ explicit."
     (%assert-rendered-frame-allocation-gate-p)
     (%assert-rendered-frame-allocation-scaling-within-p 2))
   (it "keeps rendered frame time within the linear bound"
+      (:tags '("heavy"))
     (%assert-frame-time-scaling-within-p 2))
   (it "keeps steady-state audio frame allocation at zero"
     (expect (%audio-frame-bytes-consed) :to-be 0)))
