@@ -364,7 +364,7 @@
                   (:name "PPU Palette RAM" :category :power-on-state
                    :address #x03ff :expected :pass))
     :items nil
-    :ratchet-pass-count 113
+    :ratchet-pass-count 114
     :ratchet-pass-items
     ("ROM is not writable" "RAM Mirroring" "PC Wraparound"
      "The Decimal Flag" "The B Flag" "Dummy read cycles" "Dummy write cycles"
