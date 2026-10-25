@@ -114,7 +114,13 @@
             (aref (ppu-oam ppu) 2) 0
             (aref (ppu-oam ppu) 3) 65
             (cl-nes::ppu-scanline ppu) 1
-            (cl-nes::ppu-sprite-render-count ppu) 1)
+            (cl-nes::ppu-sprite-render-count ppu) 1
+            (aref (cl-nes::ppu-sprite-indexes ppu) 0) 0
+            (aref (cl-nes::ppu-sprite-x-counter ppu) 0) 65
+            (aref (cl-nes::ppu-sprite-counter-counting ppu) 0) t
+            (aref (cl-nes::ppu-sprite-shift-low ppu) 0) #xFF
+            (aref (cl-nes::ppu-sprite-shift-high ppu) 0) #xFF
+            (aref (cl-nes::ppu-sprite-attributes ppu) 0) 0)
       (ppu-tick! ppu 66)
       (expect (logand (ppu-status ppu) #x40) :to-be #x40)))
   (it "starts sprite evaluation at OAMADDR and retains the original OAM index"
@@ -153,50 +159,69 @@
           (cl-nes::ppu-dot ppu) 0
           (cl-nes::ppu-sprite-render-count ppu) 1
           (aref (cl-nes::ppu-sprite-x-counter ppu) 0) 1
+          (aref (cl-nes::ppu-sprite-counter-counting ppu) 0) t
           (aref (cl-nes::ppu-sprite-shift-low ppu) 0) #x80)
     (ppu-tick! ppu)
     (expect (aref (cl-nes::ppu-sprite-x-counter ppu) 0) :to-be 0)
     (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be #x80)
     (setf (ppu-mask ppu) #x10)
     (ppu-tick! ppu)
-    (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be 0)))
+    (progn
+      (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be 0)
+      (let ((render-ppu (make-ppu)))
+        (setf (ppu-mask render-ppu) #x14
+              (cl-nes::ppu-scanline render-ppu) 0
+              (cl-nes::ppu-dot render-ppu) 1
+              (cl-nes::ppu-sprite-evaluation-index render-ppu) 0
+              (cl-nes::ppu-sprite-evaluation-active-p render-ppu) t
+              (cl-nes::ppu-sprite-render-count render-ppu) 1
+              (aref (ppu-oam render-ppu) 0) #xFF
+              (aref (cl-nes::ppu-sprite-indexes render-ppu) 0) 0
+              (aref (cl-nes::ppu-sprite-x-counter render-ppu) 0) 0
+              (aref (cl-nes::ppu-sprite-counter-counting render-ppu) 0) nil
+              (aref (cl-nes::ppu-sprite-shift-low render-ppu) 0) #x80
+              (aref (cl-nes::ppu-sprite-shift-high render-ppu) 0) 0
+              (aref (cl-nes::ppu-sprite-attributes render-ppu) 0) 0)
+        (ppu-write-vram! render-ppu #x3F11 #x02)
+        (cl-nes::%ppu-render-visible-dot! render-ppu)
+        (expect (aref (cl-nes::ppu-framebuffer render-ppu) 0) :to-be #x02)))))
   (it "reads OAM[252] at the first empty sprite fetch callback dot"
-      (let* ((ppu (make-ppu (make-fixture-cartridge)))
-             (oam (ppu-oam ppu))
-             (secondary (cl-nes::ppu-secondary-oam ppu)))
-        (setf (ppu-mask ppu) #x18
-              (cl-nes::ppu-scanline ppu) 128
-              (cl-nes::ppu-dot ppu) 257
-              (ppu-oam-address ppu) 0
-              (cl-nes::ppu-sprite-evaluation-n ppu) 26
-              (cl-nes::ppu-sprite-evaluation-m ppu) 0
-              (cl-nes::ppu-sprite-evaluation-latch ppu) #x9B
-              (cl-nes::ppu-sprite-evaluation-done-p ppu) t
-              (cl-nes::ppu-secondary-oam-count ppu) 2
-              (aref oam 0) #xFF
-              (aref oam #xFC) #x03
-              (aref secondary 0) #x7F
-              (aref secondary 1) #x7E
-              (aref secondary 2) #x7D
-              (aref secondary 3) #x7C
-              (aref secondary 4) #x7B
-              (aref secondary 5) #x7A
-              (aref secondary 6) #x79
-              (aref secondary 7) #x78)
-        (expect (ppu-read-register ppu 4 t) :to-be #x7F)
-        (setf (cl-nes::ppu-dot ppu) 265)
-        (expect (ppu-read-register ppu 4 t) :to-be #x7B)
-        (setf (cl-nes::ppu-dot ppu) 272)
-        (expect (cl-nes::ppu-secondary-oam-count ppu) :to-be 2)
-        (expect (aref secondary 0) :to-be #x7F)
-        (expect (aref secondary 1) :to-be #x7E)
-        (expect (aref secondary 2) :to-be #x7D)
-        (expect (aref secondary 3) :to-be #x7C)
-        (expect (aref secondary 7) :to-be #x78)
-        (expect (ppu-oam-address ppu) :to-be 0)
-        (expect (ppu-read-register ppu 4 t) :to-be #x03)
-        (loop for dot from 273 to 275
-              do (setf (cl-nes::ppu-dot ppu) dot)
-              (expect (ppu-read-register ppu 4 t) :to-be #xFF))
-        (setf (cl-nes::ppu-dot ppu) 281)
-        (expect (ppu-read-register ppu 4 t) :to-be #xFF))))
+    (let* ((ppu (make-ppu (make-fixture-cartridge)))
+           (oam (ppu-oam ppu))
+           (secondary (cl-nes::ppu-secondary-oam ppu)))
+      (setf (ppu-mask ppu) #x18
+            (cl-nes::ppu-scanline ppu) 128
+            (cl-nes::ppu-dot ppu) 257
+            (ppu-oam-address ppu) 0
+            (cl-nes::ppu-sprite-evaluation-n ppu) 26
+            (cl-nes::ppu-sprite-evaluation-m ppu) 0
+            (cl-nes::ppu-sprite-evaluation-latch ppu) #x9B
+            (cl-nes::ppu-sprite-evaluation-done-p ppu) t
+            (cl-nes::ppu-secondary-oam-count ppu) 2
+            (aref oam 0) #xFF
+            (aref oam #xFC) #x03
+            (aref secondary 0) #x7F
+            (aref secondary 1) #x7E
+            (aref secondary 2) #x7D
+            (aref secondary 3) #x7C
+            (aref secondary 4) #x7B
+            (aref secondary 5) #x7A
+            (aref secondary 6) #x79
+            (aref secondary 7) #x78)
+      (expect (ppu-read-register ppu 4 t) :to-be #x7F)
+      (setf (cl-nes::ppu-dot ppu) 265)
+      (expect (ppu-read-register ppu 4 t) :to-be #x7B)
+      (setf (cl-nes::ppu-dot ppu) 272)
+      (expect (cl-nes::ppu-secondary-oam-count ppu) :to-be 2)
+      (expect (aref secondary 0) :to-be #x7F)
+      (expect (aref secondary 1) :to-be #x7E)
+      (expect (aref secondary 2) :to-be #x7D)
+      (expect (aref secondary 3) :to-be #x7C)
+      (expect (aref secondary 7) :to-be #x78)
+      (expect (ppu-oam-address ppu) :to-be 0)
+      (expect (ppu-read-register ppu 4 t) :to-be #x03)
+      (loop for dot from 273 to 275
+            do (setf (cl-nes::ppu-dot ppu) dot)
+            (expect (ppu-read-register ppu 4 t) :to-be #xFF))
+      (setf (cl-nes::ppu-dot ppu) 281)
+      (expect (ppu-read-register ppu 4 t) :to-be #xFF))))

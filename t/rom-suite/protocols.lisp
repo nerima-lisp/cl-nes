@@ -414,7 +414,9 @@
      "t Register Quirks" "Rendering Flag Behavior"
      "$2007 read w/ rendering" "Attributes As Tiles" "Stale BG Shift Registers"
      "BG Serial In" "Address $2004 behavior" "$2007 Stress Test"
-     "Sprites On Scanline 0" "Misaligned OAM2 Address")))
+     "Sprites On Scanline 0" "Misaligned OAM2 Address"
+     "DMA + $2002 Read" "DMA + $2007 Write" "DMA + $4015 Read"
+     "DMA + $4016 Read" "DMC DMA + OAM DMA")))
 
 (defparameter *accuracy-coin-item-specs*
   '((:cpu-behavior "ROM is not writable" #x0405)

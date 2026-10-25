@@ -267,13 +267,51 @@
       (setf (cl-nes::ppu-dot ppu) 320)
       (expect (ppu-read-register ppu 4 t) :to-be #xFF)
       (setf (cl-nes::ppu-dot ppu) 321)
-      (expect (ppu-read-register ppu 4 t) :to-be #x7F)
+      (progn
+        (expect (ppu-read-register ppu 4 t) :to-be #x7F)
+        (setf (aref (cl-nes::ppu-secondary-oam ppu) 0) #x06)
+        (expect (ppu-read-register ppu 4 t) :to-be #x06))
       (setf (cl-nes::ppu-dot ppu) 340)
-      (expect (ppu-read-register ppu 4 t) :to-be #x7F)
+      (expect (ppu-read-register ppu 4 t) :to-be #x06)
       (setf (cl-nes::ppu-scanline ppu) 240
             (cl-nes::ppu-dot ppu) 1)
-      (expect (ppu-read-register ppu 4 t) :to-be #x5A)))
+      (expect (ppu-read-register ppu 4 t) :to-be #x5A)
+      (fill (cl-nes::ppu-secondary-oam ppu) #xFF)
+      (setf (cl-nes::ppu-scanline ppu) 0
+            (cl-nes::ppu-secondary-oam-count ppu) 0
+            (aref (ppu-oam ppu) #xFC) #x55
+            (cl-nes::ppu-dot ppu) 256)
+      (expect (ppu-read-register ppu 4 t) :to-be #x55)
+      (setf (cl-nes::ppu-dot ppu) 257)
+      (expect (ppu-read-register ppu 4 t) :to-be #xFF)
+      (setf (cl-nes::ppu-dot ppu) 258)
+      (expect (ppu-read-register ppu 4 t) :to-be #xFF)
+      (setf (cl-nes::ppu-dot ppu) 259)
+      (expect (ppu-read-register ppu 4 t) :to-be #xFF)
+      (setf (cl-nes::ppu-dot ppu) 260)
+      (expect (ppu-read-register ppu 4 t) :to-be #xFF)))
   (it "reads secondary OAM during overflow and primary OAM after wrap"
+    (let ((ppu (make-ppu)))
+      (setf (cl-nes::ppu-mask ppu) #x18
+            (cl-nes::ppu-scanline ppu) 0
+            (cl-nes::ppu-dot ppu) 66
+            (cl-nes::ppu-oam-address ppu) 0
+            (cl-nes::ppu-sprite-evaluation-done-p ppu) nil
+            (cl-nes::ppu-secondary-oam-count ppu) 8
+            (cl-nes::ppu-sprite-evaluation-m ppu) 0
+            (cl-nes::ppu-sprite-evaluation-latch ppu) #xA5
+            (aref (cl-nes::ppu-secondary-oam ppu) 0) #x5A
+            (aref (cl-nes::ppu-oam ppu) 4) #xC3)
+      (expect (ppu-read-register ppu 4 t) :to-be #x5A)
+      (setf (cl-nes::ppu-dot ppu) 65)
+      (expect (ppu-read-register ppu 4 t) :to-be #xA5)
+      (setf (cl-nes::ppu-dot ppu) 66
+            (cl-nes::ppu-oam-address ppu) 4
+            (cl-nes::ppu-sprite-evaluation-n ppu) 1
+            (cl-nes::ppu-sprite-evaluation-done-p ppu) t
+            (cl-nes::ppu-sprite-evaluation-latch ppu) #xC3)
+      (expect (ppu-read-register ppu 4 t) :to-be #xC3)))
+  (it "reads secondary OAM on even evaluation cycles once full"
     (let ((ppu (make-ppu)))
       (setf (cl-nes::ppu-mask ppu) #x18
             (cl-nes::ppu-scanline ppu) 0

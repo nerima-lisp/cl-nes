@@ -255,7 +255,7 @@
           (ppu-sprite-evaluation-latch ppu) #xFF
           (ppu-sprite-evaluation-done-p ppu) nil
           (ppu-sprite-evaluation-index ppu)
-          (if (zerop (ppu-oam-address ppu)) 1 3)))
+          (if (zerop (ppu-oam-address ppu)) 0 2)))
   (labels ((set-oam-address (address)
              (let* ((old-address (ppu-oam-address ppu))
                     (address (logand address #xFF))
@@ -374,7 +374,10 @@
         (y (ppu-scanline ppu)))
     (multiple-value-bind (background solid)
         (%ppu-background-pixel-at-dot ppu)
-      (let ((sprite (if (plusp (ppu-sprite-evaluation-index ppu))
+      ;; Dot 65 resets the marker; fetched sprites still belong to the line.
+      (let ((sprite (if (or (= (ppu-sprite-evaluation-index ppu) 1)
+                            (and (ppu-sprite-evaluation-active-p ppu)
+                                 (plusp (ppu-sprite-render-count ppu))))
                         (%ppu-sprite-pixel-at-shifts ppu x solid)
                         (%ppu-sprite-pixel-at-dot ppu x y solid))))
         (setf (aref (ppu-framebuffer ppu) (+ x (* y +ppu-width+)))
