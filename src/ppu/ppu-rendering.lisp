@@ -299,28 +299,28 @@
     (when (and (logbitp 4 mask)
                (or (>= x 8) (logbitp 2 mask)))
       (loop for slot below (ppu-sprite-render-count ppu)
-      do (when (zerop (aref (ppu-sprite-x-counter ppu) slot))
-           (let* ((low (aref (ppu-sprite-shift-low ppu) slot))
-                  (high (aref (ppu-sprite-shift-high ppu) slot))
-                  (color (logior (ldb (byte 1 7) low)
-                                 (ash (ldb (byte 1 7) high) 1))))
-             (unless (zerop color)
-               (let ((attributes
-                       (aref (ppu-sprite-attributes ppu) slot)))
-                 (when (and (= slot 0) background-solid (< x 255)
-                            (not (logbitp 6 (ppu-status ppu))))
-                   (setf (ppu-status ppu)
-                         (logior (ppu-status ppu) #x40)))
-                 (return (if (and (logbitp 5 attributes)
-                                  background-solid)
-                             nil
-                             (logand
-                              (ppu-read-vram
-                               ppu
-                               (+ #x3F10
-                                  (* (logand attributes 3) 4)
-                                  color))
-                              #x3F)))))))))))
+            do (when (zerop (aref (ppu-sprite-x-counter ppu) slot))
+                 (let* ((low (aref (ppu-sprite-shift-low ppu) slot))
+                        (high (aref (ppu-sprite-shift-high ppu) slot))
+                        (color (logior (ldb (byte 1 7) low)
+                                       (ash (ldb (byte 1 7) high) 1))))
+                   (unless (zerop color)
+                     (let ((attributes
+                            (aref (ppu-sprite-attributes ppu) slot)))
+                       (when (and (= (aref (ppu-sprite-indexes ppu) slot) 0) background-solid (< x 255)
+                                  (not (logbitp 6 (ppu-status ppu))))
+                         (setf (ppu-status ppu)
+                               (logior (ppu-status ppu) #x40)))
+                       (return (if (and (logbitp 5 attributes)
+                                        background-solid)
+                                   nil
+                                 (logand
+                                  (ppu-read-vram
+                                   ppu
+                                   (+ #x3F10
+                                      (* (logand attributes 3) 4)
+                                      color))
+                                  #x3F)))))))))))
 
 (defun %ppu-sprite-pixel-at-dot (ppu x y background-solid)
   (when (logbitp 4 (%ppu-effective-mask ppu))
@@ -329,7 +329,7 @@
           do (multiple-value-bind (color present behind)
                  (%sprite-pixel ppu sprite x y)
                (when present
-                 (when (and (= slot 0) background-solid (< x 255)
+                 (when (and (= sprite 0) background-solid (< x 255)
                             (not (logbitp 6 (ppu-status ppu))))
                    (setf (ppu-status ppu) (logior (ppu-status ppu) #x40)))
                  (return (if (and behind background-solid)
