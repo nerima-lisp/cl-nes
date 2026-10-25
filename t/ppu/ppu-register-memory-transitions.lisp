@@ -93,7 +93,7 @@
       (ppu-tick! ppu 6)
       (expect (cl-nes::ppu-read-buffer ppu) :to-be #x34)
       (ppu-tick! ppu 1)
-      (expect (cl-nes::ppu-read-buffer ppu) :to-be 0)))
+      (expect (cl-nes::ppu-read-buffer ppu) :to-be #x11)))
 
   (it "wraps coarse Y at the final nametable row"
     (let ((ppu (make-ppu)))
@@ -119,7 +119,7 @@
       (setf (cl-nes::ppu-vram-address ppu) #x73BF)
       (expect (ppu-read-register ppu 7) :to-be 0)
       (expect (cl-nes::ppu-vram-address ppu) :to-be #x0C00)))
-  (it "reads the post-increment v address after delayed rendering PPUDATA reads"
+  (it "uses the pre-increment v address after delayed rendering PPUDATA reads"
     (let ((ppu (make-ppu)))
       (ppu-write-vram! ppu #x2A5A #x11)
       (ppu-write-vram! ppu #x2C00 #x42)
@@ -134,12 +134,28 @@
             (cl-nes::ppu-dot ppu) 340)
       (expect (ppu-read-register ppu 7 t) :to-be 0)
       (expect (cl-nes::ppu-vram-address ppu) :to-be #x3C01)
-      (expect (cl-nes::ppu-read-buffer-pending-address ppu) :to-be #x3C01)
+      (expect (cl-nes::ppu-read-buffer-pending-address ppu) :to-be #x2C00)
       (expect (cl-nes::ppu-address-bus ppu) :to-be #x2A5A)
       (ppu-tick! ppu 7)
-      (expect (cl-nes::ppu-read-buffer ppu) :to-be #xA5)
+      (expect (cl-nes::ppu-read-buffer ppu) :to-be #x42)
       (expect (cl-nes::ppu-read-buffer-pending-p ppu) :to-be nil)
-      (expect (cl-nes::ppu-address-bus ppu) :to-be #x3C01)))
+      (expect (cl-nes::ppu-address-bus ppu) :to-be #x2C00)))
+  (it "commits delayed PPUDATA reads from their saved pre-increment address"
+    (let ((ppu (make-ppu)))
+      (ppu-write-vram! ppu #x2801 #x02)
+      (ppu-write-vram! ppu #x2803 #x03)
+      (setf (cl-nes::ppu-vram-address ppu) #x2801
+            (cl-nes::ppu-mask ppu) #x08
+            (cl-nes::ppu-scanline ppu) 239
+            (cl-nes::ppu-dot ppu) 340
+            (cl-nes::ppu-address-bus ppu) #x2803)
+      (expect (ppu-read-register ppu 7 t) :to-be 0)
+      (expect (cl-nes::ppu-read-buffer-pending-address ppu) :to-be #x2801)
+      (ppu-tick! ppu 6)
+      (setf (cl-nes::ppu-address-bus ppu) #x2803)
+      (ppu-tick! ppu 1)
+      (expect (cl-nes::ppu-read-buffer ppu) :to-be #x02)
+      (expect (cl-nes::ppu-read-buffer-pending-p ppu) :to-be nil)))
   (it "clocks background shifters only in fetch windows while rendering"
     (let ((ppu (make-ppu)))
       (setf (cl-nes::ppu-scanline ppu) 0
@@ -203,18 +219,23 @@
             (aref (cl-nes::ppu-secondary-oam ppu) 1) #x7E
             (aref (cl-nes::ppu-secondary-oam ppu) 2) #x61
             (aref (cl-nes::ppu-secondary-oam ppu) 3) #x7C)
-      (expect (ppu-read-register ppu 4 t) :to-be #x7F)
+      (expect (ppu-read-register ppu 4 t) :to-be #xFF)
       (setf (cl-nes::ppu-dot ppu) 1)
       (expect (ppu-read-register ppu 4 t) :to-be #xFF)
       (setf (cl-nes::ppu-dot ppu) 64)
       (expect (ppu-read-register ppu 4 t) :to-be #xFF)
       (setf (cl-nes::ppu-sprite-evaluation-latch ppu) #xA5
+            (cl-nes::ppu-sprite-evaluation-done-p ppu) nil
+            (cl-nes::ppu-secondary-oam-count ppu) 0
             (cl-nes::ppu-dot ppu) 65)
       (expect (ppu-read-register ppu 4 t) :to-be #xA5)
       (setf (cl-nes::ppu-dot ppu) 66)
+      (expect (ppu-read-register ppu 4 t) :to-be #x5A)
+      (setf (cl-nes::ppu-sprite-evaluation-done-p ppu) t
+            (cl-nes::ppu-dot ppu) 205)
       (expect (ppu-read-register ppu 4 t) :to-be #xA5)
       (setf (cl-nes::ppu-dot ppu) 256)
-      (expect (ppu-read-register ppu 4 t) :to-be #xA5)
+      (expect (ppu-read-register ppu 4 t) :to-be #x5A)
       (setf (cl-nes::ppu-dot ppu) 257)
       (expect (ppu-read-register ppu 4 t) :to-be #x7F)
       (setf (cl-nes::ppu-dot ppu) 258)
@@ -233,4 +254,31 @@
       (expect (ppu-read-register ppu 4 t) :to-be #x7F)
       (setf (cl-nes::ppu-scanline ppu) 240
             (cl-nes::ppu-dot ppu) 1)
-      (expect (ppu-read-register ppu 4 t) :to-be #x5A))))
+      (expect (ppu-read-register ppu 4 t) :to-be #x5A)))
+  (it "reads secondary OAM on even evaluation cycles once full"
+    (let ((ppu (make-ppu)))
+      (setf (cl-nes::ppu-mask ppu) #x18
+            (cl-nes::ppu-scanline ppu) 0
+            (cl-nes::ppu-dot ppu) 66
+            (cl-nes::ppu-oam-address ppu) 0
+            (cl-nes::ppu-sprite-evaluation-done-p ppu) nil
+            (cl-nes::ppu-secondary-oam-count ppu) 8
+            (cl-nes::ppu-sprite-evaluation-m ppu) 0
+            (cl-nes::ppu-sprite-evaluation-latch ppu) #xA5
+            (aref (cl-nes::ppu-secondary-oam ppu) 0) #x5A)
+      (expect (ppu-read-register ppu 4 t) :to-be #x5A)
+      (setf (cl-nes::ppu-dot ppu) 65)
+      (expect (ppu-read-register ppu 4 t) :to-be #xA5)))
+  (it "ignores OAMDATA writes during rendering and increments OAMADDR by four"
+    (let ((ppu (make-ppu)))
+      (setf (aref (cl-nes::ppu-oam ppu) 0) #xA5
+            (aref (cl-nes::ppu-oam ppu) 4) #x8C
+            (cl-nes::ppu-mask ppu) #x08
+            (cl-nes::ppu-scanline ppu) 261
+            (cl-nes::ppu-dot ppu) 321
+            (cl-nes::ppu-oam-address ppu) 0)
+      (ppu-write-register! ppu 4 0 t)
+      (expect (aref (cl-nes::ppu-oam ppu) 0) :to-be #xA5)
+      (expect (cl-nes::ppu-oam-address ppu) :to-be 4)
+      (setf (cl-nes::ppu-mask ppu) 0)
+      (expect (ppu-read-register ppu 4 t) :to-be #x8C))))

@@ -404,7 +404,8 @@
      "Sprite 0 Hit behavior"
      "Sprite overflow behavior"
      "Misaligned OAM behavior"
-     "Misaligned OAM DMA" "Rendering Flag Behavior"
+     "Misaligned OAM DMA"
+     "t Register Quirks" "Rendering Flag Behavior"
      "$2007 read w/ rendering" "Attributes As Tiles" "Stale BG Shift Registers")))
 
 (defparameter *accuracy-coin-item-specs*

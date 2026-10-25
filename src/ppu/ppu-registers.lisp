@@ -29,14 +29,15 @@
                 (let ((mask (%ppu-effective-mask ppu)))
                   (or (logbitp 3 mask) (logbitp 4 mask)))))
          (phase-p (and bus-access-p rendering-p))
-         (clear-bus-p (and phase-p (<= 1 dot 64)))
+         (clear-bus-p (and phase-p (<= 0 dot 64)))
          (evaluation-bus-p (and phase-p (<= 65 dot 256)))
          (sprite-fetch-p (and phase-p (<= 257 dot 320)))
          (secondary-bus-p
-           (and phase-p (or (zerop dot) (<= 321 dot 340))))
-         (overflow-secondary-p
+           (and phase-p (<= 321 dot 340)))
+         (secondary-full-read-p
            (and evaluation-bus-p
-                (ppu-sprite-evaluation-done-p ppu)
+                (= (ppu-secondary-oam-count ppu) 8)
+                (zerop (ppu-sprite-evaluation-m ppu))
                 (evenp dot)))
          (raw
            (cond
@@ -46,17 +47,17 @@
                      (sprite (floor (- dot 257) 8))
                      (oam2-index (+ (* sprite 4) (min offset 3))))
                 (aref (ppu-secondary-oam ppu) oam2-index)))
-             ((or secondary-bus-p overflow-secondary-p)
+             ((or secondary-bus-p secondary-full-read-p)
               (aref (ppu-secondary-oam ppu) 0))
              (evaluation-bus-p
-              (if (ppu-sprite-evaluation-done-p ppu)
+              (if (evenp dot)
                   (aref (ppu-oam ppu) oam-address)
                   (ppu-sprite-evaluation-latch ppu)))
              (t (aref (ppu-oam ppu) oam-address))))
          (value
            (if (and bus-access-p (not clear-bus-p)
                     (not sprite-fetch-p) (not secondary-bus-p)
-                    (not overflow-secondary-p)
+                    (not secondary-full-read-p)
                     (= (logand oam-address 3) 2))
                (logand raw #xE3)
                raw)))
@@ -88,9 +89,7 @@
     (%ppu-vram-increment ppu)
     (if (and bus-access-p rendering-p)
         (setf (ppu-read-buffer-pending-address ppu)
-              (if palette-p
-                  (- address #x1000)
-                  (ppu-vram-address ppu))
+              (if palette-p (- address #x1000) address)
               ;; bus-read clocks three dots after this callback; PPUDATA updates four dots later.
               (ppu-read-buffer-pending-delay ppu) 7
               (ppu-read-buffer-pending-p ppu) t)
@@ -179,9 +178,13 @@
         (ppu-rendering-mask-delay ppu) 3
         (ppu-rendering-mask-valid-p ppu) t))
 
-(defun %ppu-write-oam-data-register! (ppu value)
-  (setf (aref (ppu-oam ppu) (ppu-oam-address ppu)) value
-        (ppu-oam-address ppu) (mod (1+ (ppu-oam-address ppu)) 256)))
+(defun %ppu-write-oam-data-register! (ppu value cpu-access-p)
+  (if (and cpu-access-p (%ppu-rendering-scanline-p ppu))
+      (setf (ppu-oam-address ppu)
+            (mod (+ (ppu-oam-address ppu) 4) 256))
+      (setf (aref (ppu-oam ppu) (ppu-oam-address ppu)) value
+            (ppu-oam-address ppu)
+            (mod (1+ (ppu-oam-address ppu)) 256))))
 
 (defun %ppu-write-address-register! (ppu value)
   (%write-address! ppu value)
@@ -200,7 +203,7 @@
     (0 (%ppu-write-control-register! ppu value cpu-access-p))
     (1 (%ppu-write-mask-register! ppu value))
     (3 (setf (ppu-oam-address ppu) value))
-    (4 (%ppu-write-oam-data-register! ppu value))
+    (4 (%ppu-write-oam-data-register! ppu value cpu-access-p))
     (5 (%write-scroll! ppu value))
     (6 (%ppu-write-address-register! ppu value))
     (7 (%ppu-write-data-register! ppu value)))

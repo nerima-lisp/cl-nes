@@ -297,7 +297,7 @@
          (%ppu-address-bus! ppu (ppu-read-buffer-pending-address ppu))))
       ((zerop (ppu-read-buffer-pending-delay ppu))
        (setf (ppu-read-buffer ppu)
-             (ppu-read-vram ppu (ppu-address-bus ppu) nil t)
+             (ppu-read-vram ppu (ppu-read-buffer-pending-address ppu) nil t)
              (ppu-read-buffer-pending-p ppu) nil)))))
 
 (defun ppu-tick! (ppu &optional (ticks 1))
