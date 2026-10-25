@@ -18,10 +18,39 @@
       (:pass (unless passed
                (error "ratchet regression: ~A~%~A"
                       (rom-contract-id contract) (result-summary contract result))))
-      (:known-fail (when passed
-                     (error "ratchet update required: ~A unexpectedly passes~%~A"
-                            (rom-contract-id contract)
-                            (result-summary contract result))))))
+      (:known-fail
+       (cond
+         (passed
+          (error "ratchet update required: ~A unexpectedly passes~%~A"
+                 (rom-contract-id contract)
+                 (result-summary contract result)))
+         ((getf result :error)
+          (error "ratchet regression: ~A known-fail contract errored~%~A"
+                 (rom-contract-id contract)
+                 (result-summary contract result)))
+         (t
+          (let* ((expected (rom-contract-failure-text contract))
+                 (status (getf result :status))
+                 (text (or (getf result :text) ""))
+                 (observed
+                   (cond
+                     ((and (numberp status)
+                           (eq :blargg (rom-contract-protocol contract))
+                           (not (getf result :signature)))
+                      (format nil "status ~D but signature mismatch" status))
+                     ((and (numberp status)
+                           (eq :blargg (rom-contract-protocol contract))
+                           (>= (or (getf result :frames) 0)
+                               (rom-contract-max-frames contract))
+                           (not (search "FAILED" (string-upcase text))))
+                      (format nil "status ~D; incomplete at text ~A"
+                              status text))
+                     ((numberp status)
+                      (format nil "status ~D; ~A" status text))
+                     (t (result-summary contract result)))))
+            (unless (search expected observed :test (function char-equal))
+              (error "ratchet regression: ~A failure-text mismatch~%expected: ~A~%observed: ~A"
+                     (rom-contract-id contract) expected observed))))))))
   result)
 
 (defun enforce-accuracy-ratchet (contract result)
@@ -385,16 +414,22 @@
       (error (condition)
         (list (list unit (princ-to-string condition))))))
   (defun capture-rom-contract-failure (contract result)
-    (capture-rom-suite-failure
-     (rom-contract-id contract)
-     (lambda ()
-       (enforce-ratchet contract result)
-       (unless (getf result :passed)
-         (error "ROM contract failed: ~A"
-                (result-summary contract result))))))
+    (let ((failures
+           (capture-rom-suite-failure
+            (rom-contract-id contract)
+            (lambda () (enforce-ratchet contract result)))))
+      (cond
+        (failures (values failures nil))
+        ((and (eq :known-fail (rom-contract-state contract))
+              (not (getf result :passed)))
+         (values nil
+                 (list (list (rom-contract-id contract)
+                             (result-summary contract result)))))
+        (t (values nil nil)))))
   (defun run-rom-suite ()
     (let ((results nil)
           (failures nil)
+          (known-failures nil)
           (shard (rom-suite-shard))
           (contracts (rom-suite-contracts)))
       (format t "rom-suite shard=~A workers=~D contracts=~D~%"
@@ -404,13 +439,15 @@
       (dolist (entry (run-contracts-parallel contracts))
         (let* ((contract (car entry))
                (result (cdr entry)))
-          (setf failures
-                (nconc failures
-                       (capture-rom-contract-failure contract result)))
+          (multiple-value-bind (contract-failures contract-known-failures)
+              (capture-rom-contract-failure contract result)
+            (setf failures (nconc failures contract-failures)
+                  known-failures (nconc known-failures
+                                        contract-known-failures))
+            (when contract-failures
+              (format *error-output* "ROM failed: ~A~%"
+                      (result-summary contract result))))
           (push result results)
-          (unless (getf result :passed)
-            (format *error-output* "ROM failed: ~A~%"
-                    (result-summary contract result)))
           (format t "~A~%" (result-summary contract result))))
       (when (member shard (list :all :mapper))
         (setf failures
@@ -418,7 +455,7 @@
                      (capture-rom-suite-failure
                       "accuracy-coin"
                       (function run-accuracy-contract)))))
-      (values (nreverse results) failures))))
+      (values (nreverse results) failures known-failures))))
 
 (defun run-rom-suite-table-tests ()
   (unless (uiop:symbol-call :cl-weave :run-all
@@ -619,41 +656,117 @@
    (("later units"))
    "ROM suite failure collection ~A"
    (scenario)
-   (it "records failures and invokes later units"
-     (let ((visited nil)
-           (failures nil))
-       (dolist (entry (quote (("first-contract" t)
-                              ("second-contract" t)
-                              ("last-contract" nil))))
-         (setf failures
-               (nconc failures
-                      (capture-rom-suite-failure
-                       (first entry)
-                       (lambda ()
-                         (push (first entry) visited)
-                         (when (second entry)
-                           (error "synthetic failure")))))))
-       (cl-weave:expect (nreverse visited)
-                        :to-equal (quote ("first-contract"
-                                          "second-contract"
-                                          "last-contract")))
-       (cl-weave:expect (mapcar (function first) failures)
-                        :to-equal (quote ("first-contract" "second-contract")))
-       (let* ((contract (make-rom-contract
-                         "known-fail-contract" :cpu "synthetic.nes"
-                         :blargg 0 1 :known-fail "synthetic"))
-              (contract-failures
-                (capture-rom-contract-failure
-                 contract
-                 (list :passed nil :frames 1 :text "synthetic failure"
-                       :status 128 :error nil))))
-         (cl-weave:expect (mapcar (function first) contract-failures)
-                          :to-equal (list "known-fail-contract"))
-         (cl-weave:expect
-          (not (null
-                (search "ROM contract failed"
-                        (second (first contract-failures)))))
-          :to-be t)))))
+   (it "records failures and classifies known-fail contracts"
+       (let ((visited nil)
+             (failures nil))
+         (dolist (entry (list (list "first-contract" t)
+                              (list "second-contract" t)
+                              (list "last-contract" nil)))
+           (setf failures
+                 (nconc failures
+                        (capture-rom-suite-failure
+                         (first entry)
+                         (lambda ()
+                           (push (first entry) visited)
+                           (when (second entry)
+                             (error "synthetic failure")))))))
+         (cl-weave:expect (nreverse visited)
+                          :to-equal
+                          (list "first-contract"
+                                "second-contract"
+                                "last-contract"))
+         (cl-weave:expect (mapcar (function first) failures)
+                          :to-equal (list "first-contract" "second-contract"))
+         (let* ((contract (make-rom-contract
+                           "known-fail-contract" :cpu "synthetic.nes"
+                           :blargg 0 1 :known-fail
+                           "STATUS 128; SYNTHETIC FAILED FAILURE"))
+                (result (list :passed nil :frames 1
+                              :text "synthetic FAILED failure tail"
+                              :status 128 :signature t :error nil)))
+           (multiple-value-bind (contract-failures known-failures)
+               (capture-rom-contract-failure contract result)
+             (cl-weave:expect contract-failures :to-be nil)
+             (cl-weave:expect (mapcar (function first) known-failures)
+                              :to-equal (list "known-fail-contract"))
+             (cl-weave:expect
+              (not (null
+                    (search "text=synthetic FAILED failure tail"
+                            (second (first known-failures)))))
+              :to-be t)))
+         (let* ((contract (make-rom-contract
+                           "mismatched-known-fail-contract" :cpu "synthetic.nes"
+                           :blargg 0 1 :known-fail
+                           "status 128; recorded FAILED failure"))
+                (result (list :passed nil :frames 1
+                              :text "different FAILED failure"
+                              :status 128 :signature t :error nil)))
+           (multiple-value-bind (contract-failures known-failures)
+               (capture-rom-contract-failure contract result)
+             (cl-weave:expect (mapcar (function first) contract-failures)
+                              :to-equal (list "mismatched-known-fail-contract"))
+             (cl-weave:expect known-failures :to-be nil)
+             (cl-weave:expect
+              (not (null
+                    (search "failure-text mismatch"
+                            (second (first contract-failures)))))
+              :to-be t)))
+         (let* ((contract (make-rom-contract
+                           "signature-known-fail" :cpu "synthetic.nes"
+                           :blargg 0 1 :known-fail
+                           "status 0 but signature mismatch"))
+                (result (list :passed nil :frames 1 :text ""
+                              :status 0 :signature nil :error nil)))
+           (multiple-value-bind (contract-failures known-failures)
+               (capture-rom-contract-failure contract result)
+             (cl-weave:expect contract-failures :to-be nil)
+             (cl-weave:expect (mapcar (function first) known-failures)
+                              :to-equal (list "signature-known-fail"))))
+         (let* ((contract (make-rom-contract
+                           "incomplete-known-fail" :cpu "synthetic.nes"
+                           :blargg 0 1 :known-fail
+                           "status 128; incomplete at text T+ Clocks"))
+                (result (list :passed nil :frames 1
+                              :text "T+ Clocks (decimal).00"
+                              :status 128 :signature t :error nil)))
+           (multiple-value-bind (contract-failures known-failures)
+               (capture-rom-contract-failure contract result)
+             (cl-weave:expect contract-failures :to-be nil)
+             (cl-weave:expect (mapcar (function first) known-failures)
+                              :to-equal (list "incomplete-known-fail"))))
+         (let* ((contract (make-rom-contract
+                           "errored-known-fail" :cpu "synthetic.nes"
+                           :blargg 0 1 :known-fail "text=condition signaled"))
+                (result (list :passed nil :frames nil
+                              :text "condition signaled"
+                              :status nil :signature nil
+                              :error "synthetic exception")))
+           (multiple-value-bind (contract-failures known-failures)
+               (capture-rom-contract-failure contract result)
+             (cl-weave:expect (mapcar (function first) contract-failures)
+                              :to-equal (list "errored-known-fail"))
+             (cl-weave:expect known-failures :to-be nil)))
+         (let* ((contract (make-rom-contract
+                           "unexpectedly-passing-known-fail" :cpu "synthetic.nes"
+                           :blargg 0 1 :known-fail "status 0; Passed"))
+                (result (list :passed t :frames 1 :text "Passed"
+                              :status 0 :signature t :error nil)))
+           (multiple-value-bind (contract-failures known-failures)
+               (capture-rom-contract-failure contract result)
+             (cl-weave:expect (mapcar (function first) contract-failures)
+                              :to-equal
+                              (list "unexpectedly-passing-known-fail"))
+             (cl-weave:expect known-failures :to-be nil)))
+         (let* ((contract (make-rom-contract
+                           "passing-contract" :cpu "synthetic.nes"
+                           :blargg 0 1 :pass "expected pass"))
+                (result (list :passed nil :frames 1 :text "actual failure"
+                              :status 128 :signature t :error nil)))
+           (multiple-value-bind (contract-failures known-failures)
+               (capture-rom-contract-failure contract result)
+             (cl-weave:expect (mapcar (function first) contract-failures)
+                              :to-equal (list "passing-contract"))
+             (cl-weave:expect known-failures :to-be nil))))))
   (describe-each
    (("parallel worker load"))
    "ROM per-thread CPU timeout ~A"
@@ -783,10 +896,10 @@
   (handler-case
       (progn
         (run-rom-suite-table-tests)
-        (multiple-value-bind (results failures)
+        (multiple-value-bind (results failures known-failures)
             (run-rom-suite)
           (declare (ignore results))
-          (when (member (rom-suite-shard) '(:all :mapper))
+          (when (member (rom-suite-shard) (quote (:all :mapper)))
             (setf failures
                   (nconc failures
                          (capture-rom-suite-failure
@@ -794,19 +907,22 @@
                           (lambda ()
                             (let ((difference
                                     (call-with-rom-test-timeout
-                                     "nestest" #'run-nestest-trace)))
+                                     "nestest" (function run-nestest-trace))))
                               (when difference
                                 (error "nestest required pass: ~A" difference))))))))
-          (if failures
-              (progn
-                (format *error-output* "ROM suite failures (~D):~%"
-                        (length failures))
-                (dolist (failure failures)
-                  (format *error-output*
-                          "ROM suite failure unit=~A condition=~A~%"
-                          (first failure) (second failure)))
-                1)
-              0)))
+          (format *error-output* "ROM suite failures (~D):~%"
+                  (length failures))
+          (dolist (failure failures)
+            (format *error-output*
+                    "ROM suite failure unit=~A condition=~A~%"
+                    (first failure) (second failure)))
+          (format *error-output* "ROM suite known-fail contracts (~D):~%"
+                  (length known-failures))
+          (dolist (known-failure known-failures)
+            (format *error-output*
+                    "ROM suite known-fail unit=~A result=~A~%"
+                    (first known-failure) (second known-failure)))
+          (if failures 1 0)))
     (error (condition)
       (format *error-output* "ROM suite failed: ~A~%" condition)
       1)))
