@@ -72,6 +72,7 @@
    (sprite-evaluation-m 0 fixnum)
    (sprite-evaluation-latch #xFF (unsigned-byte 8))
    (sprite-evaluation-done-p nil nil)
+   (sprite-evaluation-active-p nil nil)
    (sprite-render-count 0 fixnum)
    (sprite-shift-low (make-array 8 :element-type '(unsigned-byte 8) :initial-element 0)
                      vector)

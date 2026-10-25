@@ -54,6 +54,25 @@
       (expect (cl-nes::ppu-sprite-render-count ppu) :to-be 0)
       (expect (cl-nes::ppu-sprite-evaluation-index ppu) :to-be 1)
       (expect (aref (cl-nes::ppu-sprite-indexes ppu) 0) :to-be 7)))
+  (it "commits sprite evaluation after rendering is disabled"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (fill (ppu-oam ppu) #xFF)
+      (setf (aref (ppu-oam ppu) 0) 0
+            (aref (ppu-oam ppu) 1) 3
+            (aref (ppu-oam ppu) 2) 0
+            (aref (ppu-oam ppu) 3) 0
+            (ppu-mask ppu) #x08
+            (cl-nes::ppu-scanline ppu) 6
+            (cl-nes::ppu-dot ppu) 64)
+      (ppu-tick! ppu 213)
+      (expect (cl-nes::ppu-dot ppu) :to-be 277)
+      (expect (cl-nes::ppu-secondary-oam-count ppu) :to-be 1)
+      (setf (ppu-mask ppu) 0)
+      (ppu-tick! ppu 43)
+      (expect (cl-nes::ppu-dot ppu) :to-be 320)
+      (expect (cl-nes::ppu-sprite-render-count ppu) :to-be 1)
+      (expect (cl-nes::ppu-sprite-evaluation-index ppu) :to-be 1)
+      (expect (aref (cl-nes::ppu-sprite-indexes ppu) 0) :to-be 0)))
   (it "suppresses the vblank NMI when status is read at the race dot"
     (let ((ppu (make-ppu (make-fixture-cartridge))))
       (setf (cl-nes::ppu-scanline ppu) 241

@@ -50,6 +50,7 @@ console reset for callers that want to preserve cartridge-backed state."
         (ppu-decay-clock ppu) 0
         (ppu-decay-next-expiry ppu) most-positive-fixnum)
   (fill (ppu-decay-deadlines ppu) most-positive-fixnum)
+  (setf (ppu-sprite-evaluation-active-p ppu) nil)
   (fill (ppu-secondary-oam ppu) #xFF)
   (fill (ppu-sprite-shift-low ppu) 0)
   (fill (ppu-sprite-shift-high ppu) 0)

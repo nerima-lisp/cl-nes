@@ -84,6 +84,7 @@
             (aref (cl-nes::ppu-secondary-oam source-ppu) 0) #xFD
             (aref (cl-nes::ppu-sprite-indexes source-ppu) 0) 4
             (aref (cl-nes::ppu-sprite-evaluated-indexes source-ppu) 0) 7)
+      (setf (cl-nes::ppu-sprite-evaluation-active-p source-ppu) t)
       (setf state (nes-save-state source))
       (nes-load-state target state)
       (expect (cl-nes::ppu-secondary-oam-count target-ppu) :to-be 1)
@@ -92,6 +93,7 @@
       (expect (cl-nes::ppu-sprite-evaluation-m target-ppu) :to-be 2)
       (expect (cl-nes::ppu-sprite-evaluation-latch target-ppu) :to-be #xFD)
       (expect (cl-nes::ppu-sprite-evaluation-done-p target-ppu) :to-be t)
+      (expect (cl-nes::ppu-sprite-evaluation-active-p target-ppu) :to-be t)
       (expect (cl-nes::ppu-sprite-render-count target-ppu) :to-be 2)
       (expect (aref (cl-nes::ppu-secondary-oam target-ppu) 0) :to-be #xFD)
       (expect (aref (cl-nes::ppu-sprite-indexes target-ppu) 0) :to-be 4)
