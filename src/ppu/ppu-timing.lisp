@@ -247,11 +247,26 @@
                   (aref (ppu-sprite-evaluated-indexes ppu) sprite)))))
       (when (and (= scanline 261) (<= 280 dot 304))
         (%ppu-copy-vertical! ppu))
-      (when (<= 65 dot 256)
-        (%ppu-evaluate-sprites!
-         ppu
-         (if (= scanline 261) 0 (1+ scanline))
-         dot)))))
+      (progn
+        (when (and pipeline-scanline-p
+                   (= dot 341)
+                   (or (< scanline 239)
+                       (= scanline 261))
+                   (not (and (= scanline 261)
+                             (ppu-odd-frame-p ppu)
+                             (%ppu-odd-frame-skip-enabled-p ppu))))
+          (let* ((v (ppu-vram-address ppu))
+                 (address (+ (if (logbitp 4 (ppu-control ppu))
+                                 #x1000
+                                 0)
+                             (* (ppu-next-tile ppu) 16)
+                             (logand (ash v -12) 7))))
+            (%ppu-address-bus! ppu address)))
+        (when (<= 65 dot 256)
+          (%ppu-evaluate-sprites!
+           ppu
+           (if (= scanline 261) 0 (1+ scanline))
+           dot))))))
 (defun %ppu-rendering-address-latch-p (scanline dot)
   (and (or (< scanline 240) (= scanline 261))
        (or (and (or (<= 1 dot 256)

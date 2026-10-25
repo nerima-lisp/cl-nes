@@ -138,7 +138,7 @@
             (cl-nes::ppu-dot enabled) 0)
       (ppu-tick! enabled 341)
       (expect (cl-nes::ppu-vram-address enabled) :to-be #x1003)
-      (expect (cl-nes::ppu-address-bus enabled) :to-be #x2003)))
+      (expect (cl-nes::ppu-address-bus enabled) :to-be 1)))
   (it "renders CPU-written CHR-RAM through the headless NES PPU"
     (let* ((cartridge (make-fixture-cartridge))
            (nes (make-nes :cartridge cartridge))
