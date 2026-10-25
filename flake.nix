@@ -256,6 +256,10 @@
               '';
         in
         {
+          packages = pkgs.lib.optionalAttrs (paredit != null) {
+            paredit-cli = paredit;
+          };
+
           checks = {
             # run-coverage.lisp asserts its own measured 96.22%/92.22% floor and errors
             # (non-zero exit) below it, so this check needs no separate
