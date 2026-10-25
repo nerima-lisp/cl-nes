@@ -92,8 +92,8 @@
        :protocol :blargg :expected 0 :max-frames 120
        :timeout-ms-per-frame 126 :state :pass :failure-text "status 128")
       (:id "cpu-interrupts-v2-05-branch" :path "cpu_interrupts_v2/rom_singles/5-branch_delays_irq.nes"
-       :protocol :blargg :expected 0 :max-frames 120
-       :timeout-ms-per-frame 89 :state :known-fail :failure-text "status 128")
+       :protocol :blargg :expected 0 :max-frames 475
+       :timeout-ms-per-frame 89 :state :pass :failure-text "status 0")
       (:id "cpu-exec-space-apu" :path "cpu_exec_space/test_cpu_exec_space_apu.nes"
        :protocol :blargg :expected 0 :max-frames 350
        :timeout-ms-per-frame 147 :state :pass
