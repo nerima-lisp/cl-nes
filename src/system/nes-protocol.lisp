@@ -78,107 +78,46 @@ allowing tests to supply the mapping established by that ROM's source."
                  (return frame)))
       max-frames))
 
-(defun run-accuracy-coin-protocol (path max-frames)
-  "Run AccuracyCoin in Start mode and measure the two sprite result pages."
-  (labels ((run-page (suite-index items)
-             (let* ((page-nes (make-nes :cartridge (load-cartridge path)))
-                    (page-bus (nes-bus page-nes))
-                    (ram (bus-ram page-bus))
-                    (frames 0))
-               (labels ((run-frame (buttons)
-                          (when (>= frames max-frames)
-                            (error "AccuracyCoin page ~D exceeded its frame cap"
-                                   suite-index))
-                          (incf frames)
-                          (nes-run-frame/k
-                           page-nes (function identity)
-                           :input-continuation
-                           (lambda (current-nes)
-                             (controller-set-buttons!
-                              (bus-controller-1 (nes-bus current-nes))
-                              buttons))))
-                        (select-page (target)
-                          (loop repeat 3
-                                until (= (aref ram #x14) target)
-                                do (run-frame +button-right+)
-                                   (run-frame 0)
-                                   (loop repeat 10
-                                         until (= (aref ram #x14) target)
-                                         do (run-frame 0)))
-                          (unless (= (aref ram #x14) target)
-                            (error "Could not select AccuracyCoin page ~D"
-                                   target)))
-                        (validate-items ()
-                          (loop for item in items
-                                for address = (second item)
-                                for value = (aref ram address)
-                                when (member value (list 0 3 #xFF))
-                                  do (error
-                                      "AccuracyCoin page ~D item ~A did not finish: ~X"
-                                      suite-index (first item) value))))
-                 (loop repeat (min 60 max-frames) do (run-frame 0))
-                 (unless (and (= (aref ram #xEC) #x0A)
-                              (= (aref ram #x3A) 1))
-                   (error "AccuracyCoin page ~D did not pass boot sync"
-                          suite-index))
-                 (loop for target from 1 to suite-index
-                       do (select-page target))
-                 (loop repeat 12 do (run-frame 0))
-                 (run-frame +button-a+)
-                 (loop while (< frames max-frames)
-                       do (run-frame 0))
-                 (unless (and (= (aref ram #x14) suite-index)
-                              (= (aref ram #x16) #xFF)
-                              (= (aref ram #x3A) 1))
-                   (error "AccuracyCoin page ~D did not complete"
-                          suite-index))
-                 (validate-items)
-                 (list :suite suite-index :frames frames
-                       :menu (aref ram #x14) :cursor (aref ram #x16)
-                       :vblank-sync (aref ram #x3A)
-                       :items
-                       (loop for item in items
-                             collect (list :name (first item)
-                                           :address (second item)
-                                           :value (aref ram (second item)))))))))
-    (let* ((nes (make-nes :cartridge (load-cartridge path)))
-           (bus (nes-bus nes))
-           (frame-counter 0)
-           (frames (protocol-run-frames-until
-                    nes max-frames
-                    (constantly nil)
-                    :input-continuation
-                    (lambda (current-nes)
-                      (incf frame-counter)
-                      (controller-set-buttons!
-                       (bus-controller-1 (nes-bus current-nes))
-                       (if (<= frame-counter 180) +button-start+ 0)))))
-           (results (protocol-bus-range bus #x0400 #x04ff))
-           (shared-draw (bus-read bus #x03ff))
-           (page-runs nil))
-      (dolist (suite
-               (list
-                (list 18
-                      (list (list "Sprite 0 Hit behavior" #x0457)
-                            (list "Arbitrary Sprite zero" #x0458)
-                            (list "Sprite overflow behavior" #x0459)
-                            (list "Misaligned OAM behavior" #x045A)
-                            (list "OAM Corruption" #x047B)
-                            (list "Suddenly Resize Sprite" #x0489)
-                            (list "$2002 flag timing" #x048D)
-                            (list "Misaligned OAM DMA" #x0494)))
-                (list 21
-                      (list (list "Sprites On Scanline 0" #x0484)
-                            (list "Stale Sprite Shift Regs" #x048F)
-                            (list "Frozen OAM2 Increment" #x0493)
-                            (list "Misaligned OAM2 Address" #x0495)))))
-        (let ((page (run-page (first suite) (second suite))))
-          (dolist (item (getf page :items))
-            (setf (nth (- (getf item :address) #x0400) results)
-                  (getf item :value)))
-          (push page page-runs)))
-      (list :frames frames :results results :shared-draw shared-draw
-            :page-runs (nreverse page-runs)))))
+(defun protocol-accuracy-coin-complete-p (ram running-seen completion-addresses)
+  (and running-seen
+       (zerop (aref ram #x35))
+       (every (lambda (address)
+                (not (member (aref ram address) '(0 3 #xff))))
+              completion-addresses)))
+
+(defun run-accuracy-coin-protocol (path max-frames &key completion-addresses)
+  "Run AccuracyCoin in Start mode until all supplied result addresses settle."
+  (unless completion-addresses
+    (error "AccuracyCoin completion addresses are required"))
+  (let* ((nes (make-nes :cartridge (load-cartridge path)))
+         (bus (nes-bus nes))
+         (ram (bus-ram bus))
+         (frame-counter 0)
+         (running-seen nil)
+         (completed-p nil)
+         (frames
+           (protocol-run-frames-until
+            nes max-frames
+            (lambda (frame)
+              (declare (ignore frame))
+              (when (= (aref ram #x35) 1)
+                (setf running-seen t))
+              (setf completed-p
+                    (protocol-accuracy-coin-complete-p
+                     ram running-seen completion-addresses))
+              completed-p)
+            :input-continuation
+            (lambda (current-nes)
+              (incf frame-counter)
+              (controller-set-buttons!
+               (bus-controller-1 (nes-bus current-nes))
+               (if (<= frame-counter 180) +button-start+ 0)))))
+         (results (loop for address from #x0400 to #x04ff
+                        collect (aref ram address)))
+         (shared-draw (aref ram #x03ff)))
+    ;; $35 clears between suites, so its state alone does not signal completion.
+    (list :frames frames :completed-p completed-p
+          :results results :shared-draw shared-draw)))
 
 (defun run-blargg-protocol (path max-frames &key mapper4-variant)
   "Run PATH using the Blargg $6000 status/signature protocol."

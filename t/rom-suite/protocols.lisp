@@ -345,7 +345,7 @@
 
 (defparameter *accuracy-coin-contract*
   '(:id "accuracy-coin" :category :accuracy-coin :path "AccuracyCoin.nes"
-    :protocol :accuracy-coin :expected 146 :max-frames 4000 :state :known-fail
+    :protocol :accuracy-coin :expected 146 :max-frames 4894 :state :known-fail
     :failure-text "named result item mismatch"
     :accepted-values (#x01 #x05 #x09 #x0D #x11 #x39 #x41)
     :shared-draw ((:name "PPU Reset Flag" :category :power-on-state
@@ -385,6 +385,9 @@
      "$FF   ISC absolute,X" "$BB   LAE absolute,Y" "$0B   ANC Immediate"
      "$2B   ANC Immediate" "$4B   ASR Immediate" "$6B   ARR Immediate"
      "$AB   LXA Immediate" "$CB   AXS Immediate" "$EB   SBC Immediate"
+     "$93 SHA indirect,Y" "$9F SHA absolute,Y" "$9B SHS absolute,Y"
+     "$9C SHY absolute,X" "$9E SHX absolute,Y" "$8B ANE Immediate"
+     "Internal Data Bus"
      "NMI Overlap IRQ" "DMA + Open Bus" "DMA + $2007 Read"
      "Length Counter" "Length Table" "Frame Counter 4-step"
      "Frame Counter 5-step" "Controller Strobing" "Controller Clocking"
@@ -393,10 +396,11 @@
      "PPU Register Open Bus" "PPU Read Buffer" "Palette RAM Quirks"
      "VBlank beginning" "VBlank end" "NMI Control" "NMI Timing"
      "NMI Suppression" "NMI at VBlank end" "NMI disabled at VBlank"
-     "Sprite 0 Hit behavior" "Sprite overflow behavior"
-     "Misaligned OAM behavior" "$93 SHA indirect,Y" "$9F SHA absolute,Y"
-     "$9B SHS absolute,Y" "$9C SHY absolute,X" "$9E SHX absolute,Y"
-     "$8B ANE Immediate" "Internal Data Bus")))
+     "Sprite 0 Hit behavior"
+     "Sprite overflow behavior"
+     "Misaligned OAM behavior"
+     "Misaligned OAM DMA" "Rendering Flag Behavior"
+     "$2007 read w/ rendering" "Attributes As Tiles")))
 
 (defparameter *accuracy-coin-item-specs*
   '((:cpu-behavior "ROM is not writable" #x0405)
@@ -644,56 +648,72 @@
     ((and (= (logand value 3) 2) (>= value 2)) :fail)
     (t :fail)))
 
+(defun accuracy-coin-unfinished-items (items)
+  (loop for item in items
+        when (and (eq (getf item :expected) :pass)
+                  (member (getf item :value) '(0 3 #xff)))
+          collect (getf item :name)))
+
 (defun run-accuracy-coin (path contract)
-  (let* ((protocol-result
-           (cl-nes:run-accuracy-coin-protocol path (getf contract :max-frames)))
+  (let* ((completion-addresses
+           (loop for item in (getf contract :items)
+                 when (eq (getf item :expected) :pass)
+                   collect (getf item :address)))
+         (protocol-result
+           (cl-nes:run-accuracy-coin-protocol
+            path (getf contract :max-frames)
+            :completion-addresses completion-addresses))
          (results (getf protocol-result :results))
-         (shared-draw (getf protocol-result :shared-draw)))
-    (let* ((items (loop for item in (getf contract :items)
-                        for address = (getf item :address)
-                        for value = (if (= address #x03FF)
-                                        shared-draw
-                                        (nth (- address #x0400) results))
-                        for kind = (if (eq (getf item :expected) :reserved)
-                                       :reserved
-                                       (accuracy-result-kind value))
-                        collect (list :name (getf item :name)
-                                      :address address :value value :kind kind
-                                      :expected (getf item :expected)
-                                      :category (getf item :category))))
-           (shared-draw-items
-             (loop for item in (getf contract :shared-draw)
-                   for value = shared-draw
-                   collect (list :name (getf item :name)
-                                 :address (getf item :address) :value value
-                                 :kind (accuracy-result-kind value)
-                                 :expected (getf item :expected)
-                                 :category (getf item :category))))
-           (pass-count (count :pass items :key (lambda (item) (getf item :kind))))
-           (fail-count (count :fail items :key (lambda (item) (getf item :kind))))
-           (skip-count (count :skipped items :key (lambda (item) (getf item :kind))))
-           (running-count (count :running items :key (lambda (item) (getf item :kind))))
-           (completed-count (+ pass-count fail-count))
-           (category-pass-counts
-             (loop with categories = nil
-                   for item in items
-                   for category = (getf item :category)
-                   when category
-                     do (let ((entry (assoc category categories)))
-                          (if entry
-                              (when (eq (getf item :kind) :pass)
-                                (incf (cdr entry)))
-                              (push (cons category
-                                           (if (eq (getf item :kind) :pass) 1 0))
-                                    categories)))
-                   finally (return (nreverse categories)))))
-      (list :passed (every (lambda (item)
-                             (eq (getf item :kind) (getf item :expected)))
-                           items)
-            :pass-count pass-count :total (getf contract :expected)
-            :fail-count fail-count :skip-count skip-count
-            :running-count running-count :completed-count completed-count
-            :category-pass-counts category-pass-counts
-            :frames (getf protocol-result :frames)
-            :items items :shared-draw-items shared-draw-items
-            :results results))))
+         (shared-draw (getf protocol-result :shared-draw))
+         (items (loop for item in (getf contract :items)
+                      for address = (getf item :address)
+                      for value = (if (= address #x03FF)
+                                      shared-draw
+                                      (nth (- address #x0400) results))
+                      for kind = (if (eq (getf item :expected) :reserved)
+                                     :reserved
+                                     (accuracy-result-kind value))
+                      collect (list :name (getf item :name)
+                                    :address address :value value :kind kind
+                                    :expected (getf item :expected)
+                                    :category (getf item :category))))
+         (shared-draw-items
+           (loop for item in (getf contract :shared-draw)
+                 for value = shared-draw
+                 collect (list :name (getf item :name)
+                               :address (getf item :address) :value value
+                               :kind (accuracy-result-kind value)
+                               :expected (getf item :expected)
+                               :category (getf item :category))))
+         (pass-count (count :pass items :key (lambda (item) (getf item :kind))))
+         (fail-count (count :fail items :key (lambda (item) (getf item :kind))))
+         (skip-count (count :skipped items :key (lambda (item) (getf item :kind))))
+         (running-count (count :running items :key (lambda (item) (getf item :kind))))
+         (reserved-count (count :reserved items :key (lambda (item) (getf item :kind))))
+         (completed-count (+ pass-count fail-count))
+         (unfinished-items (accuracy-coin-unfinished-items items))
+         (category-pass-counts
+           (loop with categories = nil
+                 for item in items
+                 for category = (getf item :category)
+                 when category
+                   do (let ((entry (assoc category categories)))
+                        (if entry
+                            (when (eq (getf item :kind) :pass)
+                              (incf (cdr entry)))
+                            (push (cons category
+                                        (if (eq (getf item :kind) :pass) 1 0))
+                                  categories)))
+                 finally (return (nreverse categories)))))
+    (list :passed (every (lambda (item)
+                           (eq (getf item :kind) (getf item :expected)))
+                         items)
+          :pass-count pass-count :total (getf contract :expected)
+          :fail-count fail-count :skip-count skip-count
+          :running-count running-count :reserved-count reserved-count
+          :completed-count completed-count :unfinished-items unfinished-items
+          :completed-p (getf protocol-result :completed-p)
+          :category-pass-counts category-pass-counts
+          :frames (getf protocol-result :frames)
+          :items items :shared-draw-items shared-draw-items
+          :results results)))

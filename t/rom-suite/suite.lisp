@@ -171,25 +171,30 @@
      "accuracy-coin"
      (lambda ()
        (let* ((contract *accuracy-coin-contract*)
-              (result (run-accuracy-coin path contract))
-              (pass-count (getf result :pass-count)))
-         (enforce-accuracy-ratchet contract result)
-         (format t "accuracy-coin pass=~D total=~D fail=~D skip=~D running=~D~%"
-                 pass-count (getf result :total) (getf result :fail-count)
-                 (getf result :skip-count) (getf result :running-count))
+              (result (run-accuracy-coin path contract)))
+         (format t
+                 "accuracy-coin frames=~D complete=~A completed=~D total=~D reserved=~D pass=~D fail=~D skip=~D running=~D~%"
+                 (getf result :frames) (getf result :completed-p)
+                 (getf result :completed-count) (getf result :total)
+                 (getf result :reserved-count) (getf result :pass-count)
+                 (getf result :fail-count) (getf result :skip-count)
+                 (getf result :running-count))
          (format t "accuracy-coin categories=~S~%"
                  (getf result :category-pass-counts))
-         (dolist (page-run (getf result :page-runs))
-           (format t
-                   "accuracy-coin page suite=~D frames=~D menu=~D cursor=~D vblank-sync=~D items=~S~%"
-                   (getf page-run :suite)
-                   (getf page-run :frames)
-                   (getf page-run :menu)
-                   (getf page-run :cursor)
-                   (getf page-run :vblank-sync)
-                   (loop for item in (getf page-run :items)
-                         collect (list (getf item :name)
-                                       (getf item :value)))))
+         (dolist (item (getf result :items))
+           (format t "accuracy-coin item ~A address=$~4,'0X value=$~2,'0X kind=~A~%"
+                   (getf item :name) (getf item :address)
+                   (getf item :value) (getf item :kind)))
+         (dolist (item (getf result :shared-draw-items))
+           (format t "accuracy-coin shared-item ~A value=$~2,'0X kind=~A~%"
+                   (getf item :name) (getf item :value) (getf item :kind)))
+         (when (getf result :unfinished-items)
+           (error "AccuracyCoin unfinished expected-pass items: ~{~A~^, ~}"
+                  (getf result :unfinished-items)))
+         (unless (getf result :completed-p)
+           (error "AccuracyCoin automatic run reached max-frames=~D before completion"
+                  (getf contract :max-frames)))
+         (enforce-accuracy-ratchet contract result)
          result)))))
 
 (defun run-rom-suite ()
@@ -249,7 +254,45 @@
        (it "classifies AccuracyCoin result values"
          (cl-weave:expect (accuracy-result-kind #xff) :to-be :skipped)
          (cl-weave:expect (accuracy-result-kind #x01) :to-be :pass)
-         (cl-weave:expect (accuracy-result-kind 3) :to-be :running)))))
+         (cl-weave:expect (accuracy-result-kind 3) :to-be :running))
+       (it "names unfinished AccuracyCoin items"
+         (cl-weave:expect
+          (accuracy-coin-unfinished-items
+           (list (list :name "unrun" :expected :pass :value 0)
+                 (list :name "running" :expected :pass :value 3)
+                 (list :name "skipped" :expected :pass :value #xff)
+                 (list :name "failed" :expected :pass :value 2)
+                 (list :name "reserved" :expected :reserved :value 0)))
+          :to-equal '("unrun" "running" "skipped")))
+       (it "waits for all AccuracyCoin results before completion"
+         (let ((ram (make-array #x496 :initial-element 0))
+               (addresses (list #x0400 #x0495)))
+           (setf (aref ram #x35) 0
+                 (aref ram #x0400) 1
+                 (aref ram #x0495) 0)
+           (cl-weave:expect
+            (cl-nes::protocol-accuracy-coin-complete-p ram t addresses)
+            :to-be nil)
+           (setf (aref ram #x0495) 3)
+           (cl-weave:expect
+            (cl-nes::protocol-accuracy-coin-complete-p ram t addresses)
+            :to-be nil)
+           (setf (aref ram #x0495) #xff)
+           (cl-weave:expect
+            (cl-nes::protocol-accuracy-coin-complete-p ram t addresses)
+            :to-be nil)
+           (setf (aref ram #x0495) #x06)
+           (cl-weave:expect
+            (cl-nes::protocol-accuracy-coin-complete-p ram t addresses)
+            :to-be t)
+           (setf (aref ram #x35) 1)
+           (cl-weave:expect
+            (cl-nes::protocol-accuracy-coin-complete-p ram t addresses)
+            :to-be nil)
+           (setf (aref ram #x35) 0)
+           (cl-weave:expect
+            (cl-nes::protocol-accuracy-coin-complete-p ram nil addresses)
+            :to-be nil))))))
 
 (define-rom-contract-tests)
 
