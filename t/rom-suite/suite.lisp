@@ -10,7 +10,7 @@
           (getf result :error)))
 
 (defparameter *rom-test-timeout-ms-per-frame* 73
-  "Maximum observed wall-clock milliseconds per completed NES frame, rounded up.")
+  "Per-frame thread CPU budget capped using observed wall time.")
 
 (defun enforce-ratchet (contract result)
   (let ((passed (getf result :passed)))
@@ -66,7 +66,7 @@
   "Deterministic fallback when the runner does not select a worker count.")
 
 (defparameter *default-rom-test-timeout-ms* 120000
-  "Bounded fallback for protocols without a frame limit.")
+  "Bounded per-thread CPU fallback when no frame limit is available.")
 (defun run-contract (contract)
   (let ((path (resolve-rom-path contract))
         (*rom-test-timeout-ms-per-frame*
@@ -91,9 +91,9 @@
         (list :passed nil :error (princ-to-string condition)
               :text "condition signaled")))))
 (defparameter *rom-test-timeout-margin* 2.0d0
-  "Multiplier applied to the measured wall-clock cost per frame.")
+  "Safety factor for each contract per-thread CPU budget.")
 (defparameter *rom-test-timeout-startup-ms* 1000
-  "Allowance for runner startup before frame execution.")
+  "Per-test setup allowance in the thread CPU budget.")
 
 (defun positive-integer-value (name value)
   (let ((parsed (ignore-errors (parse-integer value :junk-allowed nil))))
@@ -130,17 +130,153 @@
                  *rom-test-timeout-ms-per-frame*
                  *rom-test-timeout-margin*))))
 
-(defun call-with-rom-test-timeout (label thunk &optional max-frames)
-  (let ((timeout-ms (rom-test-timeout-ms max-frames)))
-    #+sbcl
-    (handler-case
-        (sb-ext:with-timeout (/ timeout-ms 1000.0d0)
-          (funcall thunk))
-      (sb-ext:timeout ()
-        (error "ROM test unit ~A exceeded timeout-ms=~D"
-               label timeout-ms)))
-    #-sbcl
-    (funcall thunk)))
+(progn
+  (defun rom-test-cpu-timeout-ms
+      (max-frames
+       &optional (override (uiop:getenv "CL_NES_ROM_TEST_TIMEOUT_MS")))
+    (rom-test-timeout-ms max-frames override))
+  #+darwin
+  (progn
+    (defconstant +rom-suite-thread-basic-info+ 3)
+    (sb-alien:define-alien-routine
+        ("thread_info" rom-suite-mach-thread-info)
+        sb-alien:int
+      (thread sb-alien:unsigned-int)
+      (flavor sb-alien:int)
+      (info (* (array sb-alien:int 10)))
+      (count (* sb-alien:unsigned-int)))
+    (defun rom-thread-cpu-time-nanoseconds (thread)
+      ;; SBCL's Darwin thread ID is the Mach port accepted by THREAD-INFO.
+      (let ((thread-id (sb-thread:thread-os-tid thread)))
+        (when thread-id
+          (sb-alien:with-alien ((info (array sb-alien:int 10))
+                                (count sb-alien:unsigned-int))
+            (setf count 10)
+            (let ((result
+                    (rom-suite-mach-thread-info
+                     thread-id +rom-suite-thread-basic-info+
+                     (sb-alien:addr info) (sb-alien:addr count))))
+              (unless (zerop result)
+                (error "Cannot read ROM worker CPU time: Mach error ~D"
+                       result))
+              (+ (* 1000000000
+                    (+ (sb-alien:deref info 0)
+                       (sb-alien:deref info 2)))
+                 (* 1000
+                    (+ (sb-alien:deref info 1)
+                       (sb-alien:deref info 3))))))))))
+  #+linux
+  (progn
+    (sb-alien:define-alien-routine
+        ("pthread_getcpuclockid" rom-suite-pthread-getcpuclockid)
+        sb-alien:int
+      (pthread sb-alien:unsigned-long)
+      (clock-id (* sb-alien:int)))
+    (sb-alien:define-alien-routine
+        ("clock_gettime" rom-suite-clock-gettime)
+        sb-alien:int
+      (clock-id sb-alien:int)
+      (time (* (array sb-alien:long 2))))
+    (defun rom-thread-cpu-time-nanoseconds (thread)
+      ;; Linux SBCL stores PTHREAD-T in its thread object for this POSIX call.
+      (if (sb-thread:thread-os-tid thread)
+          (sb-alien:with-alien ((clock-id sb-alien:int)
+                                (time (array sb-alien:long 2)))
+            (let ((result
+                    (rom-suite-pthread-getcpuclockid
+                     (sb-thread::thread-os-thread thread)
+                     (sb-alien:addr clock-id))))
+              (unless (zerop result)
+                (error "Cannot get ROM worker CPU clock: pthread error ~D"
+                       result))
+              (unless (zerop
+                       (rom-suite-clock-gettime
+                        clock-id (sb-alien:addr time)))
+                (error "Cannot read ROM worker CPU clock"))
+              (+ (* 1000000000 (sb-alien:deref time 0))
+                 (sb-alien:deref time 1))))
+          nil)))
+  #+(and sbcl (not (or darwin linux)))
+  (defun rom-thread-cpu-time-nanoseconds (thread)
+    (declare (ignore thread))
+    (error "ROM per-thread CPU watchdog is unsupported on this SBCL platform"))
+  #+sbcl
+  (progn
+    (defun make-rom-test-timeout-interrupt (state state-lock label timeout-ms)
+      (lambda ()
+        (sb-thread:with-mutex (state-lock)
+          (case (car state)
+            (:running
+             (setf (car state) :expired)
+             (error "ROM test unit ~A exceeded thread-cpu-time-ms=~D"
+                    label timeout-ms))
+            (:failed
+             (error (cadr state)))))))
+    (defun finish-rom-test-timeout (state state-lock)
+      (sb-thread:with-mutex (state-lock)
+        (setf (car state) :finished
+              (cadr state) nil)))
+    (defun read-rom-thread-cpu-time-nanoseconds (thread cpu-time-reader)
+      (let ((time (funcall cpu-time-reader thread)))
+        (unless (and (integerp time) (not (minusp time)))
+          (error "ROM worker CPU clock returned an invalid value: ~S" time))
+        time)))
+  #+sbcl
+  (defun call-with-thread-cpu-timeout
+      (label thunk timeout-ms
+       &optional (cpu-time-reader #'rom-thread-cpu-time-nanoseconds))
+    (let* ((target sb-thread:*current-thread*)
+           (start (read-rom-thread-cpu-time-nanoseconds target cpu-time-reader))
+           (budget-nanoseconds (* timeout-ms 1000000))
+           (state (list :running nil))
+           (state-lock (sb-thread:make-mutex :name "rom-timeout-state"))
+           (stop (sb-thread:make-semaphore))
+           (watchdog
+             (sb-thread:make-thread
+              (lambda ()
+                (loop
+                  (when (sb-thread:wait-on-semaphore stop :timeout 0.01d0)
+                    (return))
+                  (unless (sb-thread:thread-alive-p target)
+                    (return))
+                  (let ((current
+                          (handler-case
+                              (read-rom-thread-cpu-time-nanoseconds
+                               target cpu-time-reader)
+                            (error (condition)
+                              (when (sb-thread:thread-alive-p target)
+                                (let ((notify-p
+                                        (sb-thread:with-mutex (state-lock)
+                                          (when (eq (car state) :running)
+                                            (setf (car state) :failed
+                                                  (cadr state) condition)
+                                            t))))
+                                  (when notify-p
+                                    (sb-thread:interrupt-thread
+                                     target
+                                     (make-rom-test-timeout-interrupt
+                                      state state-lock label timeout-ms)))))
+                              nil))))
+                    (unless current
+                      (return))
+                    (when (>= (- current start) budget-nanoseconds)
+                      (sb-thread:interrupt-thread
+                       target
+                       (make-rom-test-timeout-interrupt
+                        state state-lock label timeout-ms))
+                      (return))))))))
+      (unwind-protect
+           (funcall thunk)
+        (finish-rom-test-timeout state state-lock)
+        (sb-thread:signal-semaphore stop)
+        (sb-thread:join-thread watchdog))))
+  (defun call-with-rom-test-timeout
+      (label thunk &optional max-frames)
+    (let ((timeout-ms (rom-test-cpu-timeout-ms max-frames)))
+      #+sbcl
+      (call-with-thread-cpu-timeout label thunk timeout-ms)
+      #-sbcl
+      (funcall thunk))))
 
 (defun rom-worker-count ()
   (positive-environment-integer "CL_NES_ROM_WORKERS"
@@ -496,7 +632,131 @@
                                     "second-contract"
                                     "last-contract"))
        (cl-weave:expect (mapcar #'first failures)
-                        :to-equal '("first-contract" "second-contract"))))))
+                        :to-equal '("first-contract" "second-contract")))))
+  (describe-each
+   (("parallel worker load"))
+   "ROM per-thread CPU timeout ~A"
+   (scenario)
+   (it "keeps a bounded per-thread CPU budget"
+     (let ((*rom-test-timeout-ms-per-frame* 3)
+           (*rom-test-timeout-margin* 1.25d0)
+           (*rom-test-timeout-startup-ms* 7))
+       (cl-weave:expect (rom-test-cpu-timeout-ms 10 nil)
+                        :to-equal 45)
+       (cl-weave:expect (rom-test-cpu-timeout-ms 10 "2500")
+                        :to-equal 2500)))
+   (it "does not charge scheduler time spent sleeping"
+     (cl-weave:expect
+      (call-with-thread-cpu-timeout
+       "sleep probe" (lambda () (sleep 0.1d0) :completed) 25)
+      :to-equal :completed))
+   (it "does not charge CPU used by a sibling worker"
+     (let* ((started (sb-thread:make-semaphore))
+            (stop (sb-thread:make-semaphore))
+            (sibling
+              (sb-thread:make-thread
+               (lambda ()
+                 (sb-thread:signal-semaphore started)
+                 (loop until (sb-thread:try-semaphore stop))))))
+       (unwind-protect
+            (progn
+              (sb-thread:wait-on-semaphore started)
+              (cl-weave:expect
+               (call-with-thread-cpu-timeout
+                "sibling CPU probe"
+                (lambda () (sleep 0.3d0) :completed)
+                25)
+               :to-equal :completed)
+              (cl-weave:expect
+               (>= (rom-thread-cpu-time-nanoseconds sibling) 25000000)
+               :to-be t))
+         (sb-thread:signal-semaphore stop)
+         (sb-thread:join-thread sibling))))
+   (it "propagates CPU clock sampling failures into the worker"
+     (let* ((sample-count 0)
+            (message
+              (handler-case
+                  (progn
+                    (call-with-thread-cpu-timeout
+                     "clock probe"
+                     (lambda () (loop))
+                     50
+                     (lambda (thread)
+                       (declare (ignore thread))
+                       (if (zerop sample-count)
+                           (progn
+                             (incf sample-count)
+                             0)
+                           (error "synthetic CPU clock failure"))))
+                    "")
+                (error (condition)
+                  (princ-to-string condition)))))
+       (cl-weave:expect
+        (not (null (search "synthetic CPU clock failure" message)))
+        :to-be t)))
+   (it "expires only when the worker handles the timeout callback"
+     (let* ((state (list :running nil))
+            (state-lock (sb-thread:make-mutex))
+            (message
+              (handler-case
+                  (progn
+                    (funcall
+                     (make-rom-test-timeout-interrupt
+                      state state-lock "expiry probe" 25))
+                    "")
+                (error (condition)
+                  (princ-to-string condition)))))
+       (cl-weave:expect (car state) :to-be :expired)
+       (cl-weave:expect
+        (not (null (search "thread-cpu-time-ms=25" message)))
+        :to-be t)))
+   (it "ignores a delayed timeout callback after completion wins the gate"
+     (let* ((state (list :running nil))
+            (state-lock (sb-thread:make-mutex))
+            (callback-started (sb-thread:make-semaphore))
+            (deliver-callback (sb-thread:make-semaphore))
+            (callback-finished (sb-thread:make-semaphore))
+            (callback-error nil)
+            (joined-p nil)
+            (callback
+              (make-rom-test-timeout-interrupt
+               state state-lock "late probe" 25))
+            (callback-thread
+              (sb-thread:make-thread
+               (lambda ()
+                 (sb-thread:signal-semaphore callback-started)
+                 (sb-thread:wait-on-semaphore deliver-callback)
+                 (setf callback-error
+                       (handler-case
+                           (progn (funcall callback) nil)
+                         (error (condition) condition)))
+                 (sb-thread:signal-semaphore callback-finished)))))
+       (unwind-protect
+            (progn
+              (sb-thread:wait-on-semaphore callback-started)
+              (finish-rom-test-timeout state state-lock)
+              (sb-thread:signal-semaphore deliver-callback)
+              (sb-thread:wait-on-semaphore callback-finished)
+              (sb-thread:join-thread callback-thread)
+              (setf joined-p t)
+              (cl-weave:expect (car state) :to-be :finished)
+              (cl-weave:expect callback-error :to-be nil))
+         (unless joined-p
+           (sb-thread:signal-semaphore deliver-callback)
+           (sb-thread:join-thread callback-thread)))))
+   (it "interrupts a loop with no frame progress"
+     (let ((message
+             (handler-case
+                 (progn
+                   (call-with-thread-cpu-timeout
+                    "loop probe" (lambda () (loop)) 50)
+                   "")
+               (error (condition)
+                 (princ-to-string condition)))))
+       (cl-weave:expect
+        (not (null (search "thread-cpu-time-ms=50" message)))
+        :to-be t))))
+)
 
 (defun rom-suite-main ()
   (handler-case
