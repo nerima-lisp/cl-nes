@@ -242,25 +242,41 @@
          result))
      (getf contract :max-frames))))
 
-(defun run-rom-suite ()
-  (let ((results nil)
-        (shard (rom-suite-shard))
-        (contracts (rom-suite-contracts)))
-    (format t "rom-suite shard=~A workers=~D contracts=~D~%"
-            shard
-            (min (length contracts) (rom-worker-count))
-            (length contracts))
-    (dolist (entry (run-contracts-parallel contracts))
-      (let* ((contract (car entry))
-             (result (enforce-ratchet contract (cdr entry))))
-        (push result results)
-        (unless (getf result :passed)
-          (format *error-output* "ROM failed: ~A~%"
-                  (result-summary contract result)))
-        (format t "~A~%" (result-summary contract result))))
-    (when (member shard '(:all :mapper))
-      (run-accuracy-contract))
-    (nreverse results)))
+(progn
+  (defun capture-rom-suite-failure (unit thunk)
+    (handler-case
+        (progn (funcall thunk) nil)
+      (error (condition)
+        (list (list unit (princ-to-string condition))))))
+  (defun run-rom-suite ()
+    (let ((results nil)
+          (failures nil)
+          (shard (rom-suite-shard))
+          (contracts (rom-suite-contracts)))
+      (format t "rom-suite shard=~A workers=~D contracts=~D~%"
+              shard
+              (min (length contracts) (rom-worker-count))
+              (length contracts))
+      (dolist (entry (run-contracts-parallel contracts))
+        (let* ((contract (car entry))
+               (result (cdr entry)))
+          (setf failures
+                (nconc failures
+                       (capture-rom-suite-failure
+                        (rom-contract-id contract)
+                        (lambda () (enforce-ratchet contract result)))))
+          (push result results)
+          (unless (getf result :passed)
+            (format *error-output* "ROM failed: ~A~%"
+                    (result-summary contract result)))
+          (format t "~A~%" (result-summary contract result))))
+      (when (member shard '(:all :mapper))
+        (setf failures
+              (nconc failures
+                     (capture-rom-suite-failure
+                      "accuracy-coin"
+                      #'run-accuracy-contract))))
+      (values (nreverse results) failures))))
 
 (defun run-rom-suite-table-tests ()
   (unless (uiop:symbol-call :cl-weave :run-all
@@ -456,20 +472,60 @@
                (format nil
                        "item lost: NMI Overlap IRQ~%item lost: Misaligned OAM behavior")
                message)))
-        :to-be t)))))
+        :to-be t))))
+  (describe-each
+   (("later units"))
+   "ROM suite failure collection ~A"
+   (scenario)
+   (it "records failures and invokes later units"
+     (let ((visited nil)
+           (failures nil))
+       (dolist (entry '(("first-contract" t)
+                        ("second-contract" t)
+                        ("last-contract" nil)))
+         (setf failures
+               (nconc failures
+                      (capture-rom-suite-failure
+                       (first entry)
+                       (lambda ()
+                         (push (first entry) visited)
+                         (when (second entry)
+                           (error "synthetic failure")))))))
+       (cl-weave:expect (nreverse visited)
+                        :to-equal '("first-contract"
+                                    "second-contract"
+                                    "last-contract"))
+       (cl-weave:expect (mapcar #'first failures)
+                        :to-equal '("first-contract" "second-contract"))))))
 
 (defun rom-suite-main ()
   (handler-case
       (progn
         (run-rom-suite-table-tests)
-        (run-rom-suite)
-        (when (member (rom-suite-shard) '(:all :mapper))
-          (let ((difference
-                  (call-with-rom-test-timeout "nestest"
-                                               #'run-nestest-trace)))
-            (when difference
-              (error "nestest required pass: ~A" difference))))
-        0)
+        (multiple-value-bind (results failures)
+            (run-rom-suite)
+          (declare (ignore results))
+          (when (member (rom-suite-shard) '(:all :mapper))
+            (setf failures
+                  (nconc failures
+                         (capture-rom-suite-failure
+                          "nestest"
+                          (lambda ()
+                            (let ((difference
+                                    (call-with-rom-test-timeout
+                                     "nestest" #'run-nestest-trace)))
+                              (when difference
+                                (error "nestest required pass: ~A" difference))))))))
+          (if failures
+              (progn
+                (format *error-output* "ROM suite failures (~D):~%"
+                        (length failures))
+                (dolist (failure failures)
+                  (format *error-output*
+                          "ROM suite failure unit=~A condition=~A~%"
+                          (first failure) (second failure)))
+                1)
+              0)))
     (error (condition)
       (format *error-output* "ROM suite failed: ~A~%" condition)
       1)))
