@@ -316,7 +316,11 @@
     (if (null name)
         :all
         (let ((shard (intern (string-upcase name) :keyword)))
-          (if (member shard '(:cpu :ppu :apu-test :apu-dmc :apu-timing :dma :mapper))
+          (if (member shard
+                      '(:cpu-1 :cpu-2 :cpu-3 :cpu-4 :cpu-5 :cpu-6
+                        :ppu-1 :ppu-2 :ppu-3 :ppu-4 :ppu-5 :ppu-6
+                        :apu-test :apu-dmc :apu-timing :dma :mapper
+                        :accuracy-coin))
               shard
               (error "Unknown ROM suite shard: ~A" name))))))
 
@@ -324,18 +328,99 @@
   (let ((shard (rom-suite-shard)))
     (remove-if-not
      (lambda (contract)
-       (or (eq shard :all)
-           (and (eq shard :apu-test)
-                (string= (rom-contract-id contract) "apu-test"))
-           (and (eq shard :apu-dmc)
-                (member (rom-contract-id contract)
-                        '("apu-dmc-basics" "apu-dmc-rates")
-                        :test #'string=))
-           (and (eq shard :apu-timing)
-                (let ((id (rom-contract-id contract)))
+       (let ((id (rom-contract-id contract)))
+         (or (eq shard :all)
+             (and (eq shard :cpu-1)
+                  (member id
+                          '("instr-test-v5"
+                            "instr-misc-01-abs-x-wrap")
+                          :test #'string=))
+             (and (eq shard :cpu-6)
+                  (member id '("cpu-interrupts-v2-03-nmi-irq")
+                          :test #'string=))
+             (and (eq shard :cpu-2)
+                  (member id
+                          '("instr-timing"
+                            "instr-test-v5-07-abs-xy"
+                            "cpu-interrupts-v2" "cpu-reset-ram"
+                            "cpu-interrupts-v2-02-nmi-brk"
+                            "instr-test-v5-03-immediate"
+                            "instr-test-v5-12-jmp-jsr"
+                            "instr-test-v5-16-special")
+                          :test #'string=))
+             (and (eq shard :cpu-3)
+                  (member id
+                          '("instr-timing-01"
+                            "instr-test-v5-08-ind-x" "cpu-dummy-writes"
+                            "instr-misc-04-dummy-reads-apu"
+                            "cpu-interrupts-v2-01-cli"
+                            "instr-test-v5-02-implied"
+                            "instr-test-v5-10-branches"
+                            "instr-test-v5-15-brk" "cpu-dummy-reads")
+                          :test #'string=))
+             (and (eq shard :cpu-4)
+                  (member id
+                          '("instr-timing-02-branch"
+                            "instr-test-v5-09-ind-y" "instr-misc"
+                            "cpu-interrupts-v2-04-irq-dma"
+                            "cpu-interrupts-v2-05-branch"
+                            "cpu-exec-space-ppuio"
+                            "instr-misc-02-branch-wrap"
+                            "instr-test-v5-04-zero-page"
+                            "instr-test-v5-13-rts")
+                          :test #'string=))
+             (and (eq shard :cpu-5)
+                  (member id
+                          '("cpu-reset-registers" "cpu-exec-space-apu"
+                            "instr-test-v5-05-zp-xy" "instr-test-v5-11-stack"
+                            "cpu-dummy-reads-subrom"
+                            "instr-misc-03-dummy-reads"
+                            "instr-test-v5-01-basics"
+                            "instr-test-v5-06-absolute"
+                            "instr-test-v5-14-rti")
+                          :test #'string=))
+             (and (eq shard :ppu-1)
+                  (member id
+                          '("blargg-ppu-vram-access" "ppu-open-bus"
+                            "sprite-hit-07" "sprite-overflow-1")
+                          :test #'string=))
+             (and (eq shard :ppu-2)
+                  (member id
+                          '("ppu-read-buffer" "oam-read" "sprite-hit-03"
+                            "sprite-hit-08" "sprite-overflow-2")
+                          :test #'string=))
+             (and (eq shard :ppu-3)
+                  (member id
+                          '("blargg-ppu-palette-ram"
+                            "blargg-ppu-power-up-palette" "ppu-vbl-07"
+                            "ppu-vbl-10" "sprite-hit-04" "sprite-hit-09"
+                            "sprite-overflow-3")
+                          :test #'string=))
+             (and (eq shard :ppu-4)
+                  (member id
+                          '("blargg-ppu-sprite-ram" "ppu-vbl-01"
+                            "ppu-vbl-03" "ppu-vbl-05" "ppu-vbl-08"
+                            "sprite-hit-01" "sprite-hit-05" "sprite-hit-10"
+                            "sprite-overflow-4")
+                          :test #'string=))
+             (and (eq shard :ppu-5)
+                  (member id
+                          '("blargg-ppu-vbl-clear-time" "ppu-vbl-02"
+                            "ppu-vbl-04" "ppu-vbl-06" "ppu-vbl-09"
+                            "sprite-hit-02" "sprite-hit-06" "sprite-hit-11"
+                            "sprite-overflow-5")
+                          :test #'string=))
+             (and (eq shard :ppu-6)
+                  (member id '("ppu-vbl-nmi") :test #'string=))
+             (and (eq shard :apu-test)
+                  (string= id "apu-test"))
+             (and (eq shard :apu-dmc)
+                  (member id '("apu-dmc-basics" "apu-dmc-rates")
+                          :test #'string=))
+             (and (eq shard :apu-timing)
                   (and (>= (length id) 10)
-                       (string= id "blargg-apu" :end1 10 :end2 10))))
-           (eq (rom-contract-category contract) shard)))
+                       (string= id "blargg-apu" :end1 10 :end2 10)))
+             (eq (rom-contract-category contract) shard))))
      (rom-contract-table))))
 
 (defun run-contracts-parallel (contracts)
@@ -449,7 +534,7 @@
                       (result-summary contract result))))
           (push result results)
           (format t "~A~%" (result-summary contract result))))
-      (when (member shard (list :all :mapper))
+      (when (member shard (list :all :accuracy-coin))
         (setf failures
               (nconc failures
                      (capture-rom-suite-failure
@@ -899,7 +984,8 @@
 (defun rom-suite-main ()
   (handler-case
       (progn
-        (run-rom-suite-table-tests)
+        (when (member (rom-suite-shard) (list :all :cpu-1))
+          (run-rom-suite-table-tests))
         (multiple-value-bind (results failures known-failures)
             (run-rom-suite)
           (declare (ignore results))

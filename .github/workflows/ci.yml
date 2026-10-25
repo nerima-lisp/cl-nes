@@ -75,7 +75,25 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [cpu, ppu, apu-test, apu-dmc, apu-timing, dma, mapper]
+        shard:
+          - cpu-1
+          - cpu-2
+          - cpu-3
+          - cpu-4
+          - cpu-5
+          - cpu-6
+          - ppu-1
+          - ppu-2
+          - ppu-3
+          - ppu-4
+          - ppu-5
+          - ppu-6
+          - apu-test
+          - apu-dmc
+          - apu-timing
+          - dma
+          - mapper
+          - accuracy-coin
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         timeout-minutes: 5

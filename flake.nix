@@ -180,13 +180,24 @@
           pkgs = ctx.pkgs;
           paredit = paredit-cli.packages.${ctx.system}.default or null;
           romSuiteShards = [
-            "cpu"
-            "ppu"
+            "cpu-1"
+            "cpu-2"
+            "cpu-3"
+            "cpu-4"
+            "cpu-5"
+            "cpu-6"
+            "ppu-1"
+            "ppu-2"
+            "ppu-3"
+            "ppu-4"
+            "ppu-5"
+            "ppu-6"
             "apu-test"
             "apu-dmc"
             "apu-timing"
             "dma"
             "mapper"
+            "accuracy-coin"
           ];
           romSuiteCheck =
             shard:
