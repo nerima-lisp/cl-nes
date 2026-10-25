@@ -90,7 +90,7 @@
        :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
       (:id "cpu-interrupts-v2-04-irq-dma" :path "cpu_interrupts_v2/rom_singles/4-irq_and_dma.nes"
        :protocol :blargg :expected 0 :max-frames 120
-       :timeout-ms-per-frame 126 :state :known-fail :failure-text "status 128")
+       :timeout-ms-per-frame 126 :state :pass :failure-text "status 128")
       (:id "cpu-interrupts-v2-05-branch" :path "cpu_interrupts_v2/rom_singles/5-branch_delays_irq.nes"
        :protocol :blargg :expected 0 :max-frames 120
        :timeout-ms-per-frame 89 :state :known-fail :failure-text "status 128")
