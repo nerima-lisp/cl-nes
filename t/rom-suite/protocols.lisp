@@ -270,8 +270,8 @@
                  :max-frames 60 :state :pass
                  :failure-text "CRC neither 159A7A8F nor 5E3DF9C4")
                (:id "sprite-dma-and-dmc" :path "sprdma_and_dmc_dma/sprdma_and_dmc_dma.nes"
-                 :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                 :failure-text "status 128; incomplete at text T+ Clocks (decimal).00 527.01 528.02 527.03 528")))
+                 :protocol :blargg :expected 0 :max-frames 175 :state :pass
+                 :failure-text "status 0; SPRDMA and DMC DMA Passed")))
     (:suite "mapper" :category :mapper
      :subroms ((:id "mmc3-test-2" :path "mmc3_test_2/rom_singles/1-clocking.nes"
                  :protocol :blargg :expected 0 :max-frames 60 :state :pass
