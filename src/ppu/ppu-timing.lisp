@@ -207,17 +207,29 @@
   (let* ((sprite (floor (- dot 257) 8))
          (offset (mod (- dot 257) 8))
          (base (* sprite 4))
-         (tile (aref (ppu-secondary-oam ppu) (+ base 1)))
-         (attributes (aref (ppu-secondary-oam ppu) (+ base 2)))
+         (frozen-p (ppu-oam2-increment-suppressed-p ppu))
+         (oam2-data (when frozen-p (%ppu-oam2-read-data ppu)))
+         (y (if frozen-p
+                oam2-data
+                (aref (ppu-secondary-oam ppu) base)))
+         (tile (if frozen-p
+                   oam2-data
+                   (aref (ppu-secondary-oam ppu) (+ base 1))))
+         (attributes (if frozen-p
+                         oam2-data
+                         (aref (ppu-secondary-oam ppu) (+ base 2))))
          (height (if (logbitp 5 (ppu-control ppu)) 16 8))
          (row (mod
                (- (if (= (ppu-scanline ppu) 261)
                       0
                       (1+ (ppu-scanline ppu)))
-                  (1+ (aref (ppu-secondary-oam ppu) base)))
+                  (1+ y))
                height))
          ;; Empty sprite slots still fetch pattern data from their dummy tile.
-         (address (%sprite-pattern-address ppu tile attributes row)))
+         (address
+           (if (< sprite (ppu-secondary-oam-count ppu))
+               (%sprite-pattern-address ppu tile attributes row)
+               (if (logbitp 3 (ppu-control ppu)) #x1000 0))))
     (case offset
       ((0 2)
        ;; Sprite fetches first put an address on the bus, then read it one dot later.
@@ -243,25 +255,31 @@
       ((7)
        (let ((value (ppu-read-vram ppu (ppu-address-bus ppu) t)))
          (when (< sprite (ppu-secondary-oam-count ppu))
-           (let ((attributes (aref (ppu-secondary-oam ppu)
-                                   (+ (* sprite 4) 2))))
+           (let ((attributes
+                  (if frozen-p
+                      oam2-data
+                      (aref (ppu-secondary-oam ppu) (+ (* sprite 4) 2))))
+                 (x
+                  (if frozen-p
+                      oam2-data
+                      (aref (ppu-secondary-oam ppu) (+ (* sprite 4) 3)))))
              (setf (aref (ppu-sprite-shift-high ppu) sprite) value
-                   (aref (ppu-sprite-x-counter ppu) sprite)
-                   (aref (ppu-secondary-oam ppu) (+ (* sprite 4) 3))
+                   (aref (ppu-sprite-x-counter ppu) sprite) x
+                   (aref (ppu-sprite-counter-counting ppu) sprite) nil
                    (aref (ppu-sprite-attributes ppu) sprite) attributes)
              (when (logbitp 6 attributes)
-               (setf (aref (ppu-sprite-shift-low ppu) sprite)
-                     (%reverse-byte (aref (ppu-sprite-shift-low ppu) sprite))
-                     (aref (ppu-sprite-shift-high ppu) sprite)
-                     (%reverse-byte (aref (ppu-sprite-shift-high ppu) sprite))))))
+               (setf (aref (ppu-sprite-shift-low ppu) sprite) (%reverse-byte
+                                                               (aref (ppu-sprite-shift-low ppu) sprite))
+                     (aref (ppu-sprite-shift-high ppu) sprite) (%reverse-byte
+                                                                (aref (ppu-sprite-shift-high ppu) sprite))))))
          (values value t))))))
 
 (defun %ppu-clock-pipeline!
     (ppu &optional (pipeline-scanline-p nil pipeline-scanline-p-supplied-p))
   (let ((pipeline-scanline-p (if pipeline-scanline-p-supplied-p
                                  pipeline-scanline-p
-                                 (or (< (ppu-scanline ppu) 240)
-                                     (= (ppu-scanline ppu) 261))))
+                               (or (< (ppu-scanline ppu) 240)
+                                   (= (ppu-scanline ppu) 261))))
         (scanline (ppu-scanline ppu))
         (dot (ppu-dot ppu))
         (v-before-dot (ppu-vram-address ppu))
@@ -274,6 +292,13 @@
           (when data-p
             (setf fetch-data-p t
                   fetch-data value))))
+      ;; The delayed sprite-fetch signal adds an increment as it falls on dot 321.
+      (when (= dot 321)
+        (%ppu-oam2-increment! ppu))
+      (when (or (= dot 63) (= dot 255) (= dot 339))
+        (%ppu-oam2-reset! ppu))
+      (when (= dot 339)
+        (fill (ppu-sprite-counter-counting ppu) t))
       (when (or (= dot 337) (= dot 339))
         (%ppu-address-bus!
          ppu (+ #x2000 (logand (ppu-vram-address ppu) #x0FFF))))
@@ -286,6 +311,9 @@
         (%ppu-copy-horizontal! ppu))
       (when (<= 257 dot 320)
         (progn
+          ;; The half-dot-delayed OAM2 gate is represented by this pipeline dot label.
+          (when (not (logbitp 2 dot))
+            (%ppu-oam2-increment! ppu))
           (setf (ppu-oam-address ppu) 0)
           (multiple-value-bind (value data-p)
               (%ppu-sprite-fetch! ppu dot v-before-dot)
@@ -312,11 +340,12 @@
           (let* ((v (ppu-vram-address ppu))
                  (address (+ (if (logbitp 4 (ppu-control ppu))
                                  #x1000
-                                 0)
+                               0)
                              (* (ppu-next-tile ppu) 16)
                              (logand (ash v -12) 7))))
             (%ppu-address-bus! ppu address)))
-        (when (<= 65 dot 256)
+        (when (and (or (< scanline 240) (= scanline 261))
+                   (<= 65 dot 256))
           (%ppu-evaluate-sprites!
            ppu
            (if (= scanline 261) 0 (1+ scanline))
@@ -371,11 +400,15 @@
   (loop repeat ticks
         with odd-frame-skip-p = nil
         do
-        (setf odd-frame-skip-p
-              (and (= (ppu-scanline ppu) 261)
-                   (= (ppu-dot ppu) 338)
-                   (ppu-odd-frame-p ppu)
-                   (%ppu-odd-frame-skip-enabled-p ppu)))
+        (progn
+          (setf (aref (ppu-status-history ppu) 1)
+                (aref (ppu-status-history ppu) 0)
+                (aref (ppu-status-history ppu) 0)
+                (ppu-status ppu))
+          (setf odd-frame-skip-p (and (= (ppu-scanline ppu) 261)
+                                      (= (ppu-dot ppu) 338)
+                                      (ppu-odd-frame-p ppu)
+                                      (%ppu-odd-frame-skip-enabled-p ppu))))
         (when (and (numberp (ppu-nmi-delay-p ppu))
                    (plusp (ppu-nmi-delay-p ppu)))
           (decf (ppu-nmi-delay-p ppu)))

@@ -365,7 +365,7 @@
                   (:name "PPU Palette RAM" :category :power-on-state
                    :address #x03ff :expected :pass))
     :items nil
-    :ratchet-pass-count 121
+    :ratchet-pass-count 129
     :ratchet-pass-items
     ("ROM is not writable" "RAM Mirroring" "PC Wraparound"
      "The Decimal Flag" "The B Flag" "Dummy read cycles" "Dummy write cycles"
@@ -406,12 +406,15 @@
      "VBlank beginning" "VBlank end" "NMI Control" "NMI Timing"
      "NMI Suppression" "NMI at VBlank end" "NMI disabled at VBlank"
      "Sprite 0 Hit behavior"
+     "Suddenly Resize Sprite" "Arbitrary Sprite zero"
      "Sprite overflow behavior"
      "Misaligned OAM behavior"
      "Misaligned OAM DMA"
      "INC $4014"
      "t Register Quirks" "Rendering Flag Behavior"
-     "$2007 read w/ rendering" "Attributes As Tiles" "Stale BG Shift Registers" "BG Serial In" "Suddenly Resize Sprite" "Address $2004 behavior" "$2007 Stress Test")))
+     "$2007 read w/ rendering" "Attributes As Tiles" "Stale BG Shift Registers"
+     "BG Serial In" "Address $2004 behavior" "$2007 Stress Test"
+     "Sprites On Scanline 0" "Misaligned OAM2 Address")))
 
 (defparameter *accuracy-coin-item-specs*
   '((:cpu-behavior "ROM is not writable" #x0405)

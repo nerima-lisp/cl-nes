@@ -1,4 +1,26 @@
 (in-package #:cl-nes)
+(defun %ppu-oam2-reset! (ppu)
+  (setf (ppu-oam2-address ppu) 0
+        (ppu-oam2-increment-suppressed-p ppu) nil)
+  ppu)
+(defun %ppu-oam2-increment! (ppu)
+  (unless (ppu-oam2-increment-suppressed-p ppu)
+    (if (= (ppu-oam2-address ppu) #x1F)
+        (setf (ppu-oam2-address ppu) 0
+              (ppu-oam2-increment-suppressed-p ppu) t)
+        (incf (ppu-oam2-address ppu))))
+  (ppu-oam2-address ppu))
+(defun %ppu-oam2-write! (ppu value)
+  (setf (aref (ppu-secondary-oam ppu) (ppu-oam2-address ppu)) value)
+  (%ppu-oam2-increment! ppu)
+  value)
+(defun %ppu-oam2-read-data (ppu)
+  (if (and (< (ppu-secondary-oam-count ppu) 8)
+           (= (ppu-oam2-address ppu)
+              (* 4 (ppu-secondary-oam-count ppu))))
+      ;; The first empty fetch slot reads OAM[63].Y before its $FF bytes.
+      (aref (ppu-oam ppu) #xFC)
+      (aref (ppu-secondary-oam ppu) (ppu-oam2-address ppu))))
 
 (defun %ppu-read-status-register (ppu bus-access-p)
   (let* ((decay (%ppu-current-decay ppu))
@@ -77,13 +99,14 @@
               ;; holds the primary OAM byte read on the preceding odd dot.
               (ppu-sprite-evaluation-latch ppu))
              (t (aref (ppu-oam ppu) oam-address))))
-         (value
-           (if (and bus-access-p (not clear-bus-p)
-                    (not sprite-fetch-p) (not secondary-bus-p)
-                    (not secondary-full-read-p)
-                    (= (logand oam-address 3) 2))
-               (logand raw #xE3)
-               raw)))
+         (masked-p
+           (and bus-access-p
+                (not clear-bus-p)
+                (not sprite-fetch-p)
+                (not secondary-bus-p)
+                (not secondary-full-read-p)
+                (= (logand oam-address 3) 2)))
+         (value (if masked-p (logand raw #xE3) raw)))
     (%ppu-drive-decay! ppu value)
     value))
 
