@@ -384,6 +384,14 @@
         (progn (funcall thunk) nil)
       (error (condition)
         (list (list unit (princ-to-string condition))))))
+  (defun capture-rom-contract-failure (contract result)
+    (capture-rom-suite-failure
+     (rom-contract-id contract)
+     (lambda ()
+       (enforce-ratchet contract result)
+       (unless (getf result :passed)
+         (error "ROM contract failed: ~A"
+                (result-summary contract result))))))
   (defun run-rom-suite ()
     (let ((results nil)
           (failures nil)
@@ -398,20 +406,18 @@
                (result (cdr entry)))
           (setf failures
                 (nconc failures
-                       (capture-rom-suite-failure
-                        (rom-contract-id contract)
-                        (lambda () (enforce-ratchet contract result)))))
+                       (capture-rom-contract-failure contract result)))
           (push result results)
           (unless (getf result :passed)
             (format *error-output* "ROM failed: ~A~%"
                     (result-summary contract result)))
           (format t "~A~%" (result-summary contract result))))
-      (when (member shard '(:all :mapper))
+      (when (member shard (list :all :mapper))
         (setf failures
               (nconc failures
                      (capture-rom-suite-failure
                       "accuracy-coin"
-                      #'run-accuracy-contract))))
+                      (function run-accuracy-contract)))))
       (values (nreverse results) failures))))
 
 (defun run-rom-suite-table-tests ()
@@ -616,9 +622,9 @@
    (it "records failures and invokes later units"
      (let ((visited nil)
            (failures nil))
-       (dolist (entry '(("first-contract" t)
-                        ("second-contract" t)
-                        ("last-contract" nil)))
+       (dolist (entry (quote (("first-contract" t)
+                              ("second-contract" t)
+                              ("last-contract" nil))))
          (setf failures
                (nconc failures
                       (capture-rom-suite-failure
@@ -628,11 +634,26 @@
                          (when (second entry)
                            (error "synthetic failure")))))))
        (cl-weave:expect (nreverse visited)
-                        :to-equal '("first-contract"
-                                    "second-contract"
-                                    "last-contract"))
-       (cl-weave:expect (mapcar #'first failures)
-                        :to-equal '("first-contract" "second-contract")))))
+                        :to-equal (quote ("first-contract"
+                                          "second-contract"
+                                          "last-contract")))
+       (cl-weave:expect (mapcar (function first) failures)
+                        :to-equal (quote ("first-contract" "second-contract")))
+       (let* ((contract (make-rom-contract
+                         "known-fail-contract" :cpu "synthetic.nes"
+                         :blargg 0 1 :known-fail "synthetic"))
+              (contract-failures
+                (capture-rom-contract-failure
+                 contract
+                 (list :passed nil :frames 1 :text "synthetic failure"
+                       :status 128 :error nil))))
+         (cl-weave:expect (mapcar (function first) contract-failures)
+                          :to-equal (list "known-fail-contract"))
+         (cl-weave:expect
+          (not (null
+                (search "ROM contract failed"
+                        (second (first contract-failures)))))
+          :to-be t)))))
   (describe-each
    (("parallel worker load"))
    "ROM per-thread CPU timeout ~A"
