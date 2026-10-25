@@ -14,6 +14,7 @@
       (dotimes (offset 256)
         (bus-write! bus (+ #x0200 offset) offset))
       (bus-write! bus #x4014 #x02)
+      (expect (cl-nes::bus-internal-data-bus bus) :to-be #x02)
       (expect (cl-nes::bus-take-dma-stall-cycles! bus) :to-be 513)
       (expect (aref (ppu-oam (cl-nes::bus-ppu bus)) 0) :to-be 0)
       (expect (aref (ppu-oam (cl-nes::bus-ppu bus)) 127) :to-be 127)
@@ -35,8 +36,10 @@
       (bus-write! bus #x2001 #x18)
       (expect (ppu-mask ppu) :to-be #x18)
       (setf (cl-nes::bus-open-bus bus) #xA0
+            (cl-nes::bus-internal-data-bus bus) 0
             (cl-nes::apu-frame-irq-pending-p apu) t)
-      (expect (bus-read bus #x4015) :to-be #x60)
+      (expect (bus-read bus #x4015) :to-be #x40)
+      (expect (cl-nes::bus-internal-data-bus bus) :to-be #x40)
       (expect (cl-nes::bus-open-bus bus) :to-be #xA0)
       (controller-set-buttons! controller-1 cl-nes::+button-a+)
       (controller-set-buttons! controller-2 cl-nes::+button-a+)

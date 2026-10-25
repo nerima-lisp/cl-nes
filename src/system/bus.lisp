@@ -68,15 +68,14 @@
      (cartridge-cpu-read (bus-cartridge bus) address))
     (t nil)))
 
-(defun bus-read (bus address)
+(defun %bus-read (bus address update-internal-data-bus-p)
   (declare (optimize (speed 3) (safety 1) (debug 1)))
   (let ((address (logand address #xFFFF)))
     (setf (bus-last-cpu-access-kind bus) :read
           (bus-last-cpu-access-address bus) address
           (bus-dmc-read-replay-p bus) nil)
-    ;; A CPU read observes PPU status late in its cycle.  Advance the PPU to
-    ;; the final two dots before the device read, then charge the last dot in
-    ;; the normal CPU-cycle clock below.
+    ;; A CPU read observes PPU status late in its cycle. Advance to the final
+    ;; two dots before the device read and charge the last dot below.
     (let ((ppu-ticks 3))
       (when (and (bus-cpu-access-active-p bus)
                  (< address #x4000)
@@ -89,7 +88,11 @@
         (when (bus-dmc-read-replay-p bus)
           (setf value (%bus-read-value bus address)
                 (bus-dmc-read-replay-p bus) nil))
+        (when update-internal-data-bus-p
+          (setf (bus-internal-data-bus bus) value))
         value))))
+
+(defun bus-read (bus address) (%bus-read bus address t))
 
 (defun %perform-oam-dma! (bus page)
   (if (bus-cpu-access-active-p bus)
@@ -109,7 +112,7 @@
         (with-bus-cpu-access-hook (bus nil)
           (loop for offset below 256 do
             (ppu-write-register! (bus-ppu bus) 4
-                                 (bus-read bus (+ base offset)))))
+                                 (%bus-read bus (+ base offset) nil))))
         (setf (bus-dma-stall-cycles bus)
               (+ (bus-dma-stall-cycles bus)
                  513
@@ -163,7 +166,8 @@
         (previous-address (bus-last-cpu-access-address bus)))
     (setf (bus-last-cpu-access-kind bus) :write
           (bus-last-cpu-access-address bus) address)
-    (setf (bus-open-bus bus) value)
+    (setf (bus-open-bus bus) value
+          (bus-internal-data-bus bus) value)
     (when (and (bus-cpu-access-active-p bus)
                (< address #x4000)
                (= (logand address 7) 0)
@@ -207,7 +211,7 @@
            (cond
              ((= address #x4015)
               (logior (logand (or device-value 0) #xDF)
-                      (logand open-bus #x20)))
+                      (logand (bus-internal-data-bus bus) #x20)))
              ((or (= address #x4016) (= address #x4017))
               (logior (logand (or device-value 0) #x1F)
                       (logand open-bus #xE0)))

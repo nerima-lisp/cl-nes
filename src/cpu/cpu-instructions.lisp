@@ -110,6 +110,14 @@
       0
       (let ((opcode (%fetch-byte cpu bus)))
         (setf (cpu-irq-poll-delay cpu) nil)
+        ;; Implied instructions use their second cycle to read the next PC.
+        (when (case opcode
+                ((#x0A #x18 #x1A #x2A #x38 #x3A #x4A #x58 #x5A
+                  #x6A #x78 #x7A #x88 #x8A #x98 #x9A #xA8 #xAA
+                  #xB8 #xBA #xC8 #xCA #xD8 #xDA #xE8 #xEA #xF8 #xFA)
+                 t)
+                (otherwise nil))
+          (bus-read bus (cpu-pc cpu)))
         (let ((cycles (%dispatch-cpu-opcode cpu bus opcode nmi-poll)))
           (incf (cpu-cycles cpu) cycles)
           cycles))))

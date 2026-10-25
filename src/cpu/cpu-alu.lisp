@@ -137,7 +137,9 @@
     (%update-zn! cpu result)))
 
 (defun %xaa! (cpu value)
-  (let ((result (logand (cpu-x cpu) value #xEE)))
+  (let ((result (logand (logior (cpu-a cpu) #xEE)
+                        (cpu-x cpu)
+                        value)))
     (%update-zn! cpu (setf (cpu-a cpu) result))))
 
 (defun %las! (cpu value)
@@ -155,11 +157,14 @@
                             base-high)
                         8)
                    (logand address #xFF)))
-         (write-value (logand value high-plus-one)))
-    ;; The high-byte mask affects both the corrupted address and stored data.
+         (dma-stall-cycles (bus-dma-stall-cycles bus)))
+    ;; DMC DMA skips the H+1 data mask, but not the page-cross address mask.
     (bus-read bus (logior (logand base #xFF00)
                           (logand address #x00FF)))
-    (bus-write! bus write-address write-value)))
+    (bus-write! bus write-address
+                (if (> (bus-dma-stall-cycles bus) dma-stall-cycles)
+                    (logand value #xFF)
+                    (logand value high-plus-one)))))
 
 (defun %tas-op! (cpu bus)
   (let* ((base (%fetch-word cpu bus))

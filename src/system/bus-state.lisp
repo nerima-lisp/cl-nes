@@ -8,6 +8,7 @@
    (apu nil nil)
    (ram (make-array 2048 :element-type '(unsigned-byte 8) :initial-element 0) vector)
    (open-bus 0 (unsigned-byte 8))
+   (internal-data-bus 0 (unsigned-byte 8))
    (dma-stall-cycles 0 fixnum)
    (oam-dma-active-p nil nil)
    (oam-dma-page 0 (unsigned-byte 8))
