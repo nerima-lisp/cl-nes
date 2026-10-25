@@ -173,10 +173,12 @@
       (%cancel-nmi-delay! ppu))))
 
 (defun %ppu-write-mask-register! (ppu value)
-  (setf (ppu-mask ppu) value
-        (ppu-rendering-mask-pending ppu) value
-        (ppu-rendering-mask-delay ppu) 3
-        (ppu-rendering-mask-valid-p ppu) t))
+  (let ((phase (mod (ppu-dot ppu) 8)))
+    ;; The mask rendering path has short and long settling windows within each fetch group.
+    (setf (ppu-mask ppu) value
+          (ppu-rendering-mask-pending ppu) value
+          (ppu-rendering-mask-delay ppu) (if (<= 2 phase 6) 5 3)
+          (ppu-rendering-mask-valid-p ppu) t)))
 
 (defun %ppu-write-oam-data-register! (ppu value cpu-access-p)
   (if (and cpu-access-p (%ppu-rendering-scanline-p ppu))
