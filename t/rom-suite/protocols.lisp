@@ -26,8 +26,8 @@
                  :protocol :blargg :expected 0 :max-frames 280 :state :pass
                  :failure-text "status 0; 04-dummy_reads_apu..Passed.All 4 tests passed")
                (:id "cpu-interrupts-v2" :path "cpu_interrupts_v2/cpu_interrupts.nes"
-                 :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
-                 :failure-text "status 128; incomplete at text test_jmp.T+ CK PC.00 02 04 .01 01 04 .02 03 07 .03 .+10.8 +11.8 +12.8 +13.....8 +524.8 +525.8 +526.9 +527..4-irq_and_dma..Passed....2-nmi_and_brk..Passed")
+ :protocol :blargg :expected 0 :max-frames 880 :state :pass
+ :failure-text "status 0")
                (:id "cpu-dummy-reads" :path "cpu_dummy_reads/cpu_dummy_reads.nes"
                  :protocol :ram-result :expected 0 :result-address #x6000
                  :max-frames 60 :state :pass
