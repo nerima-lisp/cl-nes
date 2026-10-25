@@ -23,8 +23,8 @@
                  :protocol :blargg :expected 0 :max-frames 1500 :state :pass
                  :failure-text "All 2 tests passed")
                (:id "instr-misc" :path "instr_misc/instr_misc.nes"
-                 :protocol :blargg :expected 0 :max-frames 60 :state :known-fail
-                 :failure-text "status 128; 02-branch_wrap..Passed")
+                 :protocol :blargg :expected 0 :max-frames 280 :state :pass
+                 :failure-text "status 0; 04-dummy_reads_apu..Passed.All 4 tests passed")
                (:id "cpu-interrupts-v2" :path "cpu_interrupts_v2/cpu_interrupts.nes"
                  :protocol :blargg :expected 0 :max-frames 360 :state :known-fail
                  :failure-text "status 1; failed while running test 2 of 5")
@@ -76,7 +76,8 @@
       (:id "instr-misc-03-dummy-reads" :path "instr_misc/rom_singles/03-dummy_reads.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; Passed")
       (:id "instr-misc-04-dummy-reads-apu" :path "instr_misc/rom_singles/04-dummy_reads_apu.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128; result text 9C")
+       :protocol :blargg :expected 0 :max-frames 180 :state :pass
+       :failure-text "status 0; 04-dummy_reads_apu..Passed")
       (:id "instr-timing-01" :path "instr_timing/rom_singles/1-instr_timing.nes"
        :protocol :blargg :expected 0 :max-frames 1500 :state :pass :failure-text "1-instr_timing..Passed")
       (:id "instr-timing-02-branch" :path "instr_timing/rom_singles/2-branch_timing.nes"
@@ -92,7 +93,8 @@
       (:id "cpu-interrupts-v2-05-branch" :path "cpu_interrupts_v2/rom_singles/5-branch_delays_irq.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
       (:id "cpu-exec-space-apu" :path "cpu_exec_space/test_cpu_exec_space_apu.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 2")
+       :protocol :blargg :expected 0 :max-frames 350 :state :pass
+       :failure-text "status 0; 40FF Passed")
       (:id "cpu-exec-space-ppuio" :path "cpu_exec_space/test_cpu_exec_space_ppuio.nes"
        :protocol :blargg :expected 0 :max-frames 120 :state :pass :failure-text "status 0; Passed")
       (:id "cpu-dummy-reads-subrom" :path "cpu_dummy_reads/cpu_dummy_reads.nes"
@@ -100,9 +102,11 @@
        :max-frames 120 :state :pass
        :failure-text "status $6000; 0 means PASSED")
       (:id "cpu-reset-ram" :path "cpu_reset/ram_after_reset.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")
+       :protocol :blargg :expected 0 :max-frames 200 :state :pass
+       :failure-text "status 0; Passed")
       (:id "cpu-reset-registers" :path "cpu_reset/registers.nes"
-       :protocol :blargg :expected 0 :max-frames 120 :state :known-fail :failure-text "status 128")))
+       :protocol :blargg :expected 0 :max-frames 200 :state :pass
+       :failure-text "status 0; Passed")))
     (:suite "ppu" :category :ppu
      :subroms ((:id "ppu-vbl-nmi" :path "ppu_vbl_nmi/ppu_vbl_nmi.nes"
                  :protocol :blargg :expected 0 :max-frames 1900 :state :pass
