@@ -26,6 +26,84 @@
       (expect (cl-nes::bus-oam-dma-index bus) :to-be 256)
       (expect (aref (ppu-oam ppu) 0) :to-be #x66)
       (expect (aref (ppu-oam ppu) #xFF) :to-be #x66))))
+(describe "OAM DMA protocol"
+  (it "retries a DMA halt across CPU writes and consumes alignment before its first get"
+    (let ((bus (make-bus :cartridge (make-fixture-cartridge))))
+      (setf (cl-nes::bus-oam-dma-active-p bus) t
+            (cl-nes::bus-oam-dma-page bus) #x12
+            (cl-nes::bus-oam-dma-index bus) 0
+            (cl-nes::bus-oam-dma-stage bus) :halt
+            (cl-nes::bus-oam-dma-alignment-p bus) t
+            (cl-nes::bus-last-cpu-access-kind bus) :write
+            (cl-nes::bus-last-cpu-access-address bus) 0
+            (cl-nes::bus-cpu-cycle-phase bus) 0)
+      (cl-nes::%dma-arbitrate-cycle! bus)
+      (expect (cl-nes::bus-oam-dma-stage bus) :to-be :halt)
+      (expect (cl-nes::bus-oam-dma-index bus) :to-be 0)
+      (setf (cl-nes::bus-last-cpu-access-kind bus) :read)
+      (cl-nes::%dma-arbitrate-cycle! bus)
+      (expect (cl-nes::bus-oam-dma-stage bus) :to-be :alignment)
+      (cl-nes::%dma-arbitrate-cycle! bus)
+      (expect (cl-nes::bus-oam-dma-stage bus) :to-be :get)
+      (expect (cl-nes::bus-oam-dma-index bus) :to-be 0)))
+  (it "records the CPU held address separately from the OAM source address"
+    (let* ((nes (make-nes :cartridge (make-fixture-cartridge)))
+           (bus (nes-bus nes))
+           (event nil))
+      (setf (cl-nes::bus-last-cpu-access-kind bus) :read
+            (cl-nes::bus-last-cpu-access-address bus) #x8123
+            (cl-nes::bus-oam-dma-active-p bus) t
+            (cl-nes::bus-oam-dma-page bus) #x45
+            (cl-nes::bus-oam-dma-index bus) #x67)
+      (let ((cl-nes::*dma-trace-hook*
+              (lambda (trace-event)
+                (setf event trace-event))))
+        (cl-nes::%dma-trace-cycle! bus 42 :test))
+      (expect (getf event :cpu-held-address) :to-be #x8123)
+      (expect (getf event :oam-source-address) :to-be #x4567)))
+  (it "executes OAM DMA from its source after an aligned CPU halt"
+    (let* ((nes (make-nes
+                 :cartridge
+                 (make-fixture-cartridge
+                  :program '(#x8D #x14 #x40 #x5A))))
+           (bus (nes-bus nes))
+           (cpu (nes-cpu nes))
+           (ppu (nes-ppu nes))
+           (held-address #x8003)
+           (source-address #x0700)
+           (event-order nil)
+           (get-event nil)
+           (get-data nil))
+      (setf (cpu-pc cpu) #x8000
+            (cpu-a cpu) #x07
+            (cl-nes::bus-cpu-cycle-phase bus) 0
+            (aref (cl-nes::bus-ram bus) source-address) #xA5
+            (ppu-oam-address ppu) 0)
+      (let ((cl-nes::*dma-trace-hook*
+              (lambda (trace-event)
+                (when (eq (getf trace-event :phase) :after-arbiter)
+                  (cond
+                    ((and (eq (getf trace-event :cpu-access-kind) :write)
+                          (eq (getf trace-event :oam-stage) :halt))
+                     (push :halt event-order))
+                    ((eq (getf trace-event :oam-stage) :alignment)
+                     (push :alignment event-order))
+                    ((and (eq (getf trace-event :oam-stage) :put)
+                          (= (getf trace-event :oam-index) 0))
+                     (push :get event-order)
+                     (setf get-event trace-event
+                           get-data (cl-nes::bus-oam-dma-data bus))))))))
+        (expect (cl-nes::nes-step/k nes (lambda (cycles) cycles))
+                :to-be 518))
+      (expect (reverse event-order) :to-equal '(:halt :alignment :get))
+      (expect (getf get-event :oam-stage) :to-be :put)
+      (expect (getf get-event :oam-index) :to-be 0)
+      (expect (getf get-event :cpu-held-address) :to-be held-address)
+      (expect (getf get-event :oam-source-address) :to-be source-address)
+      (expect get-data :to-be #xA5)
+      (expect (aref (ppu-oam ppu) 0) :to-be #xA5)
+      (expect (cl-nes::bus-oam-dma-active-p bus) :to-be nil)
+      (expect (cl-nes::bus-oam-dma-index bus) :to-be 256))))
 
 (describe "Bus memory transitions"
   (it "charges the PPU status read at the end of an active CPU access"
