@@ -144,6 +144,7 @@
                   "src/cpu/cpu-instructions.lisp"
                   "src/system/nes-state.lisp" "src/system/nes.lisp"
                   "src/system/nes-timing.lisp"
+                  "src/system/dma.lisp"
                   "src/system/nes-execution.lisp")))
       ;; These files contain package/data declarations, compile-time macros,
       ;; state layouts, or condition declarations. Their runtime behavior is
