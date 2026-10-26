@@ -9,12 +9,17 @@
         (ppu-write-register! ppu 6 #x10)
         (expect (cl-nes::cartridge-mapper4-ppu-a12-high-p cartridge)
                 :to-be nil)
-        (ppu-write-register! ppu 6 #x00)
+        (progn
+          (ppu-write-register! ppu 6 #x00)
+          (expect (cl-nes::ppu-vram-address ppu) :to-be 0)
+          (expect (cl-nes::cartridge-mapper4-ppu-a12-high-p cartridge)
+                  :to-be nil)
+          (ppu-tick! ppu 2))
         (expect (cl-nes::ppu-vram-address ppu) :to-be #x1000)
         (expect (cl-nes::cartridge-mapper4-ppu-a12-high-p cartridge)
                 :to-be t)
         (ppu-write-register! ppu 6 #x20)
-        (ppu-write-register! ppu 6 #x00)
+        (progn (ppu-write-register! ppu 6 #x00) (ppu-tick! ppu 2))
         (expect (cl-nes::ppu-vram-address ppu) :to-be #x2000)
         (expect (cl-nes::cartridge-mapper4-ppu-a12-high-p cartridge)
                 :to-be nil)
@@ -23,7 +28,28 @@
         (expect (cl-nes::cartridge-mapper4-ppu-a12-high-p cartridge)
                 :to-be nil)
         (expect (cl-nes::cartridge-mapper4-a12-low-m2-cycles cartridge)
-                :to-be 0)))))
+                :to-be 0))))
+  (it "clocks MMC3 A12 when a phase-aware T-to-V copy commits"
+    (with-mmc3-cartridge (cartridge)
+      (let ((ppu (make-ppu cartridge)))
+        (setf (cl-nes::cartridge-mapper4-a12-low-m2-cycles cartridge) 3
+              (cl-nes::cartridge-mapper4-ppu-a12-high-p cartridge) nil
+              (cl-nes::ppu-scanline ppu) 5
+              (cl-nes::ppu-dot ppu) 180
+              (ppu-mask ppu) #x08
+              (cl-nes::ppu-vram-address ppu) #x7F19)
+        (ppu-write-register! ppu 6 #x10 t)
+        (ppu-write-register! ppu 6 0 t)
+        (expect (cl-nes::ppu-pending-vram-address-copy-p ppu) :to-be t)
+        (expect (cl-nes::ppu-pending-vram-address-copy-wait-for-phase1-p ppu)
+                :to-be t)
+        (ppu-tick! ppu 5)
+        (expect (cl-nes::ppu-dot ppu) :to-be 185)
+        (expect (cl-nes::ppu-pending-vram-address-copy-p ppu) :to-be nil)
+        (expect (cl-nes::ppu-vram-address ppu) :to-be #x1000)
+        (expect (cl-nes::ppu-address-bus ppu) :to-be #x1000)
+        (expect (cl-nes::cartridge-mapper4-ppu-a12-high-p cartridge)
+                :to-be t)))))
 
   (it "clocks MMC3 A12 on the final CPU cycle of a $2007 write"
     (with-mmc3-cartridge (cartridge)

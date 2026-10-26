@@ -45,6 +45,27 @@
             (logxor (ppu-vram-address ppu) #x041F))
       (incf (ppu-vram-address ppu)))
   (setf (ppu-vram-address ppu) (logand (ppu-vram-address ppu) #x7FFF)))
+(defun %ppu-commit-vram-address-copy! (ppu)
+  (setf (ppu-vram-address ppu)
+        (ppu-pending-vram-address-copy-value ppu)
+        (ppu-pending-vram-address-copy-p ppu) nil
+        (ppu-pending-vram-address-copy-delay ppu) 0
+        (ppu-pending-vram-address-copy-wait-for-phase1-p ppu) nil
+        (ppu-pending-vram-address-copy-phase1-seen-p ppu) nil)
+  (%ppu-address-bus! ppu (ppu-vram-address ppu)))
+(defun %ppu-advance-vram-address-copy! (ppu)
+  ;; Run after dot increment and before the pipeline reads V for that dot.
+  (when (ppu-pending-vram-address-copy-p ppu)
+    (when (and (ppu-pending-vram-address-copy-wait-for-phase1-p ppu)
+               (not (%ppu-rendering-scanline-p ppu)))
+      (setf (ppu-pending-vram-address-copy-wait-for-phase1-p ppu) nil
+            (ppu-pending-vram-address-copy-phase1-seen-p ppu) t))
+    (when (plusp (ppu-pending-vram-address-copy-delay ppu))
+      (decf (ppu-pending-vram-address-copy-delay ppu)))
+    (when (and (zerop (ppu-pending-vram-address-copy-delay ppu))
+               (or (not (ppu-pending-vram-address-copy-wait-for-phase1-p ppu))
+                   (ppu-pending-vram-address-copy-phase1-seen-p ppu)))
+      (%ppu-commit-vram-address-copy! ppu))))
 
 (defun %ppu-vertical-increment! (ppu)
   (if (< (logand (ppu-vram-address ppu) #x7000) #x7000)
@@ -84,12 +105,26 @@
           (if (and (ppu-read-buffer-pending-p ppu)
                    (= (ppu-read-buffer-pending-delay ppu) 1))
               (ppu-last-background-read-value ppu)
-              (logand address #xFF))))
+              (logand address #xFF)))
+    (when (= fetch-phase 1)
+      (setf (ppu-background-fetch-v-high ppu)
+            (logand (ppu-vram-address ppu) #x3F00))
+      (when (ppu-pending-vram-address-copy-wait-for-phase1-p ppu)
+        (setf (ppu-pending-vram-address-copy-phase1-seen-p ppu) t)
+        (when (zerop (ppu-pending-vram-address-copy-delay ppu))
+          (%ppu-commit-vram-address-copy! ppu)))))
 
   (defun %ppu-background-read-address (ppu fetch-phase)
     (if (= (ppu-background-fetch-phase ppu) fetch-phase)
-        (logior (logand (ppu-background-fetch-address ppu) #x3F00)
-                (ppu-address-latch-low ppu))
+        (let* ((fetch-address (ppu-background-fetch-address ppu))
+               (live-high (logand (ppu-vram-address ppu) #x3F00))
+               (address-high
+                 (if (and (= fetch-phase 1)
+                          (/= live-high (ppu-background-fetch-v-high ppu)))
+                     live-high
+                     (logand fetch-address #x3F00))))
+          (logior address-high
+                  (ppu-address-latch-low ppu)))
         (ppu-address-bus ppu)))
 
   (defun %ppu-read-background-pattern! (ppu dot fetch-phase high-plane-p)
@@ -128,7 +163,9 @@
            (%ppu-mmc5-split-state ppu dot)
          (let ((value (if split-p
                           (%ppu-mmc5-exram-byte ppu split-x (floor split-y 8))
-                          (ppu-read-vram ppu (%ppu-background-read-address ppu 1)))))
+                          (let ((address (%ppu-background-read-address ppu 1)))
+                            (%ppu-address-bus! ppu address)
+                            (ppu-read-vram ppu address)))))
            (setf (ppu-next-tile ppu) value)
            (unless split-p
              (setf (ppu-last-background-read-value ppu) value
@@ -447,7 +484,9 @@
         (%ppu-advance-rendering-mask! ppu)
         (let* ((scanline (ppu-scanline ppu))
                (rendering-scanline-p (%ppu-rendering-scanline-p ppu)))
-          (incf (ppu-dot ppu))
+          (progn
+            (incf (ppu-dot ppu))
+            (%ppu-advance-vram-address-copy! ppu))
           (when (and (< scanline +ppu-height+)
                      (<= 1 (ppu-dot ppu) 256))
             (%ppu-render-visible-dot! ppu))

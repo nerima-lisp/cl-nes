@@ -14,5 +14,5 @@
       (expect (cl-nes::%ppu-rendering-scanline-p ppu) :to-be t)
       (setf (ppu-control ppu) #x10)
       (ppu-write-register! ppu 6 #x10)
-      (ppu-write-register! ppu 6 #x00)
+      (progn (ppu-write-register! ppu 6 #x00) (ppu-tick! ppu 2))
       (expect (cl-nes::ppu-address-bus ppu) :to-be #x1000))))

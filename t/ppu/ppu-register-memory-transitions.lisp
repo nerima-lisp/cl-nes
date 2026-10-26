@@ -19,16 +19,16 @@
   (it "wraps the 15-bit VRAM address and masks immediate palette reads in greyscale"
     (let ((ppu (make-ppu)))
       (ppu-write-register! ppu 6 #x7F)
-      (ppu-write-register! ppu 6 #xFF)
+      (progn (ppu-write-register! ppu 6 #xFF) (ppu-tick! ppu 2))
       (expect (cl-nes::ppu-vram-address ppu) :to-be #x3FFF)
       (ppu-write-vram! ppu #x3F00 #x2A)
       (ppu-write-register! ppu 6 #x3F)
-      (ppu-write-register! ppu 6 #x00)
+      (progn (ppu-write-register! ppu 6 #x00) (ppu-tick! ppu 2))
       (expect (ppu-read-register ppu 7) :to-be #x2A)
       (expect (cl-nes::ppu-vram-address ppu) :to-be #x3F01)
       (ppu-write-register! ppu 1 #x01)
       (ppu-write-register! ppu 6 #x3F)
-      (ppu-write-register! ppu 6 #x00)
+      (progn (ppu-write-register! ppu 6 #x00) (ppu-tick! ppu 2))
       (expect (ppu-read-register ppu 7) :to-be #x20)
       (expect (ppu-read-vram ppu #x3F00) :to-be #x2A)))
 
@@ -76,13 +76,13 @@
       (ppu-write-vram! ppu #x2000 #x55)
       (ppu-write-register! ppu 0 #x04)
       (ppu-write-register! ppu 6 #x20)
-      (ppu-write-register! ppu 6 #x00)
+      (progn (ppu-write-register! ppu 6 #x00) (ppu-tick! ppu 2))
       (ppu-write-register! ppu 7 #x11)
       (ppu-write-register! ppu 7 #x22)
       (expect (ppu-read-vram ppu #x2000) :to-be #x11)
       (expect (ppu-read-vram ppu #x2020) :to-be #x22)
       (ppu-write-register! ppu 6 #x20)
-      (ppu-write-register! ppu 6 #x00)
+      (progn (ppu-write-register! ppu 6 #x00) (ppu-tick! ppu 2))
       (expect (ppu-read-register ppu 7) :to-be 0)
       (expect (ppu-read-register ppu 7) :to-be #x11)
       (setf (cl-nes::ppu-vram-address ppu) #x2000
@@ -108,7 +108,7 @@
       (ppu-tick! ppu 3)
       (ppu-write-register! ppu 0 #x04)
       (ppu-write-register! ppu 6 #x2C)
-      (ppu-write-register! ppu 6 #x00)
+      (progn (ppu-write-register! ppu 6 #x00) (ppu-tick! ppu 2))
       (expect (ppu-read-register ppu 7) :to-be 0)
       (expect (cl-nes::ppu-vram-address ppu) :to-be #x3C01)))
   (it "wraps coarse X and Y when PPUDATA is accessed during rendering"
@@ -210,10 +210,30 @@
       (ppu-write-register! ppu 5 #x17)
       (ppu-write-register! ppu 5 #x17)
       (expect (cl-nes::ppu-temporary-address ppu) :to-be #x7C42)
-      (ppu-write-register! ppu 6 #x00)
+      (progn
+        (ppu-write-register! ppu 6 #x00)
+        (expect (cl-nes::ppu-vram-address ppu) :to-be 0)
+        (ppu-tick! ppu 2))
       (expect (cl-nes::ppu-temporary-address ppu) :to-be #x7C00)
       (expect (cl-nes::ppu-vram-address ppu) :to-be #x7C00)
       (expect (cl-nes::ppu-write-toggle ppu) :to-be nil)))
+  (it "clears a scheduled T-to-V copy on reset"
+    (let ((ppu (make-ppu)))
+      (setf (cl-nes::ppu-vram-address ppu) #x7F19
+            (cl-nes::ppu-pending-vram-address-copy-p ppu) t
+            (cl-nes::ppu-pending-vram-address-copy-delay ppu) 1
+            (cl-nes::ppu-pending-vram-address-copy-value ppu) #x2F00
+            (cl-nes::ppu-pending-vram-address-copy-wait-for-phase1-p ppu) t
+            (cl-nes::ppu-pending-vram-address-copy-phase1-seen-p ppu) t)
+      (cl-nes::ppu-reset! ppu)
+      (expect (cl-nes::ppu-pending-vram-address-copy-p ppu) :to-be nil)
+      (expect (cl-nes::ppu-pending-vram-address-copy-delay ppu) :to-be 0)
+      (expect (cl-nes::ppu-pending-vram-address-copy-value ppu) :to-be 0)
+      (expect (cl-nes::ppu-pending-vram-address-copy-wait-for-phase1-p ppu)
+              :to-be nil)
+      (expect (cl-nes::ppu-pending-vram-address-copy-phase1-seen-p ppu)
+              :to-be nil)
+      (expect (cl-nes::ppu-vram-address ppu) :to-be 0)))
   (it "reads the OAM evaluation latch and secondary OAM during rendering"
     (let ((ppu (make-ppu)))
       (setf (cl-nes::ppu-mask ppu) #x18

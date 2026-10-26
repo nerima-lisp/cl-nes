@@ -4,11 +4,9 @@
 
 ### Breaking changes
 
-- Save-state format version 3 records the sampled CPU IRQ input, the CPU's
-  internal data bus latch, in-progress PPU sprite evaluation, current APU/DMA
-  transfer state, APU frame IRQ phase, and deferred `$4015` status-read clear.
-  Loading rejects incompatible layouts, so version 2 states and states written
-  with earlier version 3 layouts are not portable to this release.
+- Save-state format version 3 stores additional CPU, PPU, APU, and DMA state.
+  This release rejects version 2 states and version 3 states written with an
+  earlier layout.
 
 ### Compatibility and cartridge support
 
@@ -34,6 +32,9 @@
   ALE/PPUDATA overlap, and MMC3 scanline timing (`80e2486`, `64e7243`,
   `2e859a2`, `9744984`, `4fa095b`, `8edba64`, `a2de74f`, `97e8ae2`,
   `cc24ccf`).
+- When a rendering-time `$2006` write changes the address high bits, the next
+  background pattern read uses those live high bits with the low byte captured
+  at the fetch.
 - Aligned APU frame IRQ and reset boundaries, length-counter timing, and DMC
   sample status (`9b6dee3`, `f857372`, `48df297`, `25eac88`, `4ed6879`,
   `d4359c9`).

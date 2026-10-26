@@ -180,7 +180,6 @@
             (ppu-write-toggle ppu) t)
       (setf (ppu-temporary-address ppu)
             (logior (logand (ppu-temporary-address ppu) #x7F00) value)
-            (ppu-vram-address ppu) (ppu-temporary-address ppu)
             (ppu-write-toggle ppu) nil)))
 
 (defun %request-nmi! (ppu &optional (delay 3))
@@ -235,10 +234,17 @@
             (ppu-oam-address ppu)
             (mod (1+ (ppu-oam-address ppu)) 256))))
 
-(defun %ppu-write-address-register! (ppu value)
-  (%write-address! ppu value)
-  (unless (ppu-write-toggle ppu)
-    (%ppu-address-bus! ppu (ppu-vram-address ppu))))
+(defun %ppu-write-address-register! (ppu value cpu-access-p)
+  (let ((second-write-p (ppu-write-toggle ppu)))
+    (%write-address! ppu value)
+    (when second-write-p
+      (setf (ppu-pending-vram-address-copy-p ppu) t
+            (ppu-pending-vram-address-copy-delay ppu) 2
+            (ppu-pending-vram-address-copy-value ppu)
+            (ppu-temporary-address ppu)
+            (ppu-pending-vram-address-copy-wait-for-phase1-p ppu)
+            (and cpu-access-p (%ppu-rendering-scanline-p ppu))
+            (ppu-pending-vram-address-copy-phase1-seen-p ppu) nil))))
 
 (defun %ppu-write-data-register! (ppu value)
   (ppu-write-vram! ppu (ppu-vram-address ppu) value t)
@@ -254,6 +260,6 @@
     (3 (setf (ppu-oam-address ppu) value))
     (4 (%ppu-write-oam-data-register! ppu value cpu-access-p))
     (5 (%write-scroll! ppu value))
-    (6 (%ppu-write-address-register! ppu value))
+    (6 (%ppu-write-address-register! ppu value cpu-access-p))
     (7 (%ppu-write-data-register! ppu value)))
   value)

@@ -54,6 +54,12 @@ console reset for callers that want to preserve cartridge-backed state."
         (ppu-decay-clock ppu) 0
         (ppu-decay-next-expiry ppu) most-positive-fixnum)
   (fill (ppu-decay-deadlines ppu) most-positive-fixnum)
+  (setf (ppu-background-fetch-v-high ppu) 0
+        (ppu-pending-vram-address-copy-p ppu) nil
+        (ppu-pending-vram-address-copy-delay ppu) 0
+        (ppu-pending-vram-address-copy-value ppu) 0
+        (ppu-pending-vram-address-copy-wait-for-phase1-p ppu) nil
+        (ppu-pending-vram-address-copy-phase1-seen-p ppu) nil)
   (setf (ppu-sprite-evaluation-active-p ppu) nil)
   (fill (ppu-status-history ppu) 0)
   (fill (ppu-secondary-oam ppu) #xFF)

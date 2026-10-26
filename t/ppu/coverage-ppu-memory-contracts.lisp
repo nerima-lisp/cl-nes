@@ -17,7 +17,7 @@
         (expect (ppu-read-vram ppu #x3000) :to-be #xA5)
         (ppu-write-vram! ppu #x3F00 #x3C)
         (ppu-write-register! ppu 6 #x3F)
-        (ppu-write-register! ppu 6 0)
+        (progn (ppu-write-register! ppu 6 0) (ppu-tick! ppu 2))
         (expect (ppu-read-register ppu 7) :to-be #x3C)
         (setf (ppu-status ppu) #x80
               (ppu-control ppu) 0

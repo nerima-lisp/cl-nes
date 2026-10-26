@@ -148,7 +148,9 @@
            (ppu (nes-ppu nes)))
       (flet ((cpu-write-vram! (address value)
                (bus-write! bus #x2006 (ldb (byte 8 8) address))
-               (bus-write! bus #x2006 (ldb (byte 8 0) address))
+               (progn
+                 (bus-write! bus #x2006 (ldb (byte 8 0) address))
+                 (ppu-tick! ppu 2))
                (bus-write! bus #x2007 value)))
         (cpu-write-vram! #x0000 #xFF)
         (cpu-write-vram! #x0008 0)

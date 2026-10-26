@@ -105,8 +105,7 @@
            (short (subseq state 0 (1- (length state))))
            (bad-magic (copy-seq state))
            (old-version (copy-seq state)))
-      (setf (aref bad-magic 0) 0
-            (aref old-version 4) 2)
+      (setf (aref bad-magic 0) 0 (aref old-version 4) 2)
       (dolist (input (list short bad-magic))
         (expect (typep (captured-condition
                         (lambda () (nes-load-state nes input)))
@@ -219,3 +218,58 @@
                (state (nes-save-state nes)))
           (nes-load-state nes state)
           (expect (equalp state (nes-save-state nes)) :to-be t)))))
+  (it "round-trips a latched background V high byte"
+    (let* ((source (make-nes :cartridge (make-fixture-cartridge :program (quote (#xEA)))))
+           (target (make-nes :cartridge (make-fixture-cartridge :program (quote (#xEA)))))
+           (source-ppu (nes-ppu source))
+           (target-ppu (nes-ppu target)))
+      (setf (cl-nes::ppu-background-fetch-phase source-ppu) 1
+            (cl-nes::ppu-background-fetch-address source-ppu) #x2C19
+            (cl-nes::ppu-background-fetch-v-high source-ppu) #x2C00
+            (cl-nes::ppu-address-latch-low source-ppu) #x19
+            (cl-nes::ppu-vram-address source-ppu) #x3C00)
+      (nes-load-state target (nes-save-state source))
+      (expect (cl-nes::ppu-background-fetch-v-high target-ppu) :to-be #x2C00)
+      (expect (cl-nes::%ppu-background-read-address target-ppu 1)
+              :to-be #x3C19)))
+  (it "round-trips a phase-latched pending T-to-V address copy"
+    (let* ((source (make-nes :cartridge (make-fixture-cartridge :program (quote (#xEA)))))
+           (target (make-nes :cartridge (make-fixture-cartridge :program (quote (#xEA)))))
+           (source-ppu (nes-ppu source))
+           (target-ppu (nes-ppu target)))
+      (ppu-write-vram! source-ppu #x2F19 #xCA)
+      (ppu-write-vram! target-ppu #x2F19 #xCA)
+      (setf (ppu-mask source-ppu) #x08
+            (cl-nes::ppu-scanline source-ppu) 5
+            (cl-nes::ppu-dot source-ppu) 185
+            (cl-nes::ppu-background-fetch-phase source-ppu) 1
+            (cl-nes::ppu-background-fetch-address source-ppu) #x2F19
+            (cl-nes::ppu-background-fetch-v-high source-ppu) #x3F00
+            (cl-nes::ppu-address-latch-low source-ppu) #x19
+            (cl-nes::ppu-vram-address source-ppu) #x7F19
+            (cl-nes::ppu-temporary-address source-ppu) #x2F00
+            (cl-nes::ppu-pending-vram-address-copy-p source-ppu) t
+            (cl-nes::ppu-pending-vram-address-copy-delay source-ppu) 1
+            (cl-nes::ppu-pending-vram-address-copy-value source-ppu) #x2F00
+            (cl-nes::ppu-pending-vram-address-copy-wait-for-phase1-p source-ppu) t
+            (cl-nes::ppu-pending-vram-address-copy-phase1-seen-p source-ppu) t)
+      (let ((state (nes-save-state source)))
+        (expect (aref state 4) :to-be 3)
+        (nes-load-state target state))
+      (expect (cl-nes::ppu-pending-vram-address-copy-p target-ppu) :to-be t)
+      (expect (cl-nes::ppu-pending-vram-address-copy-delay target-ppu) :to-be 1)
+      (expect (cl-nes::ppu-pending-vram-address-copy-wait-for-phase1-p target-ppu)
+              :to-be t)
+      (expect (cl-nes::ppu-pending-vram-address-copy-phase1-seen-p target-ppu)
+              :to-be t)
+      (expect (cl-nes::ppu-vram-address target-ppu) :to-be #x7F19)
+      (ppu-tick! target-ppu)
+      (expect (cl-nes::ppu-dot target-ppu) :to-be 186)
+      (expect (cl-nes::ppu-pending-vram-address-copy-p target-ppu) :to-be nil)
+      (expect (cl-nes::ppu-pending-vram-address-copy-wait-for-phase1-p target-ppu)
+              :to-be nil)
+      (expect (cl-nes::ppu-pending-vram-address-copy-phase1-seen-p target-ppu)
+              :to-be nil)
+      (expect (cl-nes::ppu-vram-address target-ppu) :to-be #x2F00)
+      (expect (cl-nes::ppu-address-bus target-ppu) :to-be #x2F19)
+      (expect (cl-nes::ppu-next-tile target-ppu) :to-be #xCA)))
