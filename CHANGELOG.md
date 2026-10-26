@@ -4,9 +4,12 @@
 
 ### Breaking changes
 
-- Save-state format version 3 stores additional CPU, PPU, APU, and DMA state.
-  This release rejects version 2 states and version 3 states written with an
-  earlier layout.
+- Save-state format version 3 records the sampled CPU IRQ input, the CPU's
+  internal data bus latch, in-progress PPU sprite evaluation, current APU/DMA
+  transfer state, APU frame IRQ phase, deferred `$4015` status-read clear, the
+  absolute NES master-clock position, and the PPU phase offset. Loading rejects
+  incompatible layouts, so version 2 states and earlier version 3 states are
+  not portable to this release.
 
 ### Compatibility and cartridge support
 

@@ -23,6 +23,7 @@
         (logxor (bus-cpu-cycle-phase bus) 1))
   ;; The next CPU-visible poll consumes this post-clock sample.
   (%nes-sample-irq-line! nes)
+  (incf (nes-master-clock nes) 12)
   (when cycle-hook
     (funcall cycle-hook)))
 

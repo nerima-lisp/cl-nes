@@ -78,5 +78,8 @@
   nes)
 
 (defun %nes-tick! (nes cycles)
-  (ppu-tick! (nes-ppu nes) (* 3 cycles))
-  (apu-tick! (nes-apu nes) cycles))
+  (multiple-value-prog1
+      (progn
+        (ppu-tick! (nes-ppu nes) (* 3 cycles))
+        (apu-tick! (nes-apu nes) cycles))
+    (incf (nes-master-clock nes) (* 12 cycles))))

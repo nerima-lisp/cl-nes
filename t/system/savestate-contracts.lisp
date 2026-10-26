@@ -4,13 +4,17 @@
   (it "round-trips the complete machine deterministically"
     (let* ((nes (make-nes :cartridge (make-fixture-cartridge :program '(#xEA))))
            (first (progn
-                    (setf (cl-nes::nes-irq-line-sample-p nes) t)
+                    (setf (cl-nes::nes-irq-line-sample-p nes) t
+                          (cl-nes::nes-master-clock nes) #x123456
+                          (cl-nes::nes-ppu-phase-offset nes) 3)
                     (nes-save-state nes))))
       (expect (aref first 4) :to-be 3)
       (nes-run-frames/k nes 1 (lambda (framebuffer)
                                 (declare (ignore framebuffer))
                                 nil))
       (nes-load-state nes first)
+      (expect (cl-nes::nes-master-clock nes) :to-be #x123456)
+      (expect (cl-nes::nes-ppu-phase-offset nes) :to-be 3)
       (expect (equalp (nes-save-state nes) first) :to-be t)))
 
   (it "continues with identical CPU and framebuffer results after restore"
@@ -120,11 +124,15 @@
   (it "does not partially apply a state when a later section is invalid"
     (let* ((nes (make-nes))
            (before (nes-save-state nes))
+           (machine-state (cl-nes::nes-state-save nes))
+           (machine-section-length-offset
+             (- (length before) (length machine-state) 4))
            (broken (copy-seq before)))
-      (setf (aref broken (1- (length broken))) #xff)
+      ;; The final section length is a 32-bit value immediately before its body.
+      (setf (aref broken (+ machine-section-length-offset 3)) #xff)
       (expect (typep (captured-condition
                       (lambda () (nes-load-state nes broken)))
-                     'invalid-savestate)
+                     (quote invalid-savestate))
               :to-be t)
       (expect (equalp (nes-save-state nes) before) :to-be t)))
 
