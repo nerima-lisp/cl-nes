@@ -250,44 +250,104 @@
         (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 0)
         (setf (cl-nes::bus-cpu-access-active-p bus) nil))))
 
-  (it "waits the phase-specific $4015 delay before the first DMC sample fetch"
+  (it "anchors delayed DMC load wait to the $4015 write cycle"
     (dolist (write-phase (list 0 1))
       (let* ((nes (make-nes :cartridge
                             (make-fixture-cartridge :program (list #x5A)
                                                     :start #xC000)))
              (bus (nes-bus nes))
-             (dmc (cl-nes::apu-dmc (nes-apu nes)))
-             (expected-halt-delay (if (zerop write-phase) 4 3))
-             (write-cycle nil)
+             (apu (nes-apu nes))
+             (dmc (cl-nes::apu-dmc apu))
+             (request-event nil)
+             (request-tick nil)
+             (request-count 0)
+             (request-origin-cycle nil)
+             (request-cycle nil)
+             (request-elapsed nil)
+             (request-phase nil)
+             (request-wait nil)
+             (write-origin-cycle nil)
              (halt-cycle nil)
-             (get-seen-p nil))
+             (get-seen-p nil)
+             (apu-ticks nil))
         (setf (cl-nes::bus-cpu-access-active-p bus) t
               (cl-nes::bus-cpu-access-nes bus) nes)
         (bus-write! bus #x4012 #x00)
         (bus-write! bus #x4013 #x00)
-        (setf (cl-nes::bus-cpu-cycle-phase bus) write-phase)
+        (setf (cl-nes::bus-cpu-cycle-phase bus) write-phase
+              (cl-nes::apu-cycle-parity apu) write-phase)
         (let ((cl-nes::*dma-trace-hook*
                 (lambda (event)
-                  (when (eq (getf event :phase) :before-arbiter)
-                    (case (getf event :dmc-stage)
-                      (:active-halt
+                  (cond
+                    ((eq (getf event :event) :dmc-request)
+                     (incf request-count)
+                     (setf request-event event
+                           request-origin-cycle
+                           (getf event :dmc-request-origin-cycle)
+                           request-cycle
+                           (getf event :dmc-request-cycle)
+                           request-elapsed
+                           (getf event :dmc-request-elapsed-cycles)
+                           request-phase
+                           (getf event :apu-parity)
+                           request-wait
+                           (getf event :dmc-request-wait)))
+                    ((eq (getf event :event) :apu-tick)
+                     (push event apu-ticks))
+                    ((eq (getf event :phase) :before-arbiter)
+                     (when (eq (getf event :dmc-stage) :active-halt)
                        (setf halt-cycle
-                             (cl-nes::bus-cpu-access-count bus)))
-                      (:get
-                       (setf get-seen-p t)))))))
+                             (cl-nes::apu-cpu-cycle-index apu))))
+                    ((eq (getf event :event) :dmc-get)
+                     (setf get-seen-p t))))))
           (bus-write! bus #x4015 #x10)
-          (setf write-cycle (cl-nes::bus-cpu-access-count bus))
+          (setf write-origin-cycle
+                (cl-nes::apu-dmc-status-write-origin-cycle dmc))
+          (expect (cl-nes::apu-cpu-cycle-index apu)
+                  :to-be write-origin-cycle)
+          (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :idle)
           (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 1)
-          (loop repeat expected-halt-delay
-                until halt-cycle
-                do (expect (bus-read bus #x0000) :to-be 0)))
-        (expect halt-cycle :to-be (+ write-cycle expected-halt-delay))
-        (expect get-seen-p :to-be t)
-        (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :idle)
-        (expect (cl-nes::apu-dmc-sample-buffer dmc) :to-be #x5A)
-        (expect (cl-nes::apu-dmc-sample-buffer-empty-p dmc) :to-be nil)
-        (expect (cl-nes::apu-dmc-current-address dmc) :to-be #xC001)
-        (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 0)
+          (expect (bus-read bus #x0000) :to-be 0)
+          (setf request-tick
+                (find-if
+                 (lambda (event)
+                   (and request-event
+                        (= (getf event :master-clock)
+                           (getf request-event :master-clock))))
+                 apu-ticks))
+          (expect request-count :to-be 1)
+          (expect request-tick :to-be-truthy)
+          (expect (getf request-event :event) :to-be :dmc-request)
+          (expect (getf request-event :cpu-access-kind) :to-be :read)
+          (expect request-origin-cycle :to-be write-origin-cycle)
+          (expect request-elapsed :to-be 1)
+          (expect (= request-cycle (1+ request-origin-cycle)) :to-be t)
+          (expect request-phase :to-be write-phase)
+          (expect (getf request-tick :apu-parity) :to-be write-phase)
+          (expect request-wait
+                  :to-be (max 0 (- (if (= write-phase 1) 2 3) 2)))
+          (expect halt-cycle :to-be nil)
+          (expect get-seen-p :to-be nil)
+          (if (= write-phase 0)
+              (progn
+                (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :wait)
+                (expect (cl-nes::bus-dmc-dma-wait bus) :to-be 0)
+                (expect (bus-read bus #x0000) :to-be 0)
+                (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :ready))
+              (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :ready))
+          (expect (cl-nes::bus-cpu-cycle-phase bus) :to-be 1)
+          (expect (bus-read bus #x0000) :to-be 0)
+          (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :ready)
+          (expect halt-cycle :to-be nil)
+          (expect (cl-nes::bus-cpu-cycle-phase bus) :to-be 0)
+          (expect (bus-read bus #x0000) :to-be 0)
+          (expect (not (null halt-cycle)) :to-be t)
+          (expect get-seen-p :to-be t)
+          (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :idle)
+          (expect (cl-nes::apu-dmc-sample-buffer dmc) :to-be #x5A)
+          (expect (cl-nes::apu-dmc-sample-buffer-empty-p dmc) :to-be nil)
+          (expect (cl-nes::apu-dmc-current-address dmc) :to-be #xC001)
+          (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 0))
         (setf (cl-nes::bus-cpu-access-active-p bus) nil))))
   (it "uses open bus data when an OAM DMA source is unmapped"
     (let ((bus (make-bus)))
@@ -704,3 +764,175 @@
         (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :idle)
         (expect (cl-nes::apu-dmc-sample-buffer-empty-p dmc) :to-be nil)
         (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 0))))
+(describe "DMC explicit disable abort window"
+  (it "cancels a real queued DMC retry before halt on delayed status disable"
+    (let* ((nes (make-nes))
+           (bus (nes-bus nes))
+           (dmc (cl-nes::apu-dmc (nes-apu nes)))
+           (events nil))
+      (setf (cl-nes::bus-cpu-access-active-p bus) t
+            (cl-nes::bus-cpu-access-nes bus) nes
+            (cl-nes::bus-cpu-cycle-phase bus) 0
+            (cl-nes::apu-cycle-parity (nes-apu nes)) 0
+            (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-load-pending-p dmc) t
+            (cl-nes::apu-dmc-current-address dmc) #x0020
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bytes-remaining dmc) 1)
+      (let ((cl-nes::*dma-trace-hook*
+              (lambda (event)
+                (push event events)))
+            (cl-nes::*dma-trace-cycle-index* 0))
+        (dotimes (i 3)
+          (declare (ignore i))
+          (bus-write! bus #x0000 #xA5))
+        (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :retry)
+        (bus-write! bus #x4015 #x00)
+        (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :retry)
+        (progn
+          (bus-write! bus #x0001 #x5A)
+          (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :idle)
+          (bus-read bus #x0000))
+        (let* ((disable-event
+                 (find :dmc-explicit-disable events
+                       :key (lambda (event) (getf event :event))))
+               (stop-event
+                 (find :dmc-stop events
+                       :key (lambda (event) (getf event :event))))
+               (tick-events
+                 (nreverse
+                  (remove-if-not
+                   (lambda (event)
+                     (eq (getf event :event) :apu-tick))
+                   events)))
+               (write-cycle
+                 (find-if
+                  (lambda (event)
+                    (and (eq (getf event :phase) :before-arbiter)
+                         (= (getf event :master-clock) 48)))
+                  events)))
+          (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :idle)
+          (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 0)
+          (expect (cl-nes::bus-cpu-access-count bus) :to-be 6)
+          (expect (count :dmc-request events
+                         :key (lambda (event) (getf event :event)))
+                  :to-be 1)
+          (expect (getf disable-event :dmc-stage-before) :to-be :retry)
+          (progn
+            (expect (getf disable-event :dmc-disable-reason)
+                    :to-be :cancelled-before-halt)
+            (expect (getf disable-event :cpu-access-kind) :to-be :write)
+            (expect (getf disable-event :cpu-held-address) :to-be #x0001)
+            (expect (getf disable-event :cpu-write-data) :to-be #x5A))
+          (expect (getf stop-event :dmc-stop-reason)
+                  :to-be :cancelled-before-halt)
+          (expect (getf write-cycle :cpu-access-kind) :to-be :write)
+          (expect (getf write-cycle :cpu-held-address) :to-be #x4015)
+          (expect (getf write-cycle :cpu-write-data) :to-be #x00)
+          (expect (mapcar (lambda (event) (getf event :master-clock))
+                          tick-events)
+                  :to-equal (list 12 24 36 48 60 72))
+          (expect (mapcar (lambda (event) (getf event :apu-parity))
+                          tick-events)
+                  :to-equal (list 1 0 1 0 1 0))
+          (expect (find :dmc-get events
+                        :key (lambda (event) (getf event :event)))
+                  :to-be nil)
+          (setf (cl-nes::bus-cpu-access-active-p bus) nil)))))
+  (it "consumes one abort cycle after the halt without a sample GET"
+    (let* ((nes (make-nes))
+           (bus (nes-bus nes))
+           (dmc (cl-nes::apu-dmc (nes-apu nes)))
+           (events nil))
+      (setf (cl-nes::bus-cpu-access-active-p bus) t
+            (cl-nes::bus-cpu-access-nes bus) nes
+            (cl-nes::bus-cpu-cycle-phase bus) 0
+            (cl-nes::bus-dmc-dma-stage bus) :retry
+            (cl-nes::bus-dmc-dma-kind bus) :load
+            (cl-nes::bus-dmc-dma-wait bus) 0
+            (cl-nes::bus-dmc-dma-remaining bus) 0
+            (cl-nes::apu-cycle-parity (nes-apu nes)) 0
+            (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-load-pending-p dmc) t
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bytes-remaining dmc) 1)
+      (let ((cl-nes::*dma-trace-hook*
+              (lambda (event)
+                (push event events)))
+            (cl-nes::*dma-trace-cycle-index* 0))
+        (bus-write! bus #x4015 #x00)
+        (bus-read bus #x0000)
+        (let* ((disable-event
+                 (find :dmc-explicit-disable events
+                       :key (lambda (event) (getf event :event))))
+               (stop-event
+                 (find :dmc-stop events
+                       :key (lambda (event) (getf event :event))))
+               (tick-events
+                 (nreverse
+                  (remove-if-not
+                   (lambda (event)
+                     (eq (getf event :event) :apu-tick))
+                   events))))
+          (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :idle)
+          (expect (cl-nes::bus-cpu-access-count bus) :to-be 4)
+          (expect (getf disable-event :dmc-stage-before) :to-be :active-halt)
+          (expect (getf disable-event :dmc-disable-reason) :to-be :abort-window)
+          (expect (getf stop-event :dmc-stop-reason)
+                  :to-be :abort-cycle-consumed)
+          (expect (find :dmc-get events
+                        :key (lambda (event) (getf event :event)))
+                  :to-be nil)))))
+  (it "completes an alignment that has passed the abort window"
+    (let* ((nes (make-nes))
+           (bus (nes-bus nes))
+           (dmc (cl-nes::apu-dmc (nes-apu nes)))
+           (events nil))
+      (setf (aref (cl-nes::bus-ram bus) #x0020) #x5A
+            (cl-nes::bus-cpu-access-active-p bus) t
+            (cl-nes::bus-cpu-access-nes bus) nes
+            (cl-nes::bus-cpu-cycle-phase bus) 0
+            (cl-nes::bus-dmc-dma-stage bus) :alignment
+            (cl-nes::bus-dmc-dma-kind bus) :load
+            (cl-nes::bus-dmc-dma-remaining bus) 1
+            (cl-nes::apu-cycle-parity (nes-apu nes)) 0
+            (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-load-pending-p dmc) t
+            (cl-nes::apu-dmc-current-address dmc) #x0020
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bytes-remaining dmc) 1)
+      (let ((cl-nes::*dma-trace-hook*
+              (lambda (event)
+                (push event events)))
+            (cl-nes::*dma-trace-cycle-index* 0))
+        (bus-write! bus #x4015 #x00)
+        (bus-read bus #x0000)
+        (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :get)
+        (bus-read bus #x0000)
+        (let* ((disable-event
+                 (find :dmc-explicit-disable events
+                       :key (lambda (event) (getf event :event))))
+               (get-event
+                 (find :dmc-get events
+                       :key (lambda (event) (getf event :event))))
+               (stop-event
+                 (find :dmc-stop events
+                       :key (lambda (event) (getf event :event))))
+               (tick-events
+                 (nreverse
+                  (remove-if-not
+                   (lambda (event)
+                     (eq (getf event :event) :apu-tick))
+                   events))))
+          (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :idle)
+          (expect (getf disable-event :dmc-stage-before) :to-be :alignment)
+          (expect (getf disable-event :dmc-disable-reason)
+                  :to-be :after-abort-window)
+          (expect (getf get-event :dmc-get-address) :to-be #x0020)
+          (expect (getf get-event :dmc-get-value) :to-be #x5A)
+          (expect (cl-nes::apu-dmc-sample-buffer-empty-p dmc) :to-be t)
+          (expect (cl-nes::apu-dmc-current-address dmc) :to-be #x0020)
+          (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 0)
+          (expect (mapcar (lambda (event) (getf event :master-clock))
+                          tick-events)
+                  :to-equal (list 12 24 36)))))))

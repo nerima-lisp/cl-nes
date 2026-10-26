@@ -1,8 +1,6 @@
 (in-package #:cl-nes)
 
 (defvar *dma-trace-hook* nil)
-(defvar *dma-trace-cycle-index* 0)
-
 (defun %dma-trace-cycle! (bus master-clock phase)
   (when *dma-trace-hook*
     (funcall
@@ -10,9 +8,12 @@
      (list :phase phase
            :master-clock master-clock
            :cpu-parity (bus-cpu-cycle-phase bus)
-           :apu-parity (apu-cycle-parity (bus-apu bus))
+           :apu-parity (mod (apu-cycle-parity (bus-apu bus)) 2)
            :cpu-access-kind (bus-last-cpu-access-kind bus)
            :cpu-held-address (bus-last-cpu-access-address bus)
+           :cpu-write-data
+           (when (eq (bus-last-cpu-access-kind bus) :write)
+             (bus-open-bus bus))
            :dmc-request-kind (bus-dmc-dma-kind bus)
            :dmc-stage (bus-dmc-dma-stage bus)
            :dmc-source-address
@@ -29,6 +30,53 @@
            :open-bus (bus-open-bus bus)
            :internal-data-bus (bus-internal-data-bus bus))))
   nil)
+(defun %dma-trace-event! (bus event master-clock &rest fields)
+  (when *dma-trace-hook*
+    (funcall
+     *dma-trace-hook*
+     (append
+      (list :event event
+            :master-clock master-clock
+            :cpu-parity (bus-cpu-cycle-phase bus)
+            :apu-parity (mod (apu-cycle-parity (bus-apu bus)) 2)
+            :cpu-access-kind (bus-last-cpu-access-kind bus)
+            :cpu-held-address (bus-last-cpu-access-address bus)
+            :cpu-write-data
+            (when (eq (bus-last-cpu-access-kind bus) :write)
+              (bus-open-bus bus))
+            :dmc-request-kind (bus-dmc-dma-kind bus)
+            :dmc-stage (bus-dmc-dma-stage bus)
+            :dmc-source-address
+            (apu-dmc-current-address (apu-dmc (bus-apu bus)))
+            :dmc-bytes-remaining
+            (apu-dmc-bytes-remaining (apu-dmc (bus-apu bus))))
+      fields)))
+  nil)
+(defun %dma-handle-dmc-disable! (bus master-clock stage)
+  (let ((reason
+          (cond
+            ((member stage (list :new :wait :ready :retry))
+             (setf (bus-dmc-dma-stage bus) :idle
+                   (bus-dmc-dma-wait bus) 0
+                   (bus-dmc-dma-remaining bus) 0)
+             :cancelled-before-halt)
+            ((member stage (list :active-halt :dummy))
+             (when (eq stage :dummy)
+               (setf (bus-dmc-dma-stage bus) :abort
+                     (bus-dmc-dma-remaining bus) 1))
+             :abort-window)
+            ((member stage (list :alignment :get))
+             :after-abort-window)
+            ((eq stage :abort)
+             :abort-already-queued)
+            (t :no-pending-request))))
+    (%dma-trace-event! bus :dmc-explicit-disable master-clock
+                       :dmc-stage-before stage
+                       :dmc-disable-reason reason)
+    (when (eq reason :cancelled-before-halt)
+      (%dma-trace-event! bus :dmc-stop master-clock
+                         :dmc-stop-reason reason))
+    reason))
 
 (defun %dma-arbitrate-cycle! (bus)
   (setf (bus-dma-cycle-preempted-p bus) nil)
@@ -70,7 +118,8 @@
             (or (eq dmc-stage-this-cycle :active-halt)
                 (eq dmc-stage-this-cycle :dummy)
                 (eq dmc-stage-this-cycle :alignment)
-                (eq dmc-stage-this-cycle :get))
+                (eq dmc-stage-this-cycle :get)
+                (eq dmc-stage-this-cycle :abort))
             dmc-get-p
             (and (eq dmc-stage-this-cycle :get)
                  (zerop (bus-cpu-cycle-phase bus))))
@@ -91,9 +140,25 @@
              (let* ((apu (bus-apu bus))
                     (dmc (apu-dmc apu))
                     (address (apu-dmc-current-address dmc))
-                    (value (%bus-read-dmc-sample bus address)))
+                    (value (%bus-read-dmc-sample bus address))
+                    (disabled-p (not (apu-dmc-enabled-p dmc))))
+               (%dma-trace-event! bus :dmc-get
+                                  (* 12 *dma-trace-cycle-index*)
+                                  :dmc-get-address address
+                                  :dmc-get-value value)
                (%apu-dmc-fetch-complete! apu value)
-               (setf (bus-dmc-dma-stage bus) :idle))))))
+               (setf (bus-dmc-dma-stage bus) :idle)
+               (%dma-trace-event! bus :dmc-stop
+                                  (* 12 *dma-trace-cycle-index*)
+                                  :dmc-stop-reason
+                                  (if disabled-p
+                                      :completed-after-disable
+                                      :sample-fetched)))))
+          (:abort
+           (setf (bus-dmc-dma-stage bus) :idle)
+           (%dma-trace-event! bus :dmc-stop
+                              (* 12 *dma-trace-cycle-index*)
+                              :dmc-stop-reason :abort-cycle-consumed))))
       (when (and dmc-active-p
                  (or (not (eq dmc-stage-this-cycle :get))
                      dmc-get-p)

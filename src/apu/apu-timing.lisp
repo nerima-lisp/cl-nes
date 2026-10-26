@@ -10,6 +10,18 @@
           (%apu-apply-frame-reset! apu)
           (setf frame-reset-applied-p t)))
       (incf (apu-cycle-parity apu))
+      (incf (apu-cpu-cycle-index apu))
+      (let ((dmc (apu-dmc apu)))
+        (when (and (apu-dmc-status-write-pending-p dmc)
+                   (= (if (= (apu-cycle-parity apu) 2)
+                          0
+                          (apu-cycle-parity apu))
+                      (apu-dmc-status-write-phase dmc)))
+          (setf (apu-dmc-status-write-pending-p dmc) nil
+                (apu-dmc-status-update-event dmc)
+                (if (apu-dmc-status-write-enabled-p dmc)
+                    :enabled
+                    :disabled))))
       (%apu-clock-dmc! (apu-dmc apu))
       (%apu-dmc-fetch! apu)
       (%apu-clock-triangle-timer! (apu-triangle apu))
