@@ -109,16 +109,17 @@
 
 (defun %perform-oam-dma! (bus page)
   (if (bus-cpu-access-active-p bus)
-      (setf (bus-oam-dma-active-p bus) t
-            (bus-oam-dma-page bus) (logand page #xFF)
-            (bus-oam-dma-index bus) 0
-            (bus-oam-dma-stage bus) :halt
-            (bus-oam-dma-alignment-p bus)
-            (= (bus-cpu-cycle-phase bus) 1)
-            (bus-dma-stall-cycles bus)
-            (+ (bus-dma-stall-cycles bus)
-               513
-               (bus-cpu-cycle-phase bus)))
+      (progn
+        ;; RMW writes arrive before DMA can halt on a read; the last page wins.
+        (unless (bus-oam-dma-active-p bus)
+          (incf (bus-dma-stall-cycles bus)
+                (+ 513 (bus-cpu-cycle-phase bus))))
+        (setf (bus-oam-dma-active-p bus) t
+              (bus-oam-dma-page bus) (logand page #xFF)
+              (bus-oam-dma-index bus) 0
+              (bus-oam-dma-stage bus) :halt
+              (bus-oam-dma-alignment-p bus)
+              (= (bus-cpu-cycle-phase bus) 1)))
       (let ((base (ash (logand page #xFF) 8)))
         ;; Direct bus fixtures have no NES clock owner.  Preserve their
         ;; synchronous transfer semantics; CPU execution uses the state path.

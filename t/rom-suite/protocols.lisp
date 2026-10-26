@@ -365,7 +365,7 @@
                   (:name "PPU Palette RAM" :category :power-on-state
                    :address #x03ff :expected :pass))
     :items nil
-    :ratchet-pass-count 120
+    :ratchet-pass-count 121
     :ratchet-pass-items
     ("ROM is not writable" "RAM Mirroring" "PC Wraparound"
      "The Decimal Flag" "The B Flag" "Dummy read cycles" "Dummy write cycles"
@@ -409,6 +409,7 @@
      "Sprite overflow behavior"
      "Misaligned OAM behavior"
      "Misaligned OAM DMA"
+     "INC $4014"
      "t Register Quirks" "Rendering Flag Behavior"
      "$2007 read w/ rendering" "Attributes As Tiles" "Stale BG Shift Registers" "BG Serial In" "Suddenly Resize Sprite" "Address $2004 behavior" "$2007 Stress Test")))
 

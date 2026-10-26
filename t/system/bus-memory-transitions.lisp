@@ -1,4 +1,31 @@
 (in-package #:cl-nes/test)
+(describe "OAM DMA requests"
+  (it "uses the last RMW write as one OAM DMA request"
+    (let* ((nes (make-nes :cartridge (make-fixture-cartridge)))
+           (bus (nes-bus nes))
+           (ppu (nes-ppu nes)))
+      (dotimes (offset 256)
+        (setf (aref (cl-nes::bus-ram bus) (+ #x500 offset)) #x55
+              (aref (cl-nes::bus-ram bus) (+ #x600 offset)) #x66))
+      (setf (ppu-oam-address ppu) 0
+            (cl-nes::bus-cpu-access-active-p bus) t
+            (cl-nes::bus-cpu-access-nes bus) nes
+            (cl-nes::bus-cpu-cycle-phase bus) 0)
+      (bus-write! bus #x4014 #x05)
+      (bus-write! bus #x4014 #x06)
+      (expect (cl-nes::bus-oam-dma-page bus) :to-be #x06)
+      (expect (cl-nes::bus-oam-dma-active-p bus) :to-be t)
+      (expect (cl-nes::bus-dma-stall-cycles bus) :to-be 513)
+      (setf (cl-nes::bus-cpu-access-active-p bus) nil
+            (cl-nes::bus-last-cpu-access-kind bus) :read
+            (cl-nes::bus-last-cpu-access-address bus) (cpu-pc (nes-cpu nes)))
+      (let ((stall-cycles (cl-nes::bus-take-dma-stall-cycles! bus)))
+        (expect stall-cycles :to-be 513)
+        (expect (cl-nes::%nes-run-dma-stalls! nes stall-cycles) :to-be 514))
+      (expect (cl-nes::bus-oam-dma-active-p bus) :to-be nil)
+      (expect (cl-nes::bus-oam-dma-index bus) :to-be 256)
+      (expect (aref (ppu-oam ppu) 0) :to-be #x66)
+      (expect (aref (ppu-oam ppu) #xFF) :to-be #x66))))
 
 (describe "Bus memory transitions"
   (it "charges the PPU status read at the end of an active CPU access"
