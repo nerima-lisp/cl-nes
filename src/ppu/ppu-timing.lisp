@@ -227,9 +227,7 @@
                height))
          ;; Empty sprite slots still fetch pattern data from their dummy tile.
          (address
-           (if (< sprite (ppu-secondary-oam-count ppu))
-               (%sprite-pattern-address ppu tile attributes row)
-               (if (logbitp 3 (ppu-control ppu)) #x1000 0))))
+           (%sprite-pattern-address ppu tile attributes row)))
     (case offset
       ((0 2)
        ;; Sprite fetches first put an address on the bus, then read it one dot later.

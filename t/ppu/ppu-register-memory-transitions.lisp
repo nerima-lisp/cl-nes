@@ -352,6 +352,7 @@
             (cl-nes::ppu-dot ppu) 231
             (cl-nes::ppu-oam-address ppu) #xFE
             (cl-nes::ppu-secondary-oam-count ppu) 1
+            (cl-nes::ppu-oam2-address ppu) 2
             (cl-nes::ppu-sprite-evaluation-n ppu) 63
             (cl-nes::ppu-sprite-evaluation-m ppu) 2
             (cl-nes::ppu-sprite-evaluation-latch ppu) #x8C
