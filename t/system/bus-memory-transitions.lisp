@@ -86,11 +86,11 @@
             (cl-nes::bus-oam-dma-page bus) #x50
             (cl-nes::bus-oam-dma-index bus) 0
             (cl-nes::bus-oam-dma-stage bus) :get)
-      (cl-nes::%bus-advance-dma-cycle! bus)
+      (%dma-arbitrate-cycle! bus)
       (expect (cl-nes::bus-open-bus bus) :to-be #x5A)
       (expect (cl-nes::bus-oam-dma-stage bus) :to-be :put)
       (setf (cl-nes::bus-cpu-cycle-phase bus) 1)
-      (cl-nes::%bus-advance-dma-cycle! bus)
+      (%dma-arbitrate-cycle! bus)
       (expect (aref (ppu-oam (cl-nes::bus-ppu bus)) 0) :to-be #x5A)
       (expect (cl-nes::bus-oam-dma-index bus) :to-be 1)))
 
@@ -165,14 +165,14 @@
             (cl-nes::bus-last-cpu-access-address bus) #x4000
             (cl-nes::bus-dmc-dma-stage bus) :get
             (cl-nes::bus-dmc-dma-remaining bus) 4)
-      (cl-nes::%bus-advance-dma-cycle! bus)
+      (%dma-arbitrate-cycle! bus)
       (expect (cl-nes::bus-open-bus bus) :to-be 1)
       (expect (cl-nes::controller-read-count controller-1) :to-be 1)
       (expect (cl-nes::apu-dmc-sample-buffer dmc) :to-be 0)
       (setf (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
             (cl-nes::bus-dmc-dma-stage bus) :get
             (cl-nes::bus-dmc-dma-remaining bus) 4)
-      (cl-nes::%bus-advance-dma-cycle! bus)
+      (%dma-arbitrate-cycle! bus)
       (expect (cl-nes::bus-open-bus bus) :to-be 1)
       (expect (cl-nes::controller-read-count controller-2) :to-be 1)
       (expect (cl-nes::apu-dmc-sample-buffer dmc) :to-be 0)))
@@ -316,13 +316,13 @@
             (cl-nes::bus-last-cpu-access-kind load-bus) :read
             (cl-nes::bus-dmc-dma-stage load-bus) :ready
             (cl-nes::bus-dmc-dma-kind load-bus) :load)
-      (cl-nes::%bus-advance-dma-cycle! load-bus)
+      (%dma-arbitrate-cycle! load-bus)
       (expect (cl-nes::bus-dmc-dma-stage load-bus) :to-be :ready)
       (expect (cl-nes::bus-oam-dma-index load-bus) :to-be 1)
       (expect (aref (ppu-oam load-ppu) 0) :to-be #x5A)
       (setf (cl-nes::bus-cpu-cycle-phase load-bus) 0
             (cl-nes::bus-oam-dma-stage load-bus) :get)
-      (cl-nes::%bus-advance-dma-cycle! load-bus)
+      (%dma-arbitrate-cycle! load-bus)
       (expect (cl-nes::bus-dmc-dma-stage load-bus) :to-be :dummy)
       (expect (cl-nes::bus-dmc-dma-remaining load-bus) :to-be 2)
       (expect (cl-nes::bus-oam-dma-stage load-bus) :to-be :put)
@@ -333,11 +333,11 @@
             (cl-nes::bus-last-cpu-access-kind reload-bus) :read
             (cl-nes::bus-dmc-dma-stage reload-bus) :ready
             (cl-nes::bus-dmc-dma-kind reload-bus) :reload)
-      (cl-nes::%bus-advance-dma-cycle! reload-bus)
+      (%dma-arbitrate-cycle! reload-bus)
       (expect (cl-nes::bus-dmc-dma-stage reload-bus) :to-be :ready)
       (expect (cl-nes::bus-oam-dma-stage reload-bus) :to-be :put)
       (setf (cl-nes::bus-cpu-cycle-phase reload-bus) 1)
-      (cl-nes::%bus-advance-dma-cycle! reload-bus)
+      (%dma-arbitrate-cycle! reload-bus)
       (expect (cl-nes::bus-dmc-dma-stage reload-bus) :to-be :dummy)
       (expect (cl-nes::bus-dmc-dma-remaining reload-bus) :to-be 3)
       (expect (cl-nes::bus-oam-dma-index reload-bus) :to-be 1)
@@ -354,39 +354,39 @@
             (cl-nes::bus-dmc-dma-remaining bus) 3
             (cl-nes::bus-last-cpu-access-kind bus) :read
             (cl-nes::bus-last-cpu-access-address bus) #x2007)
-      (cl-nes::%bus-advance-dma-cycle! bus)
+      (%dma-arbitrate-cycle! bus)
       (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :alignment)
       (expect (cl-nes::bus-oam-dma-data bus) :to-be #x11)
       (expect (cl-nes::ppu-vram-address ppu) :to-be #x2001)
       (setf (cl-nes::bus-cpu-cycle-phase bus) 1)
-      (cl-nes::%bus-advance-dma-cycle! bus)
+      (%dma-arbitrate-cycle! bus)
       (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :get)
       (expect (cl-nes::bus-oam-dma-index bus) :to-be 8)
       (expect (cl-nes::ppu-vram-address ppu) :to-be #x2001)
       (setf (cl-nes::bus-cpu-cycle-phase bus) 0)
-      (cl-nes::%bus-advance-dma-cycle! bus)
+      (%dma-arbitrate-cycle! bus)
       (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :idle)
       (expect (cl-nes::bus-oam-dma-stage bus) :to-be :get)
       (expect (cl-nes::bus-dma-cycle-preempted-p bus) :to-be t)
       (expect (cl-nes::ppu-vram-address ppu) :to-be #x2001)
       (setf (cl-nes::bus-cpu-cycle-phase bus) 1)
-      (cl-nes::%bus-advance-dma-cycle! bus)
+      (%dma-arbitrate-cycle! bus)
       (expect (cl-nes::bus-oam-dma-stage bus) :to-be :get)
       (expect (cl-nes::bus-oam-dma-index bus) :to-be 8)
       (expect (cl-nes::bus-dma-cycle-preempted-p bus) :to-be t)
       (expect (cl-nes::ppu-vram-address ppu) :to-be #x2002)
       (setf (cl-nes::bus-cpu-cycle-phase bus) 0)
-      (cl-nes::%bus-advance-dma-cycle! bus)
+      (%dma-arbitrate-cycle! bus)
       (expect (cl-nes::bus-oam-dma-stage bus) :to-be :put)))
   (describe "DMA state transitions"
     (it "counts down a DMC request before it becomes ready"
       (let ((bus (make-bus)))
         (setf (cl-nes::bus-dmc-dma-stage bus) :new
               (cl-nes::bus-dmc-dma-wait bus) 2)
-        (cl-nes::%bus-advance-dma-cycle! bus)
+        (%dma-arbitrate-cycle! bus)
         (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :wait)
         (expect (cl-nes::bus-dmc-dma-wait bus) :to-be 1)
-        (cl-nes::%bus-advance-dma-cycle! bus)
+        (%dma-arbitrate-cycle! bus)
         (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :ready)
         (expect (cl-nes::bus-dmc-dma-wait bus) :to-be 0)))
 
@@ -400,13 +400,13 @@
               (cl-nes::bus-cpu-cycle-phase bus) 0
               (cl-nes::bus-last-cpu-access-kind bus) :read
               (aref (ppu-oam ppu) 0) #xA5)
-        (cl-nes::%bus-advance-dma-cycle! bus)
+        (%dma-arbitrate-cycle! bus)
         (expect (cl-nes::bus-dma-cycle-preempted-p bus) :to-be t)
         (expect (cl-nes::bus-oam-dma-stage bus) :to-be :put)
         (expect (cl-nes::bus-oam-dma-index bus) :to-be 0)
         (expect (aref (ppu-oam ppu) 0) :to-be #xA5)
         (setf (cl-nes::bus-cpu-cycle-phase bus) 1)
-        (cl-nes::%bus-advance-dma-cycle! bus)
+        (%dma-arbitrate-cycle! bus)
         (expect (cl-nes::bus-dma-cycle-preempted-p bus) :to-be nil)
         (expect (cl-nes::bus-oam-dma-stage bus) :to-be :get)
         (expect (cl-nes::bus-oam-dma-index bus) :to-be 1)

@@ -16,7 +16,7 @@
             (* 12 (incf *dma-trace-cycle-index*)))))
     (when trace-clock
       (%dma-trace-cycle! bus trace-clock :before-arbiter))
-    (%bus-advance-dma-cycle! bus)
+    (%dma-arbitrate-cycle! bus)
     (when trace-clock
       (%dma-trace-cycle! bus trace-clock :after-arbiter)))
   (setf (bus-cpu-cycle-phase bus)
