@@ -10,6 +10,55 @@
   Loading rejects incompatible layouts, so version 2 states and states written
   with earlier version 3 layouts are not portable to this release.
 
+### Compatibility and cartridge support
+
+- Added mapper 30 and 113 support, including mapper 30 four-screen VRAM routing,
+  and corrected UxROM bank selection and submapper 2 bus conflicts
+  (`c7c16cb`, `4dec383`, `e6867d9`, `dc75096`).
+- Aligned ROM compatibility behavior with emulated reset delays, frame-scheduled
+  input, and APU readiness-based silence classification
+  (`222eb1d`, `d4bce49`, `9164348`).
+
+### Emulation fixes
+
+- Corrected CPU interrupt polling across DMA and DMC stalls, reset timing,
+  unstable indexed stores, and internal bus reads; preserved polling through
+  interrupt tests and skipped inactive NMI-vector hooks
+  (`384a83b`, `ce5598f`, `4a91a47`, `d312baba`, `b5f8be7`, `0dadf59`,
+  `81fbf63`, `0e39583`, `1797642`, `38e9c20`).
+- Improved sprite evaluation and timing, including rendering-disabled cases and
+  sprite-zero detection (`69131ed`, `e74bbf6`, `baba7f4`, `eaf096b`,
+  `ec66b08`, `361957e`, `0ceb9e0`).
+- Corrected PPU register and rendering behavior, including the measured
+  power-up palette, vblank and buffered reads, background fetch timing,
+  ALE/PPUDATA overlap, and MMC3 scanline timing (`80e2486`, `64e7243`,
+  `2e859a2`, `9744984`, `4fa095b`, `8edba64`, `a2de74f`, `97e8ae2`,
+  `cc24ccf`).
+- Aligned APU frame IRQ and reset boundaries, length-counter timing, and DMC
+  sample status (`9b6dee3`, `f857372`, `48df297`, `25eac88`, `4ed6879`,
+  `d4359c9`).
+- Modeled staged DMA transfers and DMC register conflicts, corrected halted
+  read retry and DMA IRQ polling, and coalesced repeated OAM DMA writes
+  (`1a44e38`, `daf5e80`, `05742ab`, `1797642`, `b0cda88`).
+
+### CI and test harness
+
+- Split the ROM suite into bounded shards, moved allocation and frame-time
+  scaling checks into the heavy tier, and classified allocation timeouts
+  (`1fa99fa`, `f4ba72b`, `4bbf4fb`, `d4ec27f`). Derived CPU timeouts from
+  measured frame costs (`388dfb5`, `a7a8aae`, `222b072`).
+- Improved ROM result reporting and failure gates by aggregating shard errors,
+  reporting ratchet losses, and failing known contract failures
+  (`b2f3686`, `114accd`, `f27c06e`, `d6b42ba`).
+- Recorded per-ROM progress and compatibility results, drove ROM inputs from a
+  frame schedule, and updated accuracy ratchets (`9be7b22`, `73756d5`,
+  `eceea2a`, `8f9fa75`, `d8025d5`, `2a7a829`).
+- Updated CI timeout and shard gates and pinned gates to x86_64 Linux
+  (`a4a8535`, `9451a79`).
+- Fixed coverage runner dependencies and path ordering, validated ROM suite
+  worker counts, and prepared the paredit CLI cache for CI inspection
+  (`f7f4a32`, `89b4f9a`, `1231014`, `8d47e9e`, `427b6c6`).
+
 ## v0.3.0
 
 ### Breaking changes
