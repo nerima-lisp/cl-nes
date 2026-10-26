@@ -13,7 +13,10 @@
 (defun %nes-poll-irq-before-cycle! ()
   (let ((nes *nes-step-context*))
     (%nes-poll-irq-before-clock! nes)
-    (when (= (bus-cpu-access-count (nes-bus nes)) 1)
+    ;; DMC stalls add bus accesses but do not consume an instruction poll slot.
+    (when (= (- (bus-cpu-access-count (nes-bus nes))
+                *nes-step-dma-cycles*)
+             1)
       (setf *nes-step-first-irq-poll-seen-p* (nes-irq-seen-p nes)))))
 
 (defun %nes-poll-nmi-event! ()

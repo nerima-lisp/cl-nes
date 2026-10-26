@@ -115,6 +115,20 @@
                          nil))))))
         (expect cycles :to-be 11)
         (expect (cpu-pc cpu) :to-be #x9000))))
+  (it "does not count DMC stall cycles as the first instruction IRQ poll"
+    (let* ((nes (make-nes))
+           (bus (nes-bus nes))
+           (cl-nes::*nes-step-context* nes)
+           (cl-nes::*nes-step-first-irq-poll-seen-p* nil)
+           (cl-nes::*nes-step-dma-cycles* 0))
+      (setf (cl-nes::nes-irq-line-sample-p nes) t
+            (cl-nes::bus-cpu-access-count bus) 3
+            cl-nes::*nes-step-dma-cycles* 3)
+      (cl-nes::%nes-poll-irq-before-cycle!)
+      (expect cl-nes::*nes-step-first-irq-poll-seen-p* :to-be nil)
+      (setf (cl-nes::bus-cpu-access-count bus) 4)
+      (cl-nes::%nes-poll-irq-before-cycle!)
+      (expect cl-nes::*nes-step-first-irq-poll-seen-p* :to-be t)))
 
   (it "exercises NES interrupt eligibility and injected components"
     (let* ((cpu (make-cpu))

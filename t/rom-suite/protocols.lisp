@@ -365,7 +365,7 @@
                   (:name "PPU Palette RAM" :category :power-on-state
                    :address #x03ff :expected :pass))
     :items nil
-    :ratchet-pass-count 115
+    :ratchet-pass-count 117
     :ratchet-pass-items
     ("ROM is not writable" "RAM Mirroring" "PC Wraparound"
      "The Decimal Flag" "The B Flag" "Dummy read cycles" "Dummy write cycles"
@@ -394,7 +394,9 @@
      "$93   SHA indirect,Y" "$9F   SHA absolute,Y" "$9B   SHS absolute,Y"
      "$9C   SHY absolute,X" "$9E   SHX absolute,Y" "$8B   ANE Immediate"
      "Internal Data Bus"
-     "NMI Overlap IRQ" "DMA + Open Bus" "DMA + $2007 Read"
+     "NMI Overlap IRQ"
+     "NMI Overlap BRK"
+     "Interrupt flag latency" "DMA + Open Bus" "DMA + $2007 Read"
      "Length Counter" "Length Table" "Frame Counter IRQ" "Frame Counter 4-step"
      "Frame Counter 5-step" "Controller Strobing" "Controller Clocking"
      "Implied Dummy Reads"
