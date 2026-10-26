@@ -1,7 +1,6 @@
 (in-package #:cl-nes)
 
-(defun %nes-clock-cpu-cycle! (nes bus cycle-hook pre-cycle-hook
-                                  &optional (ppu-ticks 3))
+(defun %nes-clock-cpu-cycle! (nes bus cycle-hook pre-cycle-hook &optional (ppu-ticks 3))
   (when pre-cycle-hook
     (funcall pre-cycle-hook))
   (progn
@@ -12,10 +11,17 @@
   (let ((cartridge (bus-cartridge bus)))
     (when (and cartridge (cartridge-cpu-clock-required-p cartridge))
       (cartridge-clock-cpu! cartridge 1)))
-  (%bus-advance-dma-cycle! bus)
+  (let ((trace-clock
+          (when *dma-trace-hook*
+            (* 12 (incf *dma-trace-cycle-index*)))))
+    (when trace-clock
+      (%dma-trace-cycle! bus trace-clock :before-arbiter))
+    (%bus-advance-dma-cycle! bus)
+    (when trace-clock
+      (%dma-trace-cycle! bus trace-clock :after-arbiter)))
   (setf (bus-cpu-cycle-phase bus)
         (logxor (bus-cpu-cycle-phase bus) 1))
-  ;; The next cycle's CPU-visible poll consumes this post-clock sample.
+  ;; The next CPU-visible poll consumes this post-clock sample.
   (%nes-sample-irq-line! nes)
   (when cycle-hook
     (funcall cycle-hook)))
