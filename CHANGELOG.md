@@ -1,6 +1,6 @@
 # Changelog
 
-## v0.3.0
+## Unreleased
 
 ### Breaking changes
 
@@ -9,6 +9,14 @@
   transfer state, APU frame IRQ phase, and deferred `$4015` status-read clear.
   Loading rejects incompatible layouts, so version 2 states and states written
   with earlier version 3 layouts are not portable to this release.
+
+## v0.3.0
+
+### Breaking changes
+
+- Save-state loading now rejects incompatible format versions. Save states
+  produced with an incompatible version are not portable to this release
+  (`b538c4a`).
 
 ### Compatibility and cartridge support
 
