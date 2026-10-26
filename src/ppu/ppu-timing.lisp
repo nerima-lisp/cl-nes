@@ -246,12 +246,7 @@
                          oam2-data
                          (aref (ppu-secondary-oam ppu) (+ base 2))))
          (height (if (logbitp 5 (ppu-control ppu)) 16 8))
-         (row (mod
-               (- (if (= (ppu-scanline ppu) 261)
-                      0
-                      (1+ (ppu-scanline ppu)))
-                  (1+ y))
-               height))
+         (row (mod (- (ppu-scanline ppu) y) height))
          ;; Empty sprite slots still fetch pattern data from their dummy tile.
          (address
            (%sprite-pattern-address ppu tile attributes row)))

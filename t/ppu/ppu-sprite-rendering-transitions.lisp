@@ -42,7 +42,7 @@
       (expect (cl-nes::%ppu-sprite-pixel-at-dot sprite-ppu 8 1 t)
               :to-be #x21)
       (expect (logand (ppu-status sprite-ppu) #x40) :to-be #x40)))
-  (it "fetches a flipped lower tile of an 8x16 sprite on its data dots"
+  (it "fetches sprite pattern rows on visible and pre-render scanlines"
     (let ((ppu (make-ppu (make-fixture-cartridge))))
       (setf (ppu-control ppu) #x20
             (cl-nes::ppu-scanline ppu) 1
@@ -64,7 +64,24 @@
       (setf (cl-nes::ppu-dot ppu) 264)
       (cl-nes::%ppu-clock-pipeline! ppu)
       (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be #xA5)
-      (expect (aref (cl-nes::ppu-sprite-shift-high ppu) 0) :to-be #x5A)))
+      (expect (aref (cl-nes::ppu-sprite-shift-high ppu) 0) :to-be #x5A))
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (ppu-control ppu) 0
+            (cl-nes::ppu-scanline ppu) 261
+            (cl-nes::ppu-secondary-oam-count ppu) 1)
+      (setf (aref (cl-nes::ppu-secondary-oam ppu) 0) 0
+            (aref (cl-nes::ppu-secondary-oam ppu) 1) #xC6
+            (aref (cl-nes::ppu-secondary-oam ppu) 2) 0
+            (aref (cl-nes::ppu-secondary-oam ppu) 3) #x80)
+      (ppu-write-vram! ppu #x0C65 #x80)
+      (ppu-write-vram! ppu #x0C6D #x80)
+      (cl-nes::%ppu-sprite-fetch! ppu 261 0)
+      (expect (cl-nes::ppu-address-bus ppu) :to-be #x0C65)
+      (cl-nes::%ppu-sprite-fetch! ppu 262 0)
+      (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be #x80)
+      (cl-nes::%ppu-sprite-fetch! ppu 263 0)
+      (cl-nes::%ppu-sprite-fetch! ppu 264 0)
+      (expect (aref (cl-nes::ppu-sprite-shift-high ppu) 0) :to-be #x80)))
 
   (it "evaluates 8x8 sprites and selects the alternate pattern table"
     (let ((ppu (make-ppu (make-fixture-cartridge))))
