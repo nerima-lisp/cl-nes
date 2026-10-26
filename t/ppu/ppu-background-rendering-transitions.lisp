@@ -47,6 +47,37 @@
         (expect value :to-be #xA5)
         (expect data-p :to-be t))
       (expect (cl-nes::ppu-next-pattern-low ppu) :to-be #xA5)))
+  (it "feeds a background ALE latch back into an overlapping PPUDATA read"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (ppu-mask ppu) #x08
+            (cl-nes::ppu-vram-address ppu) #x2C1D
+            (cl-nes::ppu-dot ppu) 222)
+      (ppu-write-vram! ppu #x2C1E #xF0)
+      (ppu-write-vram! ppu #x2FC7 #xFF)
+      (ppu-write-vram! ppu #x0F03 #xA5)
+      (ppu-write-vram! ppu #x0FFF #xFF)
+      (ppu-write-vram! ppu #x2C1D 0)
+      (expect (cl-nes::ppu-read-vram ppu #x0F03) :to-be #xA5)
+      (expect (cl-nes::ppu-read-vram ppu #x0FFF) :to-be #xFF)
+      (expect (cl-nes::ppu-read-vram ppu #x2C1D) :to-be 0)
+      (ppu-read-register ppu 7 t)
+      (expect (cl-nes::ppu-read-buffer-pending-address ppu) :to-be #x2C1D)
+      (expect (cl-nes::ppu-read-buffer-pending-delay ppu) :to-be 7)
+      (ppu-tick! ppu 7)
+      (expect (cl-nes::ppu-dot ppu) :to-be 229)
+      (expect (cl-nes::ppu-read-buffer-pending-address ppu) :to-be #x2C1D)
+      (expect (cl-nes::ppu-read-buffer-pending-p ppu) :to-be nil)
+      (expect (cl-nes::ppu-background-fetch-address ppu) :to-be #x0F02)
+      (expect (cl-nes::ppu-address-latch-low ppu) :to-be #xFF)
+      (expect (cl-nes::ppu-address-bus ppu) :to-be #x0FFF)
+      (expect (cl-nes::ppu-read-buffer ppu) :to-be #xFF)
+      (expect (cl-nes::ppu-next-tile ppu) :to-be #xF0)
+      (expect (cl-nes::ppu-next-attribute ppu) :to-be 3)
+      (expect (cl-nes::ppu-next-pattern-low ppu) :to-be 0)
+      (ppu-tick! ppu)
+      (expect (cl-nes::ppu-dot ppu) :to-be 230)
+      (expect (cl-nes::ppu-address-bus ppu) :to-be #x0FFF)
+      (expect (cl-nes::ppu-next-pattern-low ppu) :to-be #xFF)))
 
   (it "selects MMC5 EXRAM tiles only in EXRAM mode one"
     (with-mmc5-cartridge (cart)
@@ -55,4 +86,21 @@
         (expect (cl-nes::%ppu-mmc5-exram-tile ppu 0 0) :to-be nil)
         (cl-nes::cartridge-write-expansion! cart #x5104 1)
         (expect (integerp (cl-nes::%ppu-mmc5-exram-tile ppu 0 0))
-                :to-be t)))))
+                :to-be t))))
+  (it "wraps the background pattern fetch at dot zero on the pre-render scanline"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (ppu-control ppu) #x10
+            (cl-nes::ppu-scanline ppu) 261
+            (cl-nes::ppu-dot ppu) 0
+            (cl-nes::ppu-next-tile ppu) 1
+            (cl-nes::ppu-background-fetch-phase ppu) 7
+            (cl-nes::ppu-background-fetch-address ppu) #x1018
+            (cl-nes::ppu-address-latch-low ppu) #x18)
+      (ppu-write-vram! ppu #x1018 #xB6)
+      (cl-nes::%ppu-background-fetch! ppu 0)
+      (expect (cl-nes::ppu-background-fetch-phase ppu) :to-be 0)
+      (expect (cl-nes::ppu-address-bus ppu) :to-be #x1018)
+      (expect (cl-nes::ppu-next-pattern-high ppu) :to-be #xB6)
+      (setf (cl-nes::ppu-dot ppu) 341)
+      (cl-nes::%ppu-clock-pipeline! ppu)
+      (expect (cl-nes::ppu-address-bus ppu) :to-be #x1010))))

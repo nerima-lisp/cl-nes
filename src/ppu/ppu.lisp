@@ -15,6 +15,10 @@ console reset for callers that want to preserve cartridge-backed state."
         (ppu-oam-address ppu) 0
         (ppu-vram-address ppu) 0
         (ppu-address-bus ppu) 0
+        (ppu-address-latch-low ppu) 0
+        (ppu-background-fetch-address ppu) 0
+        (ppu-background-fetch-phase ppu) 0
+        (ppu-last-background-read-value ppu) 0
         (ppu-temporary-address ppu) 0
         (ppu-fine-x ppu) 0
         (ppu-write-toggle ppu) nil
