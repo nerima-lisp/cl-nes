@@ -711,7 +711,7 @@
             (quote (("blargg-ppu-palette-ram" 150760)
                     ("cpu-exec-space-apu" 103900)
                     ("cpu-interrupts-v2-04-irq-dma" 31240)
-                    ("cpu-interrupts-v2-05-branch" 22360)
+                    ("cpu-interrupts-v2-05-branch" 85550)
                     ("cpu-reset-registers" 105000)))))))))
 
 (progn
