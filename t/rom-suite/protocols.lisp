@@ -366,7 +366,7 @@
                    :address #x03ff :expected :pass))
     :items nil
     :ratchet-pass-count 133
-    :ratchet-fail-items (("APU Register Activation" #x12))
+    :ratchet-fail-items (("APU Register Activation" #x1E))
     :ratchet-pass-items
     ("ROM is not writable" "RAM Mirroring" "PC Wraparound"
      "The Decimal Flag" "The B Flag" "Dummy read cycles" "Dummy write cycles"
