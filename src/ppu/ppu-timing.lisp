@@ -43,7 +43,12 @@
     (when (and was-rendering-p
                (not rendering-p)
                (< scanline 240)
-               ;; The early cutoff preserves the measured rows without changing overflow inputs.
+               ;; This calibration omits PPU revision and CPU/PPU phase, which
+               ;; affect corruption (NESdev Errata, “OAM and Sprites”). Dots
+               ;; 0–10 include AccuracyCoin Test 2's measured stops at 7, 9,
+               ;; and 10. Dots 11–63 remain unmodeled because hardware-tested
+               ;; blargg sprite_overflow_tests Test 5 stops at dot 16 without
+               ;; an observed corruption effect. This is not a full model.
                (or (<= 0 dot 10) (<= 256 dot 319)))
       ;; The OAM2 sprite index selects the corrupted primary OAM row.
       (setf (ppu-oam-corruption-pending-rows ppu)
