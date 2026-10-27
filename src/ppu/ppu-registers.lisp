@@ -25,13 +25,21 @@
       (aref (ppu-oam ppu) #xFC)
       (aref (ppu-secondary-oam ppu) (ppu-oam2-address ppu))))
 
-(defun %ppu-read-status-register (ppu bus-access-p)
+(defun %ppu-read-status-register (ppu bus-access-p &optional read-phase)
+  (when (eq read-phase :end)
+    (let ((value (logand (ppu-status ppu) #x60)))
+      (%ppu-drive-decay! ppu value #x60)
+      (return-from %ppu-read-status-register value)))
   (let* ((decay (%ppu-current-decay ppu))
+         (start-read-p (eq read-phase :start))
          (value (if bus-access-p
-                    (logior (logand (ppu-status ppu) #xE0)
-                            (logand decay #x1F))
+                    (if start-read-p
+                        (logior (logand (ppu-status ppu) #x80)
+                                (logand decay #x7F))
+                        (logior (logand (ppu-status ppu) #xE0)
+                                (logand decay #x1F)))
                     (ppu-status ppu))))
-    (%ppu-drive-decay! ppu value #xE0)
+    (%ppu-drive-decay! ppu value (if start-read-p #x80 #xE0))
     (prog1 value
       (setf (ppu-status ppu) (logand (ppu-status ppu) #x7F)
             (ppu-write-toggle ppu) nil)
@@ -157,9 +165,9 @@
       (%ppu-address-bus! ppu (ppu-vram-address ppu)))
     result))
 
-(defun ppu-read-register (ppu register &optional bus-access-p)
+(defun ppu-read-register (ppu register &optional bus-access-p read-phase)
   (case (logand register 7)
-    (2 (%ppu-read-status-register ppu bus-access-p))
+    (2 (%ppu-read-status-register ppu bus-access-p read-phase))
     (4 (%ppu-read-oam-data-register ppu bus-access-p))
     (7 (%ppu-read-data-register ppu bus-access-p))
     (otherwise (if bus-access-p

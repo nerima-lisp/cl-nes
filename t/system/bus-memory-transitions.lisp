@@ -211,15 +211,31 @@
       (expect (cl-nes::bus-oam-dma-index bus) :to-be 256))))
 
 (describe "Bus memory transitions"
-  (it "charges the PPU status read at the end of an active CPU access"
+  (it "captures status bit 7 at S+5 and bits 5-6 at S+12"
     (let* ((nes (make-nes))
            (bus (nes-bus nes))
-           (ppu (nes-ppu nes)))
+           (ppu (nes-ppu nes))
+           (start-clock (cl-nes::nes-master-clock nes))
+           (capture-clock nil)
+           (capture-status nil)
+           (capture-write-toggle t))
       (setf (cl-nes::ppu-dot ppu) 10
             (ppu-status ppu) #x80
+            (cl-nes::ppu-write-toggle ppu) t
             (cl-nes::bus-cpu-access-active-p bus) t
-            (cl-nes::bus-cpu-access-nes bus) nes)
-      (expect (bus-read bus #x2002) :to-be #x80)
+            (cl-nes::bus-cpu-access-nes bus) nes
+            (cl-nes::bus-cpu-access-pre-cycle-hook bus)
+            (lambda ()
+              (setf capture-clock (cl-nes::nes-master-clock nes)
+                    capture-status (ppu-status ppu)
+                    capture-write-toggle (cl-nes::ppu-write-toggle ppu)
+                    (ppu-status ppu) #x40)))
+      (expect (bus-read bus #x2002) :to-be #xC0)
+      (expect capture-clock :to-be (+ start-clock 5))
+      (expect capture-status :to-be 0)
+      (expect capture-write-toggle :to-be nil)
+      (expect (cl-nes::nes-master-clock nes) :to-be (+ start-clock 12))
+      (expect (ppu-status ppu) :to-be #x40)
       (expect (cl-nes::ppu-dot ppu) :to-be 13)
       (expect (cl-nes::bus-cpu-access-count bus) :to-be 1)))
   (it "samples OAMDATA during sprite evaluation at the end of an active CPU access"

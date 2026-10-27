@@ -110,12 +110,12 @@
     bus))
 
 
-(defun %bus-read-device (bus address)
+(defun %bus-read-device (bus address &optional ppu-read-phase)
   (cond
     ((< address #x2000)
      (aref (bus-ram bus) (mod address #x800)))
     ((< address #x4000)
-     (ppu-read-register (bus-ppu bus) (logand address 7) t))
+     (ppu-read-register (bus-ppu bus) (logand address 7) t ppu-read-phase))
     ((and (<= #x4000 address #x4015)
           (not (= address #x4014)))
      (apu-read-register (bus-apu bus) address))
@@ -209,20 +209,38 @@
           (bus-last-cpu-access-address bus) address
           (bus-dmc-read-replay-p bus) nil)
     (%bus-run-dmc-dma-on-read! bus address)
-    ;; A CPU read observes PPU status late in its cycle. Advance the PPU to
-    ;; the final two dots before the device read and charge the last dot below.
-    (let ((ppu-ticks 3))
+    (let* ((register (logand address 7))
+           (ppu-status-read-p
+             (and (bus-cpu-access-active-p bus)
+                  (<= #x2000 address #x3FFF)
+                  (= register 2)))
+           (read-start-ppu-ticks
+             (when ppu-status-read-p
+               (%nes-advance-master-ticks!
+                (bus-cpu-access-nes bus) 5)))
+           (ppu-ticks 3))
+      ;; Keep the legacy pre-read alignment for OAMDATA and low-memory aliases.
       (when (and (bus-cpu-access-active-p bus)
                  (< address #x4000)
-                 (or (= (logand address 7) 2) (= (logand address 7) 4)))
+                 (not ppu-status-read-p)
+                 (or (= register 2) (= register 4)))
         (ppu-tick! (bus-ppu bus) 2)
         (setf ppu-ticks 1))
-      (let ((value (%bus-read-value bus address)))
+      (let ((value (%bus-read-value bus address
+                                    (when ppu-status-read-p :start))))
         (%bus-cpu-access-before-cycle! bus)
-        (%bus-cpu-access! bus ppu-ticks)
-        (when update-internal-data-bus-p
-          (setf (bus-internal-data-bus bus) value))
-        value))))
+        (let ((read-end-value
+                (if ppu-status-read-p
+                    (%bus-cpu-access!
+                     bus (- ppu-ticks read-start-ppu-ticks) 7 2)
+                    (%bus-cpu-access! bus ppu-ticks))))
+          (when ppu-status-read-p
+            (setf value (logior (logand value #x9F)
+                                (logand read-end-value #x60))
+                  (bus-open-bus bus) value))
+          (when update-internal-data-bus-p
+            (setf (bus-internal-data-bus bus) value))
+          value)))))
 
 (defun bus-read (bus address) (%bus-read bus address t))
 
@@ -319,15 +337,18 @@
       (setf (bus-open-bus bus) value))
     value))
 
-(defun %bus-read-value (bus address)
-  (%bus-read-value-from-device bus address (%bus-read-device bus address)))
+(defun %bus-read-value (bus address &optional ppu-read-phase)
+  (%bus-read-value-from-device
+   bus address
+   (%bus-read-device bus address ppu-read-phase)))
 
 (defun %bus-cpu-access-before-cycle! (bus)
   (when (and (bus-cpu-access-active-p bus)
              (bus-cpu-access-pre-cycle-hook bus))
     (funcall (bus-cpu-access-pre-cycle-hook bus))))
 
-(defun %bus-cpu-access! (bus &optional (ppu-ticks 3))
+(defun %bus-cpu-access! (bus &optional (ppu-ticks 3) (master-ticks 12)
+                                 read-end-register)
   (if (bus-cpu-access-active-p bus)
       (progn
         (incf (bus-cpu-access-count bus))
@@ -335,7 +356,9 @@
                                bus
                                (bus-cpu-access-cycle-hook bus)
                                nil
-                               ppu-ticks))
+                               ppu-ticks
+                               master-ticks
+                               read-end-register))
       (let ((hook (bus-cpu-access-hook bus)))
         (when hook
           (funcall hook)))))
