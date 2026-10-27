@@ -103,6 +103,36 @@
         (setf (aref (ppu-oam ppu) (* sprite 4)) 0))
       (cl-nes::%ppu-evaluate-sprites! ppu 1)
       (expect (logand (ppu-status ppu) #x20) :to-be #x20)))
+  (it "counts sprite X during forced blank while holding its pattern shifters"
+    (let* ((ppu (make-ppu (make-fixture-cartridge)))
+           (secondary (cl-nes::ppu-secondary-oam ppu)))
+      (setf (cl-nes::ppu-scanline ppu) 1
+            (cl-nes::ppu-dot ppu) 0
+            (cl-nes::ppu-secondary-oam-count ppu) 1
+            (cl-nes::ppu-sprite-render-count ppu) 1
+            (aref secondary 0) 0
+            (aref secondary 1) 0
+            (aref secondary 2) 0
+            (aref secondary 3) 2)
+      (cl-nes::%ppu-sprite-fetch! ppu 264 0)
+      (expect (aref (cl-nes::ppu-sprite-x-counter ppu) 0) :to-be 2)
+      (expect (aref (cl-nes::ppu-sprite-counter-counting ppu) 0) :to-be t)
+      (setf (ppu-mask ppu) 0
+            (cl-nes::ppu-dot ppu) 339
+            (aref (cl-nes::ppu-sprite-shift-low ppu) 0) #xA5
+            (aref (cl-nes::ppu-sprite-shift-high ppu) 0) #x5A)
+      (cl-nes::%ppu-clock-pipeline! ppu nil)
+      (expect (aref (cl-nes::ppu-sprite-counter-counting ppu) 0) :to-be t)
+      (setf (cl-nes::ppu-dot ppu) 0)
+      (ppu-tick! ppu 3)
+      (expect (aref (cl-nes::ppu-sprite-x-counter ppu) 0) :to-be 0)
+      (expect (aref (cl-nes::ppu-sprite-counter-counting ppu) 0) :to-be nil)
+      (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be #xA5)
+      (expect (aref (cl-nes::ppu-sprite-shift-high ppu) 0) :to-be #x5A)
+      (setf (ppu-mask ppu) #x10)
+      (ppu-tick! ppu)
+      (expect (aref (cl-nes::ppu-sprite-shift-low ppu) 0) :to-be #x4A)
+      (expect (aref (cl-nes::ppu-sprite-shift-high ppu) 0) :to-be #xB4)))
   (it "does not flag overflow for offscreen Y=255 sprites"
     (let ((ppu (make-ppu (make-fixture-cartridge))))
       (dotimes (sprite 64)

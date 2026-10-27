@@ -357,7 +357,7 @@
          (when (< sprite (ppu-secondary-oam-count ppu))
            (setf (aref (ppu-sprite-shift-high ppu) sprite) value
                  (aref (ppu-sprite-x-counter ppu) sprite) x
-                 (aref (ppu-sprite-counter-counting ppu) sprite) nil
+                 (aref (ppu-sprite-counter-counting ppu) sprite) t
                  (aref (ppu-sprite-attributes ppu) sprite) attributes)
            (when (logbitp 6 attributes)
              (setf (aref (ppu-sprite-shift-low ppu) sprite)
