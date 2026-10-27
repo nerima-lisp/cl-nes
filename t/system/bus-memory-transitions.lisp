@@ -82,6 +82,7 @@
            (apu (cl-nes::bus-apu bus)))
       (setf (cl-nes::bus-last-cpu-access-kind bus) :read
             (cl-nes::bus-last-cpu-access-address bus) #x4001
+            (cl-nes::bus-open-bus bus) #x00
             (cl-nes::bus-oam-dma-active-p bus) t
             (cl-nes::bus-oam-dma-page bus) #x02
             (cl-nes::bus-oam-dma-index bus) #x15
@@ -90,8 +91,26 @@
             (aref (cl-nes::bus-ram bus) #x0215) #xA5
             (cl-nes::apu-frame-irq-pending-p apu) t)
       (cl-nes::%dma-arbitrate-cycle! bus)
-      (expect (cl-nes::bus-oam-dma-data bus) :to-be #xA5)
-      (expect (cl-nes::apu-frame-irq-clear-pending-p apu) :to-be t))
+      (expect (cl-nes::bus-oam-dma-data bus) :to-be #x40)
+      (expect (cl-nes::apu-frame-irq-clear-pending-p apu) :to-be t)
+      (expect (cl-nes::bus-open-bus bus) :to-be #xA5))
+    (let* ((nes (make-nes :cartridge (make-fixture-cartridge)))
+           (bus (nes-bus nes))
+           (apu (cl-nes::bus-apu bus)))
+      (setf (cl-nes::bus-last-cpu-access-kind bus) :read
+            (cl-nes::bus-last-cpu-access-address bus) #x4001
+            (cl-nes::bus-open-bus bus) #xFF
+            (cl-nes::bus-internal-data-bus bus) #x02
+            (cl-nes::bus-oam-dma-active-p bus) t
+            (cl-nes::bus-oam-dma-page bus) #x02
+            (cl-nes::bus-oam-dma-index bus) #x15
+            (cl-nes::bus-oam-dma-stage bus) :get
+            (cl-nes::bus-cpu-cycle-phase bus) 0
+            (aref (cl-nes::bus-ram bus) #x0215) #xFF
+            (cl-nes::apu-triangle-length-counter (cl-nes::apu-triangle apu)) 1)
+      (cl-nes::%dma-arbitrate-cycle! bus)
+      (expect (cl-nes::bus-oam-dma-data bus) :to-be #x24)
+      (expect (cl-nes::bus-open-bus bus) :to-be #xFF))
     (let* ((nes (make-nes :cartridge (make-fixture-cartridge)))
            (bus (nes-bus nes))
            (apu (cl-nes::bus-apu bus)))

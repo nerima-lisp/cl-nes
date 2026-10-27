@@ -106,7 +106,8 @@
 (defun %bus-read-dma-source (bus address
                                  &key
                                  internal-address-predicate
-                                 internal-value-when-source-unmapped-p)
+                                 internal-value-when-source-unmapped-p
+                                 internal-apu-status-read-first-p)
   (flet ((read-internal-address (internal-address)
            (if (or (<= #x4000 internal-address #x4013)
                    (= internal-address #x4015)
@@ -119,6 +120,21 @@
            (source-io-address-p (<= #x4000 address #x401F))
            (held-io-suppresses-source-p
             (and source-io-address-p (not internal-io-read-p)))
+           (internal-address
+            (when (and internal-io-read-p (not source-io-address-p))
+              (logior #x4000 (logand address #x001F))))
+           (internal-read-p
+            (and internal-address
+                 (or (null internal-address-predicate)
+                     (funcall internal-address-predicate internal-address))))
+           (internal-apu-status-value
+            (when (and internal-apu-status-read-first-p
+                       internal-read-p
+                       (= internal-address #x4015))
+              ;; On an OAM conflict, bit 5 comes from the previous external bus read.
+              (let ((value (read-internal-address internal-address)))
+                (logior (logand value #xDF)
+                        (logand (bus-open-bus bus) #x20)))))
            (source-device-value
             (unless held-io-suppresses-source-p
               (%bus-read-device bus address)))
@@ -126,24 +142,21 @@
             (if held-io-suppresses-source-p
                 (bus-open-bus bus)
                 (%bus-read-value-from-device bus address source-device-value)))
-           (internal-address
-            (when (and internal-io-read-p (not source-io-address-p))
-              (logior #x4000 (logand address #x001F))))
            (internal-value
-            (when
-                (and internal-address
-                     (or (null internal-address-predicate)
-                         (funcall internal-address-predicate internal-address)))
-              (read-internal-address internal-address)))
+            (or internal-apu-status-value
+                (when internal-read-p
+                  (read-internal-address internal-address))))
            (dma-source-value
-            (if (and internal-value-when-source-unmapped-p
-                     (null source-device-value)
-                     internal-address
-                     internal-value)
-                (progn
-                  (setf (bus-open-bus bus) internal-value)
-                  internal-value)
-                source-value)))
+            (cond
+              ((and internal-value-when-source-unmapped-p
+                    (null source-device-value)
+                    internal-address
+                    internal-value)
+               (setf (bus-open-bus bus) internal-value)
+               internal-value)
+              (internal-apu-status-value
+               internal-apu-status-value)
+              (t source-value))))
       (values dma-source-value internal-value))))
 (defun %bus-read-dmc-sample (bus address)
   (flet ((conflict-address-p (conflict-address)

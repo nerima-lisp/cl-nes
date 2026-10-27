@@ -181,8 +181,11 @@
                                  (bus-oam-dma-index bus))))
                  (setf (bus-oam-dma-data bus)
                        (logand
- (%bus-read-dma-source bus address :internal-value-when-source-unmapped-p t)
- #xFF)
+                         (%bus-read-dma-source
+                           bus address
+                           :internal-value-when-source-unmapped-p t
+                           :internal-apu-status-read-first-p t)
+                         #xFF)
                        (bus-oam-dma-stage bus) :put
                        oam-access-p t))))
           (:put

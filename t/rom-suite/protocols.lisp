@@ -365,8 +365,8 @@
                   (:name "PPU Palette RAM" :category :power-on-state
                    :address #x03ff :expected :pass))
     :items nil
-    :ratchet-pass-count 133
-    :ratchet-fail-items (("APU Register Activation" #x1E))
+    :ratchet-pass-count 134
+    :ratchet-fail-items nil
     :ratchet-pass-items
     ("ROM is not writable" "RAM Mirroring" "PC Wraparound"
      "The Decimal Flag" "The B Flag" "Dummy read cycles" "Dummy write cycles"
@@ -399,7 +399,8 @@
      "NMI Overlap BRK"
      "Interrupt flag latency" "DMA + Open Bus" "DMA + $2007 Read"
      "Length Counter" "Length Table" "Frame Counter IRQ" "Frame Counter 4-step"
-     "Frame Counter 5-step" "Controller Strobing" "Controller Clocking"
+     "Frame Counter 5-step" "APU Register Activation" "Controller Strobing"
+     "Controller Clocking"
      "Implied Dummy Reads"
      "Instruction Timing" "Branch Dummy Reads" "JSR Edge Cases"
      "CHR ROM is not writable" "PPU Register Mirroring"
