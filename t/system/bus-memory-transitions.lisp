@@ -936,3 +936,91 @@
           (expect (mapcar (lambda (event) (getf event :master-clock))
                           tick-events)
                   :to-equal (list 12 24 36)))))))
+(describe "DMC/OAM bus arbitration"
+  (it "preempts and realigns OAM while holding the CPU address through a bus conflict"
+    (let* ((controller (make-controller))
+           (cartridge (make-fixture-cartridge
+                       :program (append (make-list #x16 :initial-element 0)
+                                        (list #xFF))
+                       :start #xC000))
+           (nes (make-nes :cartridge cartridge
+                          :controller-1 controller))
+           (bus (nes-bus nes))
+           (dmc (cl-nes::apu-dmc (nes-apu nes)))
+           (get-event nil)
+           (oam-latch nil))
+      (controller-set-buttons! controller 1)
+      (controller-write! controller 1)
+      (controller-write! controller 0)
+      (setf (cl-nes::bus-cpu-access-active-p bus) t
+            (cl-nes::bus-cpu-access-nes bus) nes
+            (cl-nes::bus-cpu-cycle-phase bus) 0
+            (cl-nes::bus-open-bus bus) 0
+            (cl-nes::bus-oam-dma-active-p bus) t
+            (cl-nes::bus-oam-dma-page bus) #x40
+            (cl-nes::bus-oam-dma-index bus) #x14
+            (cl-nes::bus-oam-dma-stage bus) :get
+            (cl-nes::bus-oam-dma-data bus) #x5A
+            (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-current-address dmc) #xC016
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bytes-remaining dmc) 1
+            (cl-nes::apu-dmc-load-pending-p dmc) nil
+            (cl-nes::apu-dmc-timer dmc) 0)
+      (let ((cl-nes::*dma-trace-cycle-index* 0)
+            (cl-nes::*dma-trace-hook*
+              (lambda (event)
+                (when (eq (getf event :event) :dmc-get)
+                  (setf get-event event)))))
+        (bus-read bus #x4000)
+        (expect (cl-nes::bus-dmc-dma-kind bus) :to-be :reload)
+        (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :ready)
+        (expect (cl-nes::bus-oam-dma-stage bus) :to-be :put)
+        (expect (cl-nes::bus-oam-dma-index bus) :to-be #x14)
+        (expect (cl-nes::bus-last-cpu-access-address bus) :to-be #x4000)
+
+        (bus-read bus #x4000)
+        (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :dummy)
+        (expect (cl-nes::bus-oam-dma-stage bus) :to-be :get)
+        (expect (cl-nes::bus-oam-dma-index bus) :to-be #x15)
+        (expect (cl-nes::bus-last-cpu-access-address bus) :to-be #x4000)
+
+        (cl-nes::%nes-clock-cpu-cycle! nes bus nil nil)
+        (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :alignment)
+        (expect (cl-nes::bus-oam-dma-stage bus) :to-be :put)
+        (expect (cl-nes::bus-oam-dma-index bus) :to-be #x15)
+        (expect (cl-nes::bus-last-cpu-access-address bus) :to-be #x4000)
+
+        (cl-nes::%nes-clock-cpu-cycle! nes bus nil nil)
+        (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :get)
+        (expect (cl-nes::bus-oam-dma-stage bus) :to-be :get)
+        (expect (cl-nes::bus-oam-dma-index bus) :to-be #x16)
+        (expect (cl-nes::bus-last-cpu-access-address bus) :to-be #x4000)
+        (setf oam-latch (cl-nes::bus-oam-dma-data bus))
+
+        (cl-nes::%nes-clock-cpu-cycle! nes bus nil nil)
+        (expect (getf get-event :dmc-get-address) :to-be #xC016)
+        (expect (getf get-event :dmc-get-value) :to-be #xE1)
+        (expect (getf get-event :cpu-held-address) :to-be #x4000)
+        (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :idle)
+        (expect (cl-nes::apu-dmc-sample-buffer dmc) :to-be #xE1)
+        (expect (cl-nes::bus-oam-dma-stage bus) :to-be :get)
+        (expect (cl-nes::bus-oam-dma-index bus) :to-be #x16)
+        (expect (cl-nes::bus-oam-dma-data bus) :to-be oam-latch)
+        (expect (cl-nes::bus-dma-cycle-preempted-p bus) :to-be t)
+        (expect (cl-nes::controller-read-count controller) :to-be 1)
+        (expect (cl-nes::bus-last-cpu-access-address bus) :to-be #x4000)
+
+        (cl-nes::%nes-clock-cpu-cycle! nes bus nil nil)
+        (expect (cl-nes::bus-oam-dma-stage bus) :to-be :get)
+        (expect (cl-nes::bus-oam-dma-index bus) :to-be #x16)
+        (expect (cl-nes::bus-oam-dma-data bus) :to-be oam-latch)
+        (expect (cl-nes::controller-read-count controller) :to-be 1)
+        (expect (cl-nes::bus-last-cpu-access-address bus) :to-be #x4000)
+
+        (cl-nes::%nes-clock-cpu-cycle! nes bus nil nil)
+        (expect (cl-nes::bus-oam-dma-stage bus) :to-be :put)
+        (expect (cl-nes::bus-oam-dma-index bus) :to-be #x16)
+        (expect (cl-nes::bus-oam-dma-data bus) :to-be #xE0)
+        (expect (cl-nes::controller-read-count controller) :to-be 2)
+        (expect (cl-nes::bus-last-cpu-access-address bus) :to-be #x4000)))))
