@@ -265,4 +265,36 @@
             (cl-nes::ppu-oam2-address ppu) #x18
             (aref secondary #x18) #x06)
       (expect (ppu-read-register ppu 4 t) :to-be #x06)
-      (expect (cl-nes::ppu-secondary-oam-data-latch ppu) :to-be #x06))))
+      (expect (cl-nes::ppu-secondary-oam-data-latch ppu) :to-be #x06)))
+  (it "resets OAM2 at dot 339 using the previous rendering dot"
+    (let ((ppu (make-ppu (make-fixture-cartridge))))
+      (setf (cl-nes::ppu-scanline ppu) 196
+            (cl-nes::ppu-dot ppu) 337
+            (cl-nes::ppu-rendering-mask-valid-p ppu) t
+            (cl-nes::ppu-rendering-mask ppu) #x1E
+            (cl-nes::ppu-rendering-mask-pending ppu) 0
+            (cl-nes::ppu-rendering-mask-delay ppu) 2
+            (cl-nes::ppu-oam2-address ppu) #x1F
+            (cl-nes::ppu-oam2-increment-suppressed-p ppu) t)
+      (ppu-tick! ppu 2)
+      (expect (cl-nes::ppu-dot ppu) :to-be 339)
+      (expect (cl-nes::ppu-oam2-address ppu) :to-be 0)
+      (expect (cl-nes::ppu-oam2-increment-suppressed-p ppu) :to-be nil)
+      (setf (cl-nes::ppu-dot ppu) 337
+            (cl-nes::ppu-rendering-mask ppu) 0
+            (cl-nes::ppu-rendering-mask-pending ppu) 0
+            (cl-nes::ppu-rendering-mask-delay ppu) 0
+            (cl-nes::ppu-oam2-address ppu) #x1F
+            (cl-nes::ppu-oam2-increment-suppressed-p ppu) t)
+      (ppu-tick! ppu 2)
+      (expect (cl-nes::ppu-dot ppu) :to-be 339)
+      (expect (cl-nes::ppu-oam2-address ppu) :to-be #x1F)
+      (expect (cl-nes::ppu-oam2-increment-suppressed-p ppu) :to-be t)
+      (setf (cl-nes::ppu-scanline ppu) 241
+            (cl-nes::ppu-dot ppu) 337
+            (cl-nes::ppu-oam2-address ppu) #x1F
+            (cl-nes::ppu-oam2-increment-suppressed-p ppu) t)
+      (ppu-tick! ppu 2)
+      (expect (cl-nes::ppu-dot ppu) :to-be 339)
+      (expect (cl-nes::ppu-oam2-address ppu) :to-be #x1F)
+      (expect (cl-nes::ppu-oam2-increment-suppressed-p ppu) :to-be t))))

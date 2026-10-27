@@ -16,6 +16,8 @@
    (rendering-mask-pending 0 (unsigned-byte 8))
    (rendering-mask-delay 0 fixnum)
    (rendering-mask-valid-p nil nil)
+   ;; Dot 339 observes the rendering gate from the previous dot.
+   (rendering-scanline-previous-p nil nil)
    (status 0 (unsigned-byte 8))
    (status-history (make-array 2 :initial-element 0) vector)
    (oam-address 0 (unsigned-byte 8))
