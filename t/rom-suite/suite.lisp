@@ -66,6 +66,23 @@
                                      (eq :pass (getf item :kind))))
                               items)
                    collect name))
+         (changed-fail-items
+           (loop for (name expected-value) in
+                   (getf contract :ratchet-fail-items)
+                 for item = (find name items
+                                  :key (lambda (item) (getf item :name))
+                                  :test #'string=)
+                 unless (and item
+                             (eq :fail (getf item :kind))
+                             (eql expected-value (getf item :value)))
+                   collect
+                     (format nil
+                             "item changed: ~A expected (:fail $~2,'0X), observed ~S"
+                             name expected-value
+                             (if item
+                                 (list (getf item :kind)
+                                       (getf item :value))
+                                 :missing))))
          (failures nil))
     (when (and ratchet-count (< pass-count ratchet-count))
       (push (format nil "pass count ~D < baseline ~D"
@@ -73,6 +90,8 @@
             failures))
     (dolist (name lost-items)
       (push (format nil "item lost: ~A" name) failures))
+    (dolist (failure changed-fail-items)
+      (push failure failures))
     (when failures
       (error "accuracy ratchet regression: ~A~%~{~A~%~}"
              (getf contract :id)
@@ -741,6 +760,38 @@
                        "item lost: NMI Overlap IRQ~%item lost: Misaligned OAM behavior")
                message)))
         :to-be t))))
+  (describe-each
+   (("recorded failure" #x12 :fail nil)
+    ("changed failure value" #x14 :fail t)
+    ("unexpected pass" #x01 :pass t))
+   "AccuracyCoin failure ratchet ~A"
+   (case-name value kind should-error)
+   (it "guards APU Register Activation against an unapproved outcome"
+     (let ((message
+             (handler-case
+                 (progn
+                   (enforce-accuracy-ratchet
+                    '(:id "accuracy-coin"
+                      :state :known-fail
+                      :ratchet-pass-count 0
+                      :ratchet-fail-items (("APU Register Activation" #x12))
+                      :ratchet-pass-items nil)
+                    (list :passed nil
+                          :pass-count (if (eq kind :pass) 1 0)
+                          :items
+                          (list (list :name "APU Register Activation"
+                                      :kind kind
+                                      :value value))))
+                   nil)
+               (error (condition)
+                 (princ-to-string condition)))))
+       (if should-error
+           (cl-weave:expect (not (null
+                         (and (stringp message)
+                              (search "item changed: APU Register Activation expected (:fail $12)"
+                                      message))))
+                   :to-be t)
+           (cl-weave:expect message :to-be nil)))))
   (describe-each
    (("later units"))
    "ROM suite failure collection ~A"
