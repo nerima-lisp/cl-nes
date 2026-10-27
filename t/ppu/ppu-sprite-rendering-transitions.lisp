@@ -241,4 +241,28 @@
             do (setf (cl-nes::ppu-dot ppu) dot)
             (expect (ppu-read-register ppu 4 t) :to-be #xFF))
       (setf (cl-nes::ppu-dot ppu) 281)
-      (expect (ppu-read-register ppu 4 t) :to-be #xFF))))
+      (expect (ppu-read-register ppu 4 t) :to-be #xFF)))
+  (it "copies out-of-range Y bytes to OAM2 without advancing its address"
+    (let* ((ppu (make-ppu (make-fixture-cartridge)))
+           (oam (ppu-oam ppu))
+           (secondary (cl-nes::ppu-secondary-oam ppu)))
+      (fill oam #xFF)
+      (setf (aref oam #xFC) #x5A)
+      (loop for dot from 65 to 192
+            do (cl-nes::%ppu-evaluate-sprites! ppu 0 dot))
+      (expect (cl-nes::ppu-secondary-oam-count ppu) :to-be 0)
+      (expect (aref secondary 0) :to-be #x5A)
+      (expect (cl-nes::ppu-oam2-address ppu) :to-be 0)
+      (expect (cl-nes::ppu-secondary-oam-data-latch ppu) :to-be #x5A)
+      (expect (cl-nes::ppu-sprite-evaluation-secondary-oam-write-p ppu)
+              :to-be t)))
+  (it "reads OAM2 at its pointer outside sprite fetch"
+    (let* ((ppu (make-ppu (make-fixture-cartridge)))
+           (secondary (cl-nes::ppu-secondary-oam ppu)))
+      (setf (ppu-mask ppu) #x10
+            (cl-nes::ppu-scanline ppu) 0
+            (cl-nes::ppu-dot ppu) 324
+            (cl-nes::ppu-oam2-address ppu) #x18
+            (aref secondary #x18) #x06)
+      (expect (ppu-read-register ppu 4 t) :to-be #x06)
+      (expect (cl-nes::ppu-secondary-oam-data-latch ppu) :to-be #x06))))

@@ -309,19 +309,20 @@
                ;; Step 4 keeps reading OAM[n][0] and advances only N.
                (set-oam-address (logand #xFC (+ address 4))))
               ((< count 8)
-               (if (in-range-p value)
-                   (progn
-                     (%ppu-oam2-write! ppu value)
-                     (setf (aref (ppu-sprite-evaluated-indexes ppu) count)
-                           (if (and (= dot 66)
-                                    (zerop count)
-                                    (logbitp 1 (ppu-sprite-evaluation-index ppu)))
-                               (logior #x40 (ldb (byte 6 2) address))
-                               (ldb (byte 6 2) address))
-                           (ppu-secondary-oam-count ppu) (1+ count)
-                           (ppu-sprite-evaluation-m ppu) 1)
-                     (set-oam-address (1+ address)))
-                   (set-oam-address (logand #xFF #xFC (+ address 4)))))
+               (let ((in-range-p (in-range-p value)))
+                 (%ppu-oam2-write! ppu value in-range-p)
+                 (if in-range-p
+                     (progn
+                       (setf (aref (ppu-sprite-evaluated-indexes ppu) count)
+                             (if (and (= dot 66)
+                                      (zerop count)
+                                      (logbitp 1 (ppu-sprite-evaluation-index ppu)))
+                                 (logior #x40 (ldb (byte 6 2) address))
+                                 (ldb (byte 6 2) address))
+                             (ppu-secondary-oam-count ppu) (1+ count)
+                             (ppu-sprite-evaluation-m ppu) 1)
+                       (set-oam-address (1+ address)))
+                   (set-oam-address (logand #xFF #xFC (+ address 4))))))
               (t
                (let ((in-range-p (in-range-p value)))
                  (when in-range-p

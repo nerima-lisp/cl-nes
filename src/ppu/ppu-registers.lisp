@@ -10,11 +10,12 @@
               (ppu-oam2-increment-suppressed-p ppu) t)
         (incf (ppu-oam2-address ppu))))
   (ppu-oam2-address ppu))
-(defun %ppu-oam2-write! (ppu value)
+(defun %ppu-oam2-write! (ppu value &optional (increment-p t))
   (setf (aref (ppu-secondary-oam ppu) (ppu-oam2-address ppu)) value
         (ppu-secondary-oam-data-latch ppu) value
         (ppu-sprite-evaluation-secondary-oam-write-p ppu) t)
-  (%ppu-oam2-increment! ppu)
+  (when increment-p
+    (%ppu-oam2-increment! ppu))
   value)
 (defun %ppu-oam2-read-data (ppu)
   (if (and (< (ppu-secondary-oam-count ppu) 8)
@@ -95,7 +96,9 @@
                   (first-empty-sprite-p #xFF)
                   (t (aref (ppu-secondary-oam ppu) oam2-index)))))
              ((or secondary-bus-p secondary-full-read-p)
-              (aref (ppu-secondary-oam ppu) 0))
+              (if secondary-bus-p
+                  (aref (ppu-secondary-oam ppu) (ppu-oam2-address ppu))
+                  (aref (ppu-secondary-oam ppu) 0)))
              (evaluation-bus-p
               ;; CPU reads precede this cycle's PPU ticks, so the latch
               ;; holds the primary OAM byte read on the preceding odd dot.
