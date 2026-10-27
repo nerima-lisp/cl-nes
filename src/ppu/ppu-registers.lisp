@@ -11,7 +11,9 @@
         (incf (ppu-oam2-address ppu))))
   (ppu-oam2-address ppu))
 (defun %ppu-oam2-write! (ppu value)
-  (setf (aref (ppu-secondary-oam ppu) (ppu-oam2-address ppu)) value)
+  (setf (aref (ppu-secondary-oam ppu) (ppu-oam2-address ppu)) value
+        (ppu-secondary-oam-data-latch ppu) value
+        (ppu-sprite-evaluation-secondary-oam-write-p ppu) t)
   (%ppu-oam2-increment! ppu)
   value)
 (defun %ppu-oam2-read-data (ppu)
@@ -43,7 +45,7 @@
             (setf (ppu-nmi-delay-p ppu) 0))))))
 
 (defun %ppu-read-oam-data-register (ppu bus-access-p)
-  (let* ((oam-address (ppu-oam-address ppu))
+  (let* ((oam-address (ppu-primary-oam-bus-address ppu))
          (dot (ppu-dot ppu))
          (rendering-p
            (and (or (< (ppu-scanline ppu) +ppu-height+)
@@ -107,7 +109,11 @@
                 (not secondary-full-read-p)
                 (= (logand oam-address 3) 2)))
          (value (if masked-p (logand raw #xE3) raw)))
-    (%ppu-drive-decay! ppu value)
+    (progn
+      (%ppu-drive-decay! ppu value)
+      (setf (ppu-primary-oam-bus-address ppu) oam-address)
+      (when (or sprite-fetch-p secondary-bus-p secondary-full-read-p)
+        (setf (ppu-secondary-oam-data-latch ppu) raw)))
     value))
 
 (defun %ppu-read-data-register (ppu &optional bus-access-p)
@@ -232,7 +238,8 @@
             (mod (+ (ppu-oam-address ppu) 4) 256))
       (setf (aref (ppu-oam ppu) (ppu-oam-address ppu)) value
             (ppu-oam-address ppu)
-            (mod (1+ (ppu-oam-address ppu)) 256))))
+            (mod (1+ (ppu-oam-address ppu)) 256)))
+  (setf (ppu-primary-oam-bus-address ppu) (ppu-oam-address ppu)))
 
 (defun %ppu-write-address-register! (ppu value cpu-access-p)
   (let ((second-write-p (ppu-write-toggle ppu)))
@@ -257,7 +264,9 @@
   (case (logand register 7)
     (0 (%ppu-write-control-register! ppu value cpu-access-p))
     (1 (%ppu-write-mask-register! ppu value))
-    (3 (setf (ppu-oam-address ppu) value))
+    (3 (setf (ppu-oam-address ppu) value
+             (ppu-primary-oam-bus-address ppu) value
+             (ppu-sprite-evaluation-address-latch ppu) value))
     (4 (%ppu-write-oam-data-register! ppu value cpu-access-p))
     (5 (%write-scroll! ppu value))
     (6 (%ppu-write-address-register! ppu value cpu-access-p))

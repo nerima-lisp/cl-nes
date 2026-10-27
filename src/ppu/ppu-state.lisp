@@ -100,7 +100,13 @@
    (sprite-indexes (make-array 8 :element-type '(unsigned-byte 8) :initial-element 0)
                    vector)
    (sprite-evaluated-indexes (make-array 8 :element-type '(unsigned-byte 8) :initial-element 0)
-                             vector))
+                           vector)
+   (sprite-evaluation-phase 0 fixnum)
+   (primary-oam-bus-address 0 (unsigned-byte 8))
+   (sprite-evaluation-address-latch 0 (unsigned-byte 8))
+   (secondary-oam-data-latch #xFF (unsigned-byte 8))
+   (sprite-evaluation-overflow-p nil nil)
+   (sprite-evaluation-secondary-oam-write-p nil nil))
   :constructor %make-ppu
   :exclude (cartridge))
 

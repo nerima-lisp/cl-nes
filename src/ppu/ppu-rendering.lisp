@@ -243,16 +243,32 @@
     (logior color (ash (ldb (byte 3 5) mask) 6))))
 
 (defun %ppu-evaluate-sprites! (ppu scanline &optional (dot nil dot-supplied-p))
+  (when dot-supplied-p
+    (setf (ppu-sprite-evaluation-secondary-oam-write-p ppu) nil
+          (ppu-sprite-evaluation-phase ppu)
+          (cond ((<= 1 dot 64) 1)
+                ((<= 65 dot 256) 2)
+                ((<= 257 dot 320) 3)
+                ((<= 321 dot 340) 4)
+                (t 0)))
+    (when (<= 1 dot 65)
+      (setf (ppu-secondary-oam-data-latch ppu) #xFF))
+    (when (and (<= 1 dot 64) (oddp dot))
+      (%ppu-oam2-increment! ppu)))
   (unless dot-supplied-p
     (loop for evaluation-dot from 65 to 256
           do (%ppu-evaluate-sprites! ppu scanline evaluation-dot)))
   (when (and dot-supplied-p (= dot 65))
+    (%ppu-oam2-reset! ppu)
     (fill (ppu-secondary-oam ppu) #xFF)
     (setf (ppu-secondary-oam-count ppu) 0
           (ppu-sprite-evaluation-n ppu)
           (ldb (byte 6 2) (ppu-oam-address ppu))
           (ppu-sprite-evaluation-m ppu) 0
           (ppu-sprite-evaluation-latch ppu) #xFF
+          (ppu-primary-oam-bus-address ppu) (ppu-oam-address ppu)
+          (ppu-sprite-evaluation-address-latch ppu) (ppu-oam-address ppu)
+          (ppu-sprite-evaluation-overflow-p ppu) nil
           (ppu-sprite-evaluation-done-p ppu) nil
           (ppu-sprite-evaluation-index ppu)
           (if (zerop (ppu-oam-address ppu)) 0 2)))
@@ -261,6 +277,7 @@
                     (address (logand address #xFF))
                     (n (ldb (byte 6 2) address)))
                (setf (ppu-oam-address ppu) address
+                     (ppu-primary-oam-bus-address ppu) address
                      (ppu-sprite-evaluation-n ppu) n)
                (when (and (= (ldb (byte 6 2) old-address) 63) (< address old-address))
                  (setf (ppu-sprite-evaluation-done-p ppu) t))))
@@ -272,8 +289,11 @@
     (when (and dot-supplied-p
                (<= 65 dot 256))
       (if (oddp dot)
-          (setf (ppu-sprite-evaluation-latch ppu)
-                (aref (ppu-oam ppu) (ppu-oam-address ppu)))
+          (let ((address (ppu-oam-address ppu)))
+            (setf (ppu-primary-oam-bus-address ppu) address
+                  (ppu-sprite-evaluation-address-latch ppu) address
+                  (ppu-sprite-evaluation-latch ppu)
+                  (aref (ppu-oam ppu) address)))
           (let* ((count (ppu-secondary-oam-count ppu))
                  (address (ppu-oam-address ppu))
                  (m (ppu-sprite-evaluation-m ppu))
@@ -291,26 +311,23 @@
               ((< count 8)
                (if (in-range-p value)
                    (progn
-                     (setf (aref (ppu-secondary-oam ppu) (ppu-oam2-address ppu)) value
-                           (aref (ppu-sprite-evaluated-indexes ppu) count) (if (and (= dot 66)
-                                                                                    (zerop count)
-                                                                                    (logbitp 1
-                                                                                             (ppu-sprite-evaluation-index
-                                                                                              ppu)))
-                                                                               (logior #x40 (ldb (byte 6 2) address))
-                                                                               (ldb (byte 6 2) address))
+                     (%ppu-oam2-write! ppu value)
+                     (setf (aref (ppu-sprite-evaluated-indexes ppu) count)
+                           (if (and (= dot 66)
+                                    (zerop count)
+                                    (logbitp 1 (ppu-sprite-evaluation-index ppu)))
+                               (logior #x40 (ldb (byte 6 2) address))
+                               (ldb (byte 6 2) address))
                            (ppu-secondary-oam-count ppu) (1+ count)
                            (ppu-sprite-evaluation-m ppu) 1)
-                     (progn
-                       (%ppu-oam2-increment! ppu)
-                       (set-oam-address (1+ address))))
-                   (set-oam-address
-                    (logand #xFF #xFC (+ address 4)))))
+                     (set-oam-address (1+ address)))
+                   (set-oam-address (logand #xFF #xFC (+ address 4)))))
               (t
                (let ((in-range-p (in-range-p value)))
                  (when in-range-p
                    (setf (ppu-status ppu)
-                         (logior (ppu-status ppu) #x20)))
+                         (logior (ppu-status ppu) #x20)
+                         (ppu-sprite-evaluation-overflow-p ppu) t))
                  (set-oam-address
                   (+ address
                      (if (or in-range-p (= (logand address 3) 3))

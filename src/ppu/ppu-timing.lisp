@@ -282,11 +282,19 @@
          (attributes (if frozen-p
                          oam2-data
                          (aref (ppu-secondary-oam ppu) (+ base 2))))
+         (x (if frozen-p
+                oam2-data
+                (aref (ppu-secondary-oam ppu) (+ base 3))))
          (height (if (logbitp 5 (ppu-control ppu)) 16 8))
          (row (mod (- (ppu-scanline ppu) y) height))
          ;; Empty sprite slots still fetch pattern data from their dummy tile.
-         (address
-           (%sprite-pattern-address ppu tile attributes row)))
+         (address (%sprite-pattern-address ppu tile attributes row)))
+    (setf (ppu-secondary-oam-data-latch ppu)
+          (case offset
+            (0 y)
+            (1 tile)
+            (2 attributes)
+            (otherwise x)))
     (case offset
       ((0 2)
        ;; Sprite fetches first put an address on the bus, then read it one dot later.
@@ -312,23 +320,15 @@
       ((7)
        (let ((value (ppu-read-vram ppu (ppu-address-bus ppu) t)))
          (when (< sprite (ppu-secondary-oam-count ppu))
-           (let ((attributes
-                  (if frozen-p
-                      oam2-data
-                      (aref (ppu-secondary-oam ppu) (+ (* sprite 4) 2))))
-                 (x
-                  (if frozen-p
-                      oam2-data
-                      (aref (ppu-secondary-oam ppu) (+ (* sprite 4) 3)))))
-             (setf (aref (ppu-sprite-shift-high ppu) sprite) value
-                   (aref (ppu-sprite-x-counter ppu) sprite) x
-                   (aref (ppu-sprite-counter-counting ppu) sprite) nil
-                   (aref (ppu-sprite-attributes ppu) sprite) attributes)
-             (when (logbitp 6 attributes)
-               (setf (aref (ppu-sprite-shift-low ppu) sprite) (%reverse-byte
-                                                               (aref (ppu-sprite-shift-low ppu) sprite))
-                     (aref (ppu-sprite-shift-high ppu) sprite) (%reverse-byte
-                                                                (aref (ppu-sprite-shift-high ppu) sprite))))))
+           (setf (aref (ppu-sprite-shift-high ppu) sprite) value
+                 (aref (ppu-sprite-x-counter ppu) sprite) x
+                 (aref (ppu-sprite-counter-counting ppu) sprite) nil
+                 (aref (ppu-sprite-attributes ppu) sprite) attributes)
+           (when (logbitp 6 attributes)
+             (setf (aref (ppu-sprite-shift-low ppu) sprite)
+                   (%reverse-byte (aref (ppu-sprite-shift-low ppu) sprite))
+                   (aref (ppu-sprite-shift-high ppu) sprite)
+                   (%reverse-byte (aref (ppu-sprite-shift-high ppu) sprite)))))
          (values value t))))))
 
 (defun %ppu-clock-pipeline!
@@ -351,8 +351,10 @@
                   fetch-data value))))
       ;; The delayed sprite-fetch signal adds an increment as it falls on dot 321.
       (when (= dot 321)
-        (%ppu-oam2-increment! ppu))
-      (when (or (= dot 63) (= dot 255) (= dot 339))
+        (%ppu-oam2-increment! ppu)
+        (setf (ppu-secondary-oam-data-latch ppu)
+              (aref (ppu-secondary-oam ppu) 0)))
+      (when (or (= dot 255) (= dot 339))
         (%ppu-oam2-reset! ppu))
       (when (= dot 339)
         (fill (ppu-sprite-counter-counting ppu) t))
@@ -371,7 +373,8 @@
           ;; The half-dot-delayed OAM2 gate is represented by this pipeline dot label.
           (when (not (logbitp 2 dot))
             (%ppu-oam2-increment! ppu))
-          (setf (ppu-oam-address ppu) 0)
+          (setf (ppu-oam-address ppu) 0
+                (ppu-primary-oam-bus-address ppu) 0)
           (multiple-value-bind (value data-p)
               (%ppu-sprite-fetch! ppu dot v-before-dot)
             (when data-p
@@ -401,8 +404,7 @@
                              (* (ppu-next-tile ppu) 16)
                              (logand (ash v -12) 7))))
             (%ppu-address-bus! ppu address)))
-        (when (and (or (< scanline 240) (= scanline 261))
-                   (<= 65 dot 256))
+        (when (or (< scanline 240) (= scanline 261))
           (%ppu-evaluate-sprites!
            ppu
            (if (= scanline 261) 0 (1+ scanline))

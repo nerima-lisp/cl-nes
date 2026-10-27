@@ -32,6 +32,7 @@
               (cl-nes::ppu-nmi-delay-p ppu) 3)
         (cl-nes::%request-nmi! ppu)
         (setf (ppu-oam-address ppu) #x12
+              (cl-nes::ppu-primary-oam-bus-address ppu) #x12
               (aref (ppu-oam ppu) #x12) #xA6)
         (expect (ppu-read-register ppu 4) :to-be #xA6)
         (expect (ppu-read-register ppu 1) :to-be 0)

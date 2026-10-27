@@ -5,9 +5,10 @@
 ### Breaking changes
 
 - Save-state format version 3 records the sampled CPU IRQ input, the CPU's
-  internal data bus latch, in-progress PPU sprite evaluation, current APU/DMA
-  transfer state, APU frame IRQ phase, deferred `$4015` status-read clear, the
-  absolute NES master-clock position, and the PPU phase offset. Loading rejects
+  internal data bus latch, PPU sprite-evaluation phase and OAM bus latches,
+  OAM2 address, data, frozen state, and write event, current APU/DMA transfer
+  state, APU frame IRQ phase, deferred `$4015` status-read clear, the absolute
+  NES master-clock position, and the PPU phase offset. Loading rejects
   incompatible layouts, so version 2 states and earlier version 3 states are
   not portable to this release.
 
