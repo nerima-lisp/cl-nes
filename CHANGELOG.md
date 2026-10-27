@@ -6,7 +6,8 @@
 
 - Save-state format version 3 records the sampled CPU IRQ input, the CPU's
   internal data bus latch, PPU sprite-evaluation phase and OAM bus latches,
-  OAM2 address, data, frozen state, and write event, current APU/DMA transfer
+  OAM2 address, data, frozen state, write event, pending OAM corruption rows,
+  and current APU/DMA transfer
   state, APU frame IRQ phase, deferred `$4015` status-read clear, the absolute
   NES master-clock position, and the PPU phase offset. Loading rejects
   incompatible layouts, so version 2 states and earlier version 3 states are
@@ -31,6 +32,9 @@
 - Improved sprite evaluation and timing, including rendering-disabled cases and
   sprite-zero detection (`69131ed`, `e74bbf6`, `baba7f4`, `eaf096b`,
   `ec66b08`, `361957e`, `0ceb9e0`).
+- Limited early PPU OAM corruption to PPU dots 0–10. A stop at dot 16 can lead
+  to a row-0 copy over row 8, changing two sprite Y values used by
+  `sprite-overflow-5`.
 - Corrected PPU register and rendering behavior, including the measured
   power-up palette, vblank and buffered reads, background fetch timing,
   ALE/PPUDATA overlap, and MMC3 scanline timing (`80e2486`, `64e7243`,

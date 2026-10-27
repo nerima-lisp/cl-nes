@@ -258,4 +258,86 @@
       (multiple-value-bind (value data-p)
           (cl-nes::%ppu-sprite-fetch! ppu 262 (cl-nes::ppu-vram-address ppu))
         (expect value :to-be #xA5)
-        (expect data-p :to-be t)))))
+        (expect data-p :to-be t))))
+  (it "tracks pending OAM corruption until an eligible apply point"
+    (let* ((ppu (make-ppu (make-fixture-cartridge)))
+           (oam (ppu-oam ppu)))
+      (fill oam #xCC)
+      (dotimes (byte 8)
+        (setf (aref oam byte) (+ #x10 byte)))
+      (setf (cl-nes::ppu-scanline ppu) 0
+            (cl-nes::ppu-dot ppu) 9
+            (ppu-mask ppu) #x10
+            (cl-nes::ppu-rendering-mask ppu) #x10
+            (cl-nes::ppu-rendering-mask-pending ppu) 0
+            (cl-nes::ppu-rendering-mask-delay ppu) 0
+            (cl-nes::ppu-rendering-mask-valid-p ppu) t
+            (cl-nes::ppu-oam2-address ppu) 5)
+      (ppu-tick! ppu)
+      (expect (aref oam 40) :to-be #xCC)
+      (expect (cl-nes::ppu-oam-corruption-pending-rows ppu) :to-be #x20)
+      (setf (cl-nes::ppu-scanline ppu) 261
+            (cl-nes::ppu-dot ppu) 0
+            (cl-nes::ppu-rendering-mask ppu) #x10
+            (cl-nes::ppu-rendering-mask-pending ppu) #x10)
+      (ppu-tick! ppu)
+      (dotimes (byte 8)
+        (expect (aref oam (+ 40 byte)) :to-be (+ #x10 byte)))
+      (expect (cl-nes::ppu-oam-corruption-pending-rows ppu) :to-be 0))
+    (let* ((ppu (make-ppu (make-fixture-cartridge)))
+           (oam (ppu-oam ppu)))
+      (fill oam #xCC)
+      (dotimes (byte 8)
+        (setf (aref oam byte) (+ #x20 byte)))
+      (setf (cl-nes::ppu-scanline ppu) 0
+            (cl-nes::ppu-dot ppu) 20
+            (ppu-mask ppu) #x10
+            (cl-nes::ppu-rendering-mask ppu) 0
+            (cl-nes::ppu-rendering-mask-pending ppu) #x10
+            (cl-nes::ppu-rendering-mask-delay ppu) 0
+            (cl-nes::ppu-rendering-mask-valid-p ppu) t
+            (cl-nes::ppu-oam-corruption-pending-rows ppu) #x20)
+      (ppu-tick! ppu)
+      (dotimes (byte 8)
+        (expect (aref oam (+ 40 byte)) :to-be (+ #x20 byte))))
+    (let* ((ppu (make-ppu (make-fixture-cartridge)))
+           (oam (ppu-oam ppu)))
+      (fill oam #xCC)
+      (dotimes (byte 8)
+        (setf (aref oam byte) (+ #x30 byte)))
+      (setf (cl-nes::ppu-scanline ppu) 261
+            (cl-nes::ppu-dot ppu) 0
+            (ppu-mask ppu) 0
+            (cl-nes::ppu-rendering-mask ppu) 0
+            (cl-nes::ppu-rendering-mask-pending ppu) 0
+            (cl-nes::ppu-rendering-mask-delay ppu) 0
+            (cl-nes::ppu-rendering-mask-valid-p ppu) t
+            (cl-nes::ppu-oam-corruption-pending-rows ppu) #x20)
+      (ppu-tick! ppu)
+      (expect (aref oam 40) :to-be #xCC)
+      (expect (cl-nes::ppu-oam-corruption-pending-rows ppu) :to-be #x20))
+    (let* ((ppu (make-ppu (make-fixture-cartridge)))
+           (oam (ppu-oam ppu)))
+      (fill oam #xCC)
+      (dotimes (byte 8)
+        (setf (aref oam byte) (+ #x40 byte)))
+      (setf (cl-nes::ppu-scanline ppu) 0
+            (cl-nes::ppu-dot ppu) 16
+            (ppu-mask ppu) #x10
+            (cl-nes::ppu-rendering-mask ppu) #x10
+            (cl-nes::ppu-rendering-mask-pending ppu) 0
+            (cl-nes::ppu-rendering-mask-delay ppu) 0
+            (cl-nes::ppu-rendering-mask-valid-p ppu) t
+            (cl-nes::ppu-oam2-address ppu) 8)
+      (ppu-tick! ppu)
+      (expect (cl-nes::ppu-oam-corruption-pending-rows ppu) :to-be 0)
+      (setf (cl-nes::ppu-scanline ppu) 138
+            (cl-nes::ppu-dot ppu) 35
+            (cl-nes::ppu-rendering-mask ppu) 0
+            (cl-nes::ppu-rendering-mask-pending ppu) #x10
+            (cl-nes::ppu-rendering-mask-delay ppu) 0
+            (cl-nes::ppu-rendering-mask-valid-p ppu) t)
+      (ppu-tick! ppu)
+      (dotimes (byte 8)
+        (expect (aref oam (+ 64 byte)) :to-be #xCC))
+      (expect (cl-nes::ppu-oam-corruption-pending-rows ppu) :to-be 0))))

@@ -35,6 +35,36 @@
          (or (logbitp 3 mask)
              (logbitp 4 mask)))))
 
+(defun %ppu-update-oam-corruption! (ppu)
+  (let* ((scanline (ppu-scanline ppu))
+         (dot (ppu-dot ppu))
+         (was-rendering-p (ppu-rendering-scanline-previous-p ppu))
+         (rendering-p (%ppu-rendering-scanline-p ppu)))
+    (when (and was-rendering-p
+               (not rendering-p)
+               (< scanline 240)
+               ;; The early cutoff preserves the measured rows without changing overflow inputs.
+               (or (<= 0 dot 10) (<= 256 dot 319)))
+      ;; The OAM2 sprite index selects the corrupted primary OAM row.
+      (setf (ppu-oam-corruption-pending-rows ppu)
+            (logior (ppu-oam-corruption-pending-rows ppu)
+                    (ash 1 (ppu-oam2-address ppu)))))
+    ;; Commit pending rows on visible re-enable or a rendered pre-render dot 0.
+    (when (or (and (< scanline 240)
+                   (not was-rendering-p)
+                   rendering-p)
+              (and (= scanline 261) (zerop dot) rendering-p))
+      (let ((rows (ppu-oam-corruption-pending-rows ppu))
+            (oam (ppu-oam ppu)))
+        (dotimes (row 32)
+          (when (and (plusp row) (logbitp row rows))
+            (replace oam oam
+                     :start1 (* row 8)
+                     :end1 (* (1+ row) 8)
+                     :end2 8)))
+        (setf (ppu-oam-corruption-pending-rows ppu) 0)))
+  ppu))
+
 (defun %ppu-odd-frame-skip-enabled-p (ppu)
   (let ((mask (%ppu-effective-mask ppu)))
     (or (logbitp 3 mask)
@@ -492,6 +522,7 @@
         (setf (ppu-rendering-scanline-previous-p ppu)
               (%ppu-rendering-scanline-p ppu))
         (%ppu-advance-rendering-mask! ppu)
+        (%ppu-update-oam-corruption! ppu)
         (let* ((scanline (ppu-scanline ppu))
                (rendering-scanline-p (%ppu-rendering-scanline-p ppu)))
           (progn
