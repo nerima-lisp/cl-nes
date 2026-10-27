@@ -103,21 +103,68 @@
     ((bus-cartridge bus)
      (cartridge-cpu-read (bus-cartridge bus) address))
     (t nil)))
+(defun %bus-read-dma-source (bus address
+                                 &key
+                                 internal-address-predicate
+                                 internal-value-when-source-unmapped-p)
+  (flet ((read-internal-address (internal-address)
+           (if (or (<= #x4000 internal-address #x4013)
+                   (= internal-address #x4015)
+                   (= internal-address #x4016)
+                   (= internal-address #x4017))
+               (%bus-read-value bus internal-address)
+               (bus-open-bus bus))))
+    (let* ((cpu-address (bus-last-cpu-access-address bus))
+           (internal-io-read-p (= (logand cpu-address #xFFE0) #x4000))
+           (source-io-address-p (<= #x4000 address #x401F))
+           (held-io-suppresses-source-p
+            (and source-io-address-p (not internal-io-read-p)))
+           (source-device-value
+            (unless held-io-suppresses-source-p
+              (%bus-read-device bus address)))
+           (source-value
+            (if held-io-suppresses-source-p
+                (bus-open-bus bus)
+                (%bus-read-value-from-device bus address source-device-value)))
+           (internal-address
+            (when (and internal-io-read-p (not source-io-address-p))
+              (logior #x4000 (logand address #x001F))))
+           (internal-value
+            (when
+                (and internal-address
+                     (or (null internal-address-predicate)
+                         (funcall internal-address-predicate internal-address)))
+              (read-internal-address internal-address)))
+           (dma-source-value
+            (if (and internal-value-when-source-unmapped-p
+                     (null source-device-value)
+                     internal-address
+                     internal-value)
+                (progn
+                  (setf (bus-open-bus bus) internal-value)
+                  internal-value)
+                source-value)))
+      (values dma-source-value internal-value))))
 (defun %bus-read-dmc-sample (bus address)
-  (let* ((sample-value (%bus-read-value bus address))
-         (cpu-address (bus-last-cpu-access-address bus))
-         (conflict-address
-           (logior (logand cpu-address #xFFE0)
-                   (logand address #x001F))))
-    ;; The halted CPU supplies the high bits of the internal register address.
-    (if (or (<= #x2000 conflict-address #x3FFF)
-            (and (<= #x4000 conflict-address #x4017)
-                 (/= conflict-address #x4014)))
-        (let ((conflict-value (%bus-read-value bus conflict-address)))
-          (if (= conflict-address #x4015)
-              conflict-value
-              (logand sample-value conflict-value)))
-        sample-value)))
+  (flet ((conflict-address-p (conflict-address)
+           (or (<= #x2000 conflict-address #x3FFF)
+               (and (<= #x4000 conflict-address #x4017)
+                    (/= conflict-address #x4014)))))
+    (multiple-value-bind (sample-value internal-value)
+        (%bus-read-dma-source bus
+                              address
+                              :internal-address-predicate
+                              (function conflict-address-p))
+      (let* ((cpu-address (bus-last-cpu-access-address bus))
+             (conflict-address
+              (logior (logand cpu-address #xFFE0) (logand address #x001F))))
+        (if (conflict-address-p conflict-address)
+            (let ((conflict-value
+                   (or internal-value (%bus-read-value bus conflict-address))))
+              (if (= conflict-address #x4015)
+                  conflict-value
+                  (logand sample-value conflict-value)))
+            sample-value)))))
 
 (defun %bus-read (bus address update-internal-data-bus-p)
   (declare (optimize (speed 3) (safety 1) (debug 1)))
@@ -222,22 +269,22 @@
     (%bus-cpu-access! bus ppu-ticks)
     value))
 
-(defun %bus-read-value (bus address)
-  (let* ((device-value (%bus-read-device bus address))
-         (open-bus (bus-open-bus bus))
+(defun %bus-read-value-from-device (bus address device-value)
+  (let* ((open-bus (bus-open-bus bus))
          (value
-           (cond
-             ((= address #x4015)
-              (logior (logand (or device-value 0) #xDF)
-                      (logand (bus-internal-data-bus bus) #x20)))
-             ((or (= address #x4016) (= address #x4017))
-              (logior (logand (or device-value 0) #x1F)
-                      (logand open-bus #xE0)))
-             (t
-              (logand (or device-value open-bus) #xFF)))))
+          (cond
+            ((= address #x4015)
+             (logior (logand (or device-value 0) #xDF)
+                     (logand (bus-internal-data-bus bus) #x20)))
+            ((or (= address #x4016) (= address #x4017))
+             (logior (logand (or device-value 0) #x1F) (logand open-bus #xE0)))
+            (t (logand (or device-value open-bus) #xFF)))))
     (unless (= address #x4015)
       (setf (bus-open-bus bus) value))
     value))
+
+(defun %bus-read-value (bus address)
+  (%bus-read-value-from-device bus address (%bus-read-device bus address)))
 
 (defun %bus-cpu-access-before-cycle! (bus)
   (when (and (bus-cpu-access-active-p bus)

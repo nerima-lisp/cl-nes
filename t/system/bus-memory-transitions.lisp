@@ -61,6 +61,92 @@
         (cl-nes::%dma-trace-cycle! bus 42 :test))
       (expect (getf event :cpu-held-address) :to-be #x8123)
       (expect (getf event :oam-source-address) :to-be #x4567)))
+  (it "gates OAM DMA GETs by the held CPU address"
+    (let* ((nes (make-nes :cartridge (make-fixture-cartridge)))
+           (bus (nes-bus nes))
+           (apu (cl-nes::bus-apu bus)))
+      (setf (cl-nes::bus-last-cpu-access-kind bus) :read
+            (cl-nes::bus-last-cpu-access-address bus) #xBD1A
+            (cl-nes::bus-open-bus bus) #xA5
+            (cl-nes::apu-frame-irq-pending-p apu) t
+            (cl-nes::bus-oam-dma-active-p bus) t
+            (cl-nes::bus-oam-dma-page bus) #x40
+            (cl-nes::bus-oam-dma-index bus) #x15
+            (cl-nes::bus-oam-dma-stage bus) :get
+            (cl-nes::bus-cpu-cycle-phase bus) 0)
+      (cl-nes::%dma-arbitrate-cycle! bus)
+      (expect (cl-nes::bus-oam-dma-data bus) :to-be #xA5)
+      (expect (cl-nes::apu-frame-irq-pending-p apu) :to-be t))
+    (let* ((nes (make-nes :cartridge (make-fixture-cartridge)))
+           (bus (nes-bus nes))
+           (apu (cl-nes::bus-apu bus)))
+      (setf (cl-nes::bus-last-cpu-access-kind bus) :read
+            (cl-nes::bus-last-cpu-access-address bus) #x4001
+            (cl-nes::bus-oam-dma-active-p bus) t
+            (cl-nes::bus-oam-dma-page bus) #x02
+            (cl-nes::bus-oam-dma-index bus) #x15
+            (cl-nes::bus-oam-dma-stage bus) :get
+            (cl-nes::bus-cpu-cycle-phase bus) 0
+            (aref (cl-nes::bus-ram bus) #x0215) #xA5
+            (cl-nes::apu-frame-irq-pending-p apu) t)
+      (cl-nes::%dma-arbitrate-cycle! bus)
+      (expect (cl-nes::bus-oam-dma-data bus) :to-be #xA5)
+      (expect (cl-nes::apu-frame-irq-clear-pending-p apu) :to-be t))
+    (let* ((nes (make-nes :cartridge (make-fixture-cartridge)))
+           (bus (nes-bus nes))
+           (apu (cl-nes::bus-apu bus)))
+      (setf (cl-nes::bus-last-cpu-access-kind bus) :read
+            (cl-nes::bus-last-cpu-access-address bus) #x4001
+            (cl-nes::bus-open-bus bus) #x50
+            (cl-nes::apu-frame-irq-pending-p apu) t
+            (cl-nes::bus-oam-dma-active-p bus) t
+            (cl-nes::bus-oam-dma-page bus) #x50
+            (cl-nes::bus-oam-dma-index bus) #x15
+            (cl-nes::bus-oam-dma-stage bus) :get
+            (cl-nes::bus-cpu-cycle-phase bus) 0)
+      (cl-nes::%dma-arbitrate-cycle! bus)
+      (expect (cl-nes::bus-oam-dma-data bus) :to-be #x40)
+      (expect (cl-nes::bus-open-bus bus) :to-be #x40)
+      (expect (cl-nes::apu-frame-irq-clear-pending-p apu) :to-be t)))
+  (it "keeps DMC mirrored reads within its conflict range"
+    (let* ((cartridge
+            (make-fixture-cartridge :program (list #x5A) :start #xC018))
+           (bus (make-bus :cartridge cartridge))
+           (dmc-conflict-address-p
+            (lambda (address)
+              (or (<= #x2000 address #x3FFF)
+                  (and (<= #x4000 address #x4017) (/= address #x4014)))))
+           (original-cartridge-cpu-read
+            (symbol-function 'cl-nes::cartridge-cpu-read))
+           (cartridge-read-count 0))
+      (setf (cl-nes::bus-last-cpu-access-address bus) #x4000
+            (cl-nes::bus-open-bus bus) #xA5)
+      (unwind-protect
+          (progn
+            (setf (symbol-function 'cl-nes::cartridge-cpu-read) (lambda
+                                                                    (read-cartridge
+                                                                     address)
+                                                                  (when
+                                                                      (eq
+                                                                       read-cartridge
+                                                                       cartridge)
+                                                                    (incf
+                                                                     cartridge-read-count))
+                                                                  (funcall
+                                                                   original-cartridge-cpu-read
+                                                                   read-cartridge
+                                                                   address)))
+            (multiple-value-bind (sample-value internal-value)
+                (cl-nes::%bus-read-dma-source bus
+                                              #xC018
+                                              :internal-address-predicate
+                                              dmc-conflict-address-p)
+              (expect sample-value :to-be #x5A)
+              (expect internal-value :to-be nil))
+            (expect (cl-nes::%bus-read-dmc-sample bus #xC018) :to-be #x5A)
+            (expect cartridge-read-count :to-be 2)
+            (expect (cl-nes::bus-open-bus bus) :to-be #x5A))
+        (setf (symbol-function 'cl-nes::cartridge-cpu-read) original-cartridge-cpu-read))))
   (it "executes OAM DMA from its source after an aligned CPU halt"
     (let* ((nes (make-nes
                  :cartridge

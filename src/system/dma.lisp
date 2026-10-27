@@ -180,7 +180,9 @@
                (let ((address (+ (ash (bus-oam-dma-page bus) 8)
                                  (bus-oam-dma-index bus))))
                  (setf (bus-oam-dma-data bus)
-                       (logand (%bus-read-value bus address) #xFF)
+                       (logand
+ (%bus-read-dma-source bus address :internal-value-when-source-unmapped-p t)
+ #xFF)
                        (bus-oam-dma-stage bus) :put
                        oam-access-p t))))
           (:put
