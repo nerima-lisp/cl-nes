@@ -351,7 +351,7 @@
 
 (defparameter *accuracy-coin-contract*
   '(:id "accuracy-coin" :category :accuracy-coin :path "AccuracyCoin.nes"
-    :protocol :accuracy-coin :expected 146 :max-frames 4894 :timeout-ms-per-frame 46 :state :known-fail
+    :protocol :accuracy-coin :expected 146 :max-frames 4894 :timeout-ms-per-frame 46 :state :pass
     :failure-text "named result item mismatch"
     :accepted-values (#x01 #x05 #x09 #x0D #x11 #x39 #x41)
     :shared-draw ((:name "PPU Reset Flag" :category :power-on-state
@@ -365,7 +365,7 @@
                   (:name "PPU Palette RAM" :category :power-on-state
                    :address #x03ff :expected :pass))
     :items nil
-    :ratchet-pass-count 143
+    :ratchet-pass-count 144
     :ratchet-fail-items nil
     :ratchet-pass-items
     ("ROM is not writable" "Delta Modulation Channel" "RAM Mirroring" "PC Wraparound"
@@ -418,7 +418,7 @@
      "$2002 flag timing" "Attributes As Tiles" "Stale BG Shift Registers"
      "BG Serial In" "Address $2004 behavior" "$2007 Stress Test" "$2004 Stress Test"
      "DMA + $2002 Read" "DMA + $2007 Write" "DMA + $4015 Read"
-     "DMA + $4016 Read" "DMC DMA + OAM DMA" "ALE + Read" "Sprites On Scanline 0" "Hybrid Addresses" "Misaligned OAM2 Address" "Frozen OAM2 Increment" "OAM Corruption" "Stale Sprite Shift Regs")))
+     "DMA + $4016 Read" "DMC DMA + OAM DMA" "ALE + Read" "Sprites On Scanline 0" "Hybrid Addresses" "Misaligned OAM2 Address" "Frozen OAM2 Increment" "OAM Corruption" "Stale Sprite Shift Regs" "Implicit DMA Abort" "Explicit DMA Abort")))
 
 (defparameter *accuracy-coin-item-specs*
   '((:cpu-behavior "ROM is not writable" #x0405)

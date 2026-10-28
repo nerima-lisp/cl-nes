@@ -33,6 +33,8 @@
   interrupt tests and skipped inactive NMI-vector hooks
   (`384a83b`, `ce5598f`, `4a91a47`, `d312baba`, `b5f8be7`, `0dadf59`,
   `81fbf63`, `0e39583`, `1797642`, `38e9c20`).
+- Corrected AccuracyCoin's one-cycle implicit DMC DMA abort timing on top of
+  `60df2ea`.
 - Improved sprite evaluation and timing, including rendering-disabled cases and
   sprite-zero detection (`69131ed`, `e74bbf6`, `baba7f4`, `eaf096b`,
   `ec66b08`, `361957e`, `0ceb9e0`, `4c83cce`, `8676428`, `e6ae3fd`,

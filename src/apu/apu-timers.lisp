@@ -59,8 +59,22 @@
         (if (apu-dmc-loop-p dmc)
             (setf (apu-dmc-current-address dmc) (apu-dmc-sample-address dmc)
                   (apu-dmc-bytes-remaining dmc) (apu-dmc-sample-length dmc))
-            (when (apu-dmc-irq-enabled-p dmc)
-              (setf (apu-dmc-irq-pending-p dmc) t)))))
+            (progn
+              (when (apu-dmc-irq-enabled-p dmc)
+                (setf (apu-dmc-irq-pending-p dmc) t))
+              (when (and (= (apu-dmc-sample-length dmc) 1)
+                         (= (apu-dmc-bits-remaining dmc) 1)
+                         (< (apu-dmc-timer dmc) 2))
+                ;; Preserve the terminal byte while an implicit reload is aborted.
+                (setf (apu-dmc-shift-register dmc)
+                      (apu-dmc-sample-buffer dmc)
+                      (apu-dmc-sample-buffer-empty-p dmc) nil)
+                (%apu-dmc-restart! dmc)
+                (setf (apu-dmc-status-write-pending-p dmc) t
+                      (apu-dmc-status-write-enabled-p dmc) nil
+                      (apu-dmc-status-write-phase dmc) 0
+                      (apu-dmc-status-write-origin-cycle dmc)
+                      (apu-cpu-cycle-index apu)))))))
     value))
 
 (defun %apu-dmc-fetch! (apu &optional buffer-consumed-p)

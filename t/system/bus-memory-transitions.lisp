@@ -1326,6 +1326,62 @@
                   :to-be
                   :abort-cycle-consumed)
           (expect (getf stop-event :master-clock) :to-be 12)))))
+  (it "consumes a one-cycle halt when an implicit DMC abort expires"
+    (let* ((nes (make-nes))
+           (bus (nes-bus nes))
+           (apu (nes-apu nes))
+           (dmc (cl-nes::apu-dmc apu))
+           (events nil))
+      (setf (cl-nes::bus-dmc-dma-stage bus) :active-halt
+            (cl-nes::bus-dmc-dma-kind bus) :load
+            (cl-nes::bus-dmc-dma-remaining bus) 3
+            (cl-nes::bus-dmc-dma-apu-phase-offset bus) 0
+            (cl-nes::apu-cycle-parity apu) 0
+            (cl-nes::apu-cpu-cycle-index apu) 2
+            (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-status-write-pending-p dmc) t
+            (cl-nes::apu-dmc-status-write-enabled-p dmc) nil
+            (cl-nes::apu-dmc-status-write-phase dmc) 0
+            (cl-nes::apu-dmc-status-write-origin-cycle dmc) 0
+            (cl-nes::apu-dmc-current-address dmc) 0
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bits-remaining dmc) 8
+            (cl-nes::apu-dmc-timer dmc) 100
+            (cl-nes::apu-dmc-bytes-remaining dmc) 1)
+      (let ((cl-nes::*dma-trace-hook*
+             (lambda (event)
+               (push event events)))
+            (cl-nes::*dma-trace-cycle-index* 0))
+        (cl-nes::%nes-clock-cpu-cycle! nes bus nil nil)
+        (let ((disable-event
+               (find :dmc-implicit-disable
+                     events
+                     :key
+                     (lambda (event)
+                       (getf event :event))))
+              (stop-event
+               (find :dmc-stop
+                     events
+                     :key
+                     (lambda (event)
+                       (getf event :event)))))
+          (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :idle)
+          (expect (cl-nes::apu-dmc-enabled-p dmc) :to-be t)
+          (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 0)
+          (expect
+           (find :dmc-get
+                 events
+                 :key
+                 (lambda (event)
+                   (getf event :event)))
+           :to-be
+           nil)
+          (expect (getf disable-event :dmc-stage-before) :to-be :active-halt)
+          (expect (getf disable-event :dmc-disable-reason) :to-be :abort-window)
+          (expect (getf stop-event :dmc-stop-reason)
+                  :to-be
+                  :abort-cycle-consumed)
+          (expect (getf stop-event :master-clock) :to-be 12)))))
   (it "completes a DMC GET when disable expires after the abort window"
     (let* ((nes (make-nes))
            (bus (nes-bus nes))

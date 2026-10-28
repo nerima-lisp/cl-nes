@@ -55,7 +55,7 @@
             (apu-dmc-bytes-remaining (apu-dmc (bus-apu bus))))
       fields)))
   nil)
-(defun %dma-handle-dmc-disable! (bus master-clock stage)
+(defun %dma-handle-dmc-disable! (bus master-clock stage &optional implicit-p)
   (let ((reason
           (cond
             ((member stage (list :new :wait :ready :retry))
@@ -71,7 +71,11 @@
             ((member stage (list :abort :abort-get))
              :abort-already-queued)
             (t :no-pending-request))))
-    (%dma-trace-event! bus :dmc-explicit-disable master-clock
+    (%dma-trace-event! bus
+                       (if implicit-p
+                           :dmc-implicit-disable
+                           :dmc-explicit-disable)
+                       master-clock
                        :dmc-stage-before stage
                        :dmc-disable-reason reason)
     (when (eq reason :cancelled-before-halt)

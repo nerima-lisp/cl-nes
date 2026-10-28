@@ -32,7 +32,9 @@
         (when (and cartridge (cartridge-cpu-clock-required-p cartridge))
           (cartridge-clock-cpu! cartridge 1)))
       (let* ((dmc (apu-dmc (nes-apu nes)))
-             (disable-p (eq (apu-dmc-status-update-event dmc) :disabled))
+             (disable-p
+              (or (eq (apu-dmc-status-update-event dmc) :disabled)
+                  (eq (apu-dmc-status-update-event dmc) :implicit-disabled)))
              (disable-stage (when disable-p (bus-dmc-dma-stage bus)))
              (trace-clock
                (when *dma-trace-hook*
@@ -40,7 +42,9 @@
         (when trace-clock
           (%dma-trace-cycle! bus trace-clock :before-arbiter))
         (when disable-p
-          (%dma-handle-dmc-disable! bus trace-clock disable-stage))
+          (%dma-handle-dmc-disable!
+           bus trace-clock disable-stage
+           (eq (apu-dmc-status-update-event dmc) :implicit-disabled)))
         (%dma-arbitrate-cycle! bus)
         (when (and disable-p
                    (member disable-stage (list :active-halt :dummy)))

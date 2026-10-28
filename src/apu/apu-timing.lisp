@@ -24,7 +24,7 @@
                     (apu-dmc-status-update-event dmc)
                     (if (apu-dmc-status-write-enabled-p dmc)
                         :enabled
-                      :disabled))
+                      (if (apu-dmc-enabled-p dmc) :implicit-disabled :disabled)))
               (unless (apu-dmc-status-write-enabled-p dmc)
                 (setf (apu-dmc-bytes-remaining dmc) 0
                       (apu-dmc-load-pending-p dmc) nil))))

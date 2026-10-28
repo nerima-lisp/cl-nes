@@ -60,4 +60,41 @@
                 (expect (cl-nes::apu-dmc-shift-register dmc) :to-be #xA5)
                 (expect (cl-nes::apu-dmc-sample-buffer dmc) :to-be #x5A)
                 (expect (cl-nes::apu-dmc-sample-buffer-empty-p dmc) :to-be nil)
-                (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 1))))
+                (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 1)))
+          (it "restarts a terminal single-byte fetch for the implicit abort window"
+              (let* ((apu (make-apu
+                           :memory-reader
+                           (lambda (address)
+                             (declare (ignore address))
+                             :pending)))
+                     (dmc (cl-nes::apu-dmc apu)))
+                (setf (cl-nes::apu-dmc-enabled-p dmc) t
+                      (cl-nes::apu-dmc-loop-p dmc) nil
+                      (cl-nes::apu-dmc-sample-length dmc) 1
+                      (cl-nes::apu-dmc-sample-address dmc) #xC000
+                      (cl-nes::apu-dmc-current-address dmc) #xC000
+                      (cl-nes::apu-dmc-bytes-remaining dmc) 1
+                      (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+                      (cl-nes::apu-dmc-bits-remaining dmc) 1
+                      (cl-nes::apu-dmc-timer dmc) 1
+                      (cl-nes::apu-cpu-cycle-index apu) 20)
+                (cl-nes::%apu-dmc-fetch-complete! apu #xA5)
+                (expect (cl-nes::apu-dmc-shift-register dmc) :to-be #xA5)
+                (expect (cl-nes::apu-dmc-sample-buffer-empty-p dmc) :to-be nil)
+                (expect (cl-nes::apu-dmc-current-address dmc) :to-be #xC000)
+                (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 1)
+                (expect (cl-nes::apu-dmc-status-write-pending-p dmc) :to-be t)
+                (expect (cl-nes::apu-dmc-status-write-enabled-p dmc) :to-be nil)
+                (expect (cl-nes::apu-dmc-status-write-phase dmc) :to-be 0)
+                (expect (cl-nes::apu-dmc-status-write-origin-cycle dmc) :to-be 20)
+                (expect (cl-nes::apu-dmc-enabled-p dmc) :to-be t)
+                (apu-tick! apu 2)
+                (expect (cl-nes::apu-dmc-status-write-pending-p dmc) :to-be t)
+                (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 1)
+                (apu-tick! apu 1)
+                (expect (cl-nes::apu-dmc-status-write-pending-p dmc) :to-be nil)
+                (expect (cl-nes::apu-dmc-status-update-event dmc)
+                        :to-be
+                        :implicit-disabled)
+                (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 0)
+                (expect (cl-nes::apu-dmc-enabled-p dmc) :to-be t))))
