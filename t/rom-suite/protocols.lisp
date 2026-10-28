@@ -365,7 +365,7 @@
                   (:name "PPU Palette RAM" :category :power-on-state
                    :address #x03ff :expected :pass))
     :items nil
-    :ratchet-pass-count 134
+    :ratchet-pass-count 135
     :ratchet-fail-items nil
     :ratchet-pass-items
     ("ROM is not writable" "RAM Mirroring" "PC Wraparound"
@@ -417,7 +417,7 @@
      "$2007 read w/ rendering" "Attributes As Tiles" "Stale BG Shift Registers"
      "BG Serial In" "Address $2004 behavior" "$2007 Stress Test"
      "DMA + $2002 Read" "DMA + $2007 Write" "DMA + $4015 Read"
-     "DMA + $4016 Read" "DMC DMA + OAM DMA" "ALE + Read" "Sprites On Scanline 0" "Hybrid Addresses" "Misaligned OAM2 Address" "Frozen OAM2 Increment" "OAM Corruption")))
+     "DMA + $4016 Read" "DMC DMA + OAM DMA" "ALE + Read" "Sprites On Scanline 0" "Hybrid Addresses" "Misaligned OAM2 Address" "Frozen OAM2 Increment" "OAM Corruption" "Stale Sprite Shift Regs")))
 
 (defparameter *accuracy-coin-item-specs*
   '((:cpu-behavior "ROM is not writable" #x0405)
