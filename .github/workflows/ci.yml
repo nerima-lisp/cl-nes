@@ -45,9 +45,21 @@ jobs:
           cachix-cache: ${{ vars.CACHIX_CACHE }}
           cachix-auth-token: ${{ secrets.CACHIX_AUTH_TOKEN }}
           cachix-extra-pull-names: takeokunn-paredit-cli
+          cachix-skip-push: "true"
       - name: Build paredit CLI for Cachix
+        id: paredit-cli
         timeout-minutes: 15
-        run: timeout -k 30 840 nix build --print-build-logs ".#packages.x86_64-linux.paredit-cli"
+        run: |
+          timeout -k 30 840 nix build --print-build-logs ".#packages.x86_64-linux.paredit-cli"
+          printf 'store-path=%s\n' "$(readlink -f result)" >> "$GITHUB_OUTPUT"
+      - name: Pin paredit CLI in Cachix
+        if: github.ref == 'refs/heads/main'
+        env:
+          CACHIX_CACHE: ${{ vars.CACHIX_CACHE }}
+          PAREDIT_CLI_PATH: ${{ steps.paredit-cli.outputs.store-path }}
+        run: |
+          cachix push "$CACHIX_CACHE" "$PAREDIT_CLI_PATH"
+          cachix pin "$CACHIX_CACHE" paredit-cli "$PAREDIT_CLI_PATH" --keep-revisions 1
       - name: Check all Lisp files with paredit
         timeout-minutes: 15
         run: timeout -k 30 840 nix build --print-build-logs ".#checks.x86_64-linux.paredit"

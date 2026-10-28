@@ -14,6 +14,10 @@ inputs:
     description: Comma-separated Cachix cache names to pull from.
     required: false
     default: ""
+  cachix-skip-push:
+    description: Skip pushing build results to Cachix.
+    required: false
+    default: "false"
 
 runs:
   using: composite
@@ -26,3 +30,4 @@ runs:
         name: ${{ inputs.cachix-cache }}
         authToken: ${{ inputs.cachix-auth-token }}
         extraPullNames: ${{ inputs.cachix-extra-pull-names }}
+        skipPush: ${{ inputs.cachix-skip-push }}
