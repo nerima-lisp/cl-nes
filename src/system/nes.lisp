@@ -41,6 +41,7 @@
           (bus-dmc-dma-kind bus) :reload
           (bus-dmc-dma-remaining bus) 0
           (bus-dmc-dma-start-apu-phase bus) nil
+          (bus-dmc-dma-apu-phase-pending-p bus) nil
           (bus-dmc-read-replay-p bus) nil
           (bus-dma-cycle-preempted-p bus) nil))
   (when cartridge
@@ -70,6 +71,7 @@
           (bus-dmc-dma-kind bus) :reload
           (bus-dmc-dma-remaining bus) 0
           (bus-dmc-dma-start-apu-phase bus) nil
+          (bus-dmc-dma-apu-phase-pending-p bus) nil
           (bus-dmc-read-replay-p bus) nil
           (bus-dma-cycle-preempted-p bus) nil))
   (when (bus-cartridge (nes-bus nes))

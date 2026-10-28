@@ -285,9 +285,14 @@
             (cl-nes::bus-cpu-access-active-p bus) t
             (cl-nes::bus-cpu-access-nes bus) nes
             (cl-nes::bus-cpu-cycle-phase bus) 0
+            (cl-nes::apu-cycle-parity (nes-apu nes)) 0
             (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-loop-p dmc) t
+            (cl-nes::bus-dmc-dma-apu-phase-pending-p bus) t
             (cl-nes::apu-dmc-load-pending-p dmc) nil
             (cl-nes::apu-dmc-current-address dmc) #x0020
+            (cl-nes::apu-dmc-sample-address dmc) #x0030
+            (cl-nes::apu-dmc-sample-length dmc) 1
             (cl-nes::apu-dmc-sample-buffer dmc) #xA5
             (cl-nes::apu-dmc-sample-buffer-empty-p dmc) nil
             (cl-nes::apu-dmc-bits-remaining dmc) 0
@@ -301,15 +306,55 @@
       (expect (cl-nes::apu-dmc-shift-register dmc) :to-be #x52)
       (expect (cl-nes::apu-dmc-bits-remaining dmc) :to-be 7)
       (expect (cl-nes::bus-dmc-dma-kind bus) :to-be :reload)
+      (expect (cl-nes::bus-dmc-dma-start-apu-phase bus) :to-be 0)
+      (expect (cl-nes::bus-dmc-dma-apu-phase-pending-p bus) :to-be nil)
       (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :ready)
       (expect (cl-nes::bus-dmc-dma-wait bus) :to-be 0)
       (expect (bus-read bus #x0001) :to-be 0)
+      (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :ready)
+      (expect (bus-read bus #x0002) :to-be 0)
       (expect (cl-nes::bus-dmc-dma-stage bus) :to-be :idle)
       (expect (cl-nes::apu-dmc-sample-buffer dmc) :to-be #x5A)
       (expect (cl-nes::apu-dmc-sample-buffer-empty-p dmc) :to-be nil)
-      (expect (cl-nes::apu-dmc-current-address dmc) :to-be #x0021)
-      (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 0)
+      (expect (cl-nes::apu-dmc-current-address dmc) :to-be #x0030)
+      (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 1)
       (expect (cl-nes::apu-dmc-load-pending-p dmc) :to-be nil)
+      (setf (cl-nes::bus-cpu-access-active-p bus) nil)))
+  (it "carries a delayed APU-origin phase to one loop reload"
+    (let* ((nes (make-nes))
+           (bus (nes-bus nes))
+           (apu (nes-apu nes))
+           (dmc (cl-nes::apu-dmc apu))
+           (memory-reader (cl-nes::apu-memory-reader apu)))
+      (setf (cl-nes::bus-cpu-access-active-p bus) t
+            (cl-nes::bus-cpu-access-nes bus) nes
+            (cl-nes::bus-cpu-cycle-phase bus) 0
+            (cl-nes::apu-cycle-parity apu) 0
+            (cl-nes::apu-cpu-cycle-index apu) 1
+            (cl-nes::apu-dmc-enabled-p dmc) t
+            (cl-nes::apu-dmc-loop-p dmc) t
+            (cl-nes::apu-dmc-load-pending-p dmc) nil
+            (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
+            (cl-nes::apu-dmc-bytes-remaining dmc) 1
+            (cl-nes::apu-dmc-status-update-event dmc) :enabled
+            (cl-nes::apu-dmc-status-write-phase dmc) 0
+            (cl-nes::apu-dmc-status-write-origin-cycle dmc) 0)
+      (expect (funcall memory-reader #xC000) :to-be :pending)
+      (expect (cl-nes::bus-dmc-dma-wait bus) :to-be 2)
+      (expect (cl-nes::bus-dmc-dma-apu-phase-pending-p bus) :to-be t)
+      (expect (cl-nes::bus-dmc-dma-start-apu-phase bus) :to-be 1)
+      (setf (cl-nes::bus-dmc-dma-stage bus) :idle
+            (cl-nes::apu-dmc-status-update-event dmc) nil
+            (cl-nes::apu-cycle-parity apu) 1
+            (cl-nes::apu-cpu-cycle-index apu) 433)
+      (expect (funcall memory-reader #xC000) :to-be :pending)
+      (expect (cl-nes::bus-dmc-dma-apu-phase-pending-p bus) :to-be nil)
+      (expect (cl-nes::bus-dmc-dma-start-apu-phase bus) :to-be 0)
+      (setf (cl-nes::bus-dmc-dma-stage bus) :idle
+            (cl-nes::apu-cycle-parity apu) 0
+            (cl-nes::apu-cpu-cycle-index apu) 434)
+      (expect (funcall memory-reader #xC000) :to-be :pending)
+      (expect (cl-nes::bus-dmc-dma-start-apu-phase bus) :to-be nil)
       (setf (cl-nes::bus-cpu-access-active-p bus) nil)))
   (it "retries a DMC halt after a CPU write before the next read"
     (dolist (write-phase (list 0 1))

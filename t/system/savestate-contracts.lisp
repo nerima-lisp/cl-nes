@@ -6,16 +6,27 @@
            (first (progn
                     (setf (cl-nes::nes-irq-line-sample-p nes) t
                           (cl-nes::nes-master-clock nes) #x123456
-                          (cl-nes::nes-ppu-phase-offset nes) 3)
+                          (cl-nes::nes-ppu-phase-offset nes) 3
+                          (cl-nes::bus-dmc-dma-apu-phase-offset (nes-bus nes)) 0
+                          (cl-nes::bus-dmc-dma-start-apu-phase (nes-bus nes)) 1
+                          (cl-nes::bus-dmc-dma-apu-phase-pending-p (nes-bus nes)) t)
                     (nes-save-state nes))))
       (expect (aref first 4) :to-be 3)
       (nes-run-frames/k nes 1 (lambda (framebuffer)
                                 (declare (ignore framebuffer))
                                 nil))
-      (nes-load-state nes first)
+      (progn
+        (setf (cl-nes::bus-dmc-dma-apu-phase-offset (nes-bus nes)) 1
+              (cl-nes::bus-dmc-dma-start-apu-phase (nes-bus nes)) 0
+              (cl-nes::bus-dmc-dma-apu-phase-pending-p (nes-bus nes)) nil)
+        (nes-load-state nes first))
       (expect (cl-nes::nes-master-clock nes) :to-be #x123456)
-      (expect (cl-nes::nes-ppu-phase-offset nes) :to-be 3)
-      (expect (equalp (nes-save-state nes) first) :to-be t)))
+      (progn
+        (expect (cl-nes::nes-ppu-phase-offset nes) :to-be 3)
+        (expect (cl-nes::bus-dmc-dma-apu-phase-offset (nes-bus nes)) :to-be 0)
+        (expect (cl-nes::bus-dmc-dma-start-apu-phase (nes-bus nes)) :to-be 1)
+        (expect (cl-nes::bus-dmc-dma-apu-phase-pending-p (nes-bus nes)) :to-be t)
+        (expect (equalp (nes-save-state nes) first) :to-be t))))
 
   (it "continues with identical CPU and framebuffer results after restore"
     (dolist (frames '(0 1 2))

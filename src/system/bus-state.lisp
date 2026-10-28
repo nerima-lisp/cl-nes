@@ -31,6 +31,7 @@
    (dmc-dma-apu-phase-offset 1 fixnum)
    ;; APU-origin requests can wait for a specific phase before halting the CPU.
    (dmc-dma-start-apu-phase nil nil)
+   (dmc-dma-apu-phase-pending-p nil nil)
    ;; NES installs this only while executing a CPU operation. Device-internal
    ;; reads (for example DMC and OAM DMA) deliberately run with it disabled.
    (cpu-access-hook nil)

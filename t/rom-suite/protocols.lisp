@@ -365,10 +365,10 @@
                   (:name "PPU Palette RAM" :category :power-on-state
                    :address #x03ff :expected :pass))
     :items nil
-    :ratchet-pass-count 135
-    :ratchet-fail-items (("Delta Modulation Channel" #x5A))
+    :ratchet-pass-count 136
+    :ratchet-fail-items nil
     :ratchet-pass-items
-    ("ROM is not writable" "RAM Mirroring" "PC Wraparound"
+    ("ROM is not writable" "Delta Modulation Channel" "RAM Mirroring" "PC Wraparound"
      "The Decimal Flag" "The B Flag" "Dummy read cycles" "Dummy write cycles"
      "Open Bus" "All NOP instructions" "Absolute Indexed" "Zero Page Indexed"
      "Indirect" "Indirect, X" "Indirect, Y" "Relative"
