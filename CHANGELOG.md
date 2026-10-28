@@ -12,7 +12,10 @@
   offset. DMC DMA state includes its phase offset, request-start APU phase, and
   a pending APU-phase carry applied at the next loop reload. Loading rejects
   incompatible layouts, so version 2 states and earlier version 3 states are
-  not portable to this release.
+  not portable to this release (`d312bab`, `0e39583`, `69131ed`, `9744984`,
+  `9b6dee3`, `1a44e38`, `e74bbf6`, `baba7f4`, `97e8ae2`, `306e581`,
+  `8676428`, `e6ae3fd`, `e5d8f05`, `f209615`, `a01d067`, `108e9ab`,
+  `a5c8618`, `e8673c8`, `3219946`).
 
 ### Compatibility and cartridge support
 
@@ -32,30 +35,35 @@
   `81fbf63`, `0e39583`, `1797642`, `38e9c20`).
 - Improved sprite evaluation and timing, including rendering-disabled cases and
   sprite-zero detection (`69131ed`, `e74bbf6`, `baba7f4`, `eaf096b`,
-  `ec66b08`, `361957e`, `0ceb9e0`).
-- Corrected sprite overflow completion and OAMADDR alignment during `$2004`
-  reads.
+  `ec66b08`, `361957e`, `0ceb9e0`, `4c83cce`, `8676428`, `e6ae3fd`,
+  `e5d8f05`, `9fe796c`, `d75f325`).
+- Corrected `$2004` read timing, sprite overflow completion, and OAMADDR
+  alignment (`55e1dee`, `3219946`).
 - Calibrated the early PPU OAM corruption cutoff to dots 0–10, including
   AccuracyCoin Test 2 results when rendering is disabled at dots 7, 9, and 10.
   Dots 11–63 remain unmodeled because hardware-tested blargg
   `sprite_overflow_tests` Test 5 shows no observable corruption effect when
   rendering is disabled at dot 16. PPU revision and CPU/PPU phase also affect
   corruption and are not modeled, so this calibration is not a complete
-  hardware model.
+  hardware model (`108e9ab`, `1b0d9c5`).
 - Corrected PPU register and rendering behavior, including the measured
-  power-up palette, vblank and buffered reads, background fetch timing,
-  ALE/PPUDATA overlap, and MMC3 scanline timing (`80e2486`, `64e7243`,
+  power-up palette, vblank and buffered reads, split `$2002` status sampling,
+  background fetch timing, ALE/PPUDATA overlap, and MMC3 scanline timing
+  (`80e2486`, `64e7243`,
   `2e859a2`, `9744984`, `4fa095b`, `8edba64`, `a2de74f`, `97e8ae2`,
-  `cc24ccf`).
+  `cc24ccf`, `0654cfd`, `9340de4`).
 - When a rendering-time `$2006` write changes the address high bits, the next
   background pattern read uses those live high bits with the low byte captured
-  at the fetch.
+  at the fetch (`306e581`).
 - Aligned APU frame IRQ and reset boundaries, length-counter timing, and DMC
   sample status (`9b6dee3`, `f857372`, `48df297`, `25eac88`, `4ed6879`,
   `d4359c9`).
-- Modeled staged DMA transfers and DMC register conflicts, corrected halted
-  read retry and DMA IRQ polling, and coalesced repeated OAM DMA writes
-  (`1a44e38`, `daf5e80`, `05742ab`, `1797642`, `b0cda88`).
+- Modeled staged DMA transfers and DMC register conflicts, delayed DMC request
+  timing and aligned APU-phase reloads, corrected halted read retry and DMA IRQ
+  polling, decoded held `$4015` reads during OAM GET, fixed OAM DMA I/O source
+  reads, and coalesced repeated OAM DMA writes (`1a44e38`, `daf5e80`,
+  `05742ab`, `1797642`, `b0cda88`, `f209615`, `a5c8618`, `e8673c8`,
+  `f1ae62b`, `29aea20`).
 
 ### CI and test harness
 
@@ -67,10 +75,14 @@
   reporting ratchet losses, and failing known contract failures
   (`b2f3686`, `114accd`, `f27c06e`, `d6b42ba`).
 - Recorded per-ROM progress and compatibility results, drove ROM inputs from a
-  frame schedule, and updated accuracy ratchets (`9be7b22`, `73756d5`,
-  `eceea2a`, `8f9fa75`, `d8025d5`, `2a7a829`).
+  frame schedule, and updated AccuracyCoin and other ROM accuracy ratchets
+  (`9be7b22`, `73756d5`,
+  `eceea2a`, `8f9fa75`, `d8025d5`, `2a7a829`, `a797607`, `1fc1917`,
+  `838f0a3`, `2ebe511`).
 - Updated CI timeout and shard gates and pinned gates to x86_64 Linux
   (`a4a8535`, `9451a79`).
+- Pinned the paredit CLI output in the primary cache and reduced delays for
+  stalled Nix downloads (`ed5209b`, `454ee20`).
 - Fixed coverage runner dependencies and path ordering, validated ROM suite
   worker counts, and prepared the paredit CLI cache for CI inspection
   (`f7f4a32`, `89b4f9a`, `1231014`, `8d47e9e`, `427b6c6`).
