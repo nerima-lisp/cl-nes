@@ -1,6 +1,11 @@
 (in-package #:cl-nes)
 (defvar *nes-step-dma-cycles* nil)
 (defvar *dma-trace-cycle-index* 0)
+(defun %bus-dmc-dma-start-phase (bus)
+  (or (bus-dmc-dma-start-apu-phase bus)
+      (case (bus-dmc-dma-kind bus)
+        (:load 0)
+        (:reload 1))))
 
 (defun make-bus (&key cartridge ppu controller-1 controller-2 apu)
   (let* ((ppu (or ppu (make-ppu cartridge)))
@@ -47,7 +52,25 @@
                                             elapsed 1)))
                                   (if (= (bus-cpu-cycle-phase bus) 1) 2 3))))
                            (:reload
-                            (if (= (bus-cpu-cycle-phase bus) 0) 0 1)))
+                            (let* ((dmc (apu-dmc apu))
+                                   (event (apu-dmc-status-update-event dmc)))
+                              (if (eq event :enabled)
+                                  (let ((elapsed
+                                          (- (apu-cpu-cycle-index apu)
+                                             (apu-dmc-status-write-origin-cycle dmc))))
+                                    (max 0
+                                         (- (if (= (mod (apu-dmc-status-write-phase dmc) 2)
+                                                   1)
+                                                2
+                                                3)
+                                            elapsed)))
+                                  (if (= (bus-cpu-cycle-phase bus) 0) 0 1)))))
+                         (bus-dmc-dma-start-apu-phase bus)
+                         (when (and (eq (bus-dmc-dma-kind bus) :reload)
+                                    (eq (apu-dmc-status-update-event
+                                         (apu-dmc apu))
+                                        :enabled))
+                           (mod (1+ (apu-cycle-parity apu)) 2))
                          (bus-dmc-dma-stage bus) :new)
                    (%dma-trace-event! bus :dmc-request
                                       (* 12 (1+ *dma-trace-cycle-index*))
@@ -317,22 +340,20 @@
         (when hook
           (funcall hook)))))
 (defun %bus-run-dmc-dma-on-read! (bus address)
-  (let* ((phase (bus-cpu-cycle-phase bus))
+  (let* ((phase (mod (apu-cycle-parity (bus-apu bus)) 2))
          (stage (bus-dmc-dma-stage bus))
-         (kind (bus-dmc-dma-kind bus))
+         (start-phase (%bus-dmc-dma-start-phase bus))
          (eligible-p
            (or (eq stage :retry)
                (and (eq stage :ready)
-                    (case kind
-                      (:load (zerop phase))
-                      (:reload (= phase 1)))))))
+                    (= phase start-phase)))))
     (when (and eligible-p
                (bus-cpu-access-active-p bus)
                (not (bus-oam-dma-active-p bus)))
       (setf (bus-dmc-dma-stage bus) :active-halt
             (bus-dmc-dma-remaining bus) (if (zerop phase) 3 4))
       (loop while (member (bus-dmc-dma-stage bus)
-                          '(:active-halt :dummy :alignment :get :abort))
+                          (quote (:active-halt :dummy :alignment :get :abort)))
             do (let ((ppu-ticks 3))
                  (unless (eq (bus-dmc-dma-stage bus) :get)
                    (when (and (< address #x4000)

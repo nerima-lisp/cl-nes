@@ -1,6 +1,9 @@
 (in-package #:cl-nes)
 
 (defvar *dma-trace-hook* nil)
+(defun %dma-dmc-phase (bus)
+  (logxor (mod (apu-cycle-parity (bus-apu bus)) 2)
+          (bus-dmc-dma-apu-phase-offset bus)))
 (defun %dma-trace-cycle! (bus master-clock phase)
   (when *dma-trace-hook*
     (funcall
@@ -58,7 +61,8 @@
             ((member stage (list :new :wait :ready :retry))
              (setf (bus-dmc-dma-stage bus) :idle
                    (bus-dmc-dma-wait bus) 0
-                   (bus-dmc-dma-remaining bus) 0)
+                   (bus-dmc-dma-remaining bus) 0
+                   (bus-dmc-dma-start-apu-phase bus) nil)
              :cancelled-before-halt)
             ((member stage (list :active-halt :dummy))
              (when (eq stage :dummy)
@@ -106,13 +110,12 @@
       (when (and oam-active-p
                  (or (eq (bus-dmc-dma-stage bus) :retry)
                      (and (eq (bus-dmc-dma-stage bus) :ready)
-                          (case (bus-dmc-dma-kind bus)
-                            (:load (zerop (bus-cpu-cycle-phase bus)))
-                            (:reload (= (bus-cpu-cycle-phase bus) 1)))))
+                          (= (%dma-dmc-phase bus)
+                             (%bus-dmc-dma-start-phase bus))))
                  (not (eq (bus-last-cpu-access-kind bus) :write)))
         (setf (bus-dmc-dma-stage bus) :active-halt
               (bus-dmc-dma-remaining bus)
-              (if (zerop (bus-cpu-cycle-phase bus)) 3 4)))
+              (if (zerop (%dma-dmc-phase bus)) 3 4)))
       (setf dmc-stage-this-cycle (bus-dmc-dma-stage bus)
             dmc-active-p
             (or (eq dmc-stage-this-cycle :active-halt)
@@ -122,18 +125,18 @@
                 (eq dmc-stage-this-cycle :abort))
             dmc-get-p
             (and (eq dmc-stage-this-cycle :get)
-                 (zerop (bus-cpu-cycle-phase bus))))
+                 (zerop (%dma-dmc-phase bus))))
       (when dmc-active-p
         (case dmc-stage-this-cycle
           (:active-halt
            (setf (bus-dmc-dma-stage bus) :dummy))
           (:dummy
            (setf (bus-dmc-dma-stage bus)
-                 (if (= (bus-cpu-cycle-phase bus) 1)
+                 (if (= (%dma-dmc-phase bus) 1)
                      :get
                      :alignment)))
           (:alignment
-           (when (= (bus-cpu-cycle-phase bus) 1)
+           (when (= (%dma-dmc-phase bus) 1)
              (setf (bus-dmc-dma-stage bus) :get)))
           (:get
            (when dmc-get-p
@@ -165,7 +168,8 @@
                  (plusp (bus-dmc-dma-remaining bus)))
         (decf (bus-dmc-dma-remaining bus)))
       (when (eq (bus-dmc-dma-stage bus) :idle)
-        (setf (bus-dmc-dma-remaining bus) 0))
+        (setf (bus-dmc-dma-remaining bus) 0
+              (bus-dmc-dma-start-apu-phase bus) nil))
       (when oam-active-p
         (case (bus-oam-dma-stage bus)
           (:halt

@@ -27,6 +27,10 @@
    (last-cpu-access-address 0 (unsigned-byte 16))
    ;; Parity of the next CPU bus cycle, used by OAM DMA timing.
    (cpu-cycle-phase 0 fixnum)
+   ;; APU parity is sampled after its tick; this offset maps it to the active DMA cycle.
+   (dmc-dma-apu-phase-offset 1 fixnum)
+   ;; APU-origin requests can wait for a specific phase before halting the CPU.
+   (dmc-dma-start-apu-phase nil nil)
    ;; NES installs this only while executing a CPU operation. Device-internal
    ;; reads (for example DMC and OAM DMA) deliberately run with it disabled.
    (cpu-access-hook nil)

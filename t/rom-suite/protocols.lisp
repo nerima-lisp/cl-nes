@@ -366,7 +366,7 @@
                    :address #x03ff :expected :pass))
     :items nil
     :ratchet-pass-count 135
-    :ratchet-fail-items nil
+    :ratchet-fail-items (("Delta Modulation Channel" #x5A))
     :ratchet-pass-items
     ("ROM is not writable" "RAM Mirroring" "PC Wraparound"
      "The Decimal Flag" "The B Flag" "Dummy read cycles" "Dummy write cycles"

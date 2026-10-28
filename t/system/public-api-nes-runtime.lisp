@@ -12,13 +12,19 @@
       (let ((sample (bus-read (nes-bus nes) #x4016)))
         (expect (logand sample 1) :to-be 1))))
 
-  (it "creates cartridge-free consoles and resets their components"
-    (let ((nes (make-nes)))
+  (it "creates cartridge-free consoles and clears DMC phase on lifecycle resets"
+    (let* ((nes (make-nes))
+           (bus (nes-bus nes)))
       (expect (typep (nes-cpu nes) 'cpu) :to-be-truthy)
       (expect (typep (nes-bus nes) 'bus) :to-be-truthy)
       (expect (typep (nes-ppu nes) 'ppu) :to-be-truthy)
       (expect (typep (nes-apu nes) 'apu) :to-be-truthy)
-      (expect (nes-reset! nes) :to-be nes)))
+      (setf (cl-nes::bus-dmc-dma-start-apu-phase bus) 0)
+      (expect (nes-reset! nes) :to-be nes)
+      (expect (cl-nes::bus-dmc-dma-start-apu-phase bus) :to-be nil)
+      (setf (cl-nes::bus-dmc-dma-start-apu-phase bus) 1)
+      (expect (nes-load-cartridge! nes (make-fixture-cartridge)) :to-be nes)
+      (expect (cl-nes::bus-dmc-dma-start-apu-phase bus) :to-be nil)))
 
   (it "exposes reusable continuations for NES stepping"
     (let* ((cartridge (make-fixture-cartridge :program '(#xEA)))
