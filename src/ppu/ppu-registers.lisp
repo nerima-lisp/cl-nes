@@ -27,7 +27,8 @@
 
 (defun %ppu-read-status-register (ppu bus-access-p &optional read-phase)
   (when (eq read-phase :end)
-    (let ((value (logand (ppu-status ppu) #x60)))
+    ;; Use the status captured before rendering the dot reached by this phase.
+    (let ((value (logand (aref (ppu-status-history ppu) 0) #x60)))
       (%ppu-drive-decay! ppu value #x60)
       (return-from %ppu-read-status-register value)))
   (let* ((decay (%ppu-current-decay ppu))

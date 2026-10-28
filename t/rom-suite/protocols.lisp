@@ -414,7 +414,8 @@
      "Misaligned OAM DMA"
      "INC $4014"
      "t Register Quirks" "Rendering Flag Behavior"
-     "$2007 read w/ rendering" "Attributes As Tiles" "Stale BG Shift Registers"
+     "$2007 read w/ rendering"
+     "$2002 flag timing" "Attributes As Tiles" "Stale BG Shift Registers"
      "BG Serial In" "Address $2004 behavior" "$2007 Stress Test"
      "DMA + $2002 Read" "DMA + $2007 Write" "DMA + $4015 Read"
      "DMA + $4016 Read" "DMC DMA + OAM DMA" "ALE + Read" "Sprites On Scanline 0" "Hybrid Addresses" "Misaligned OAM2 Address" "Frozen OAM2 Increment" "OAM Corruption" "Stale Sprite Shift Regs")))

@@ -13,7 +13,9 @@
   (setf (ppu-status ppu) (logand (ppu-status ppu) #x1F)
         (ppu-frame-ready-p ppu) nil
         (ppu-nmi-pending-p ppu) nil
-        (ppu-nmi-delay-p ppu) nil))
+        (ppu-nmi-delay-p ppu) nil)
+  ;; Keep the $2002 end-phase snapshot in sync with the pre-render flag clear.
+  (setf (aref (ppu-status-history ppu) 0) (ppu-status ppu)))
 
 (defun %ppu-effective-mask (ppu)
   (if (ppu-rendering-mask-valid-p ppu)

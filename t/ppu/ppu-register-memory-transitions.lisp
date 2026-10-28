@@ -43,6 +43,15 @@
       (expect (cl-nes::ppu-scroll-x ppu) :to-be #x34)
       (expect (cl-nes::ppu-scroll-y ppu) :to-be #xA8)
       (expect (cl-nes::ppu-fine-x ppu) :to-be 4)))
+  (it "refreshes the end-phase status snapshot after the pre-render clear"
+    (let ((ppu (make-ppu)))
+      (setf (ppu-status ppu) #x60
+            (cl-nes::ppu-scanline ppu) 261
+            (cl-nes::ppu-dot ppu) 0)
+      (ppu-tick! ppu)
+      (expect (ppu-status ppu) :to-be #x00)
+      (expect (aref (cl-nes::ppu-status-history ppu) 0) :to-be #x00)
+      (expect (ppu-read-register ppu 2 t :end) :to-be #x00)))
 
   (it "cancels a delayed NMI when status is read in the vblank suppression window"
     (let ((ppu (make-ppu)))
