@@ -257,6 +257,54 @@
       (expect (bus-read bus #x2004) :to-be #xFB)
       (expect (cl-nes::ppu-dot ppu) :to-be 69)
       (expect (cl-nes::bus-cpu-access-count bus) :to-be 1)))
+  (it "uses the evaluation byte address for OAMDATA read-end masking"
+    (dolist (sample (list (list 130 1 #x81 #x7E)
+                          (list 131 1 #x81 #x61)
+                          (list 132 2 #x82 #x61)))
+      (let* ((start-dot (first sample))
+             (evaluation-m (second sample))
+             (start-address (third sample))
+             (expected (fourth sample))
+             (nes (make-nes))
+             (bus (nes-bus nes))
+             (ppu (nes-ppu nes)))
+        (setf (cl-nes::ppu-scanline ppu) 128
+              (cl-nes::ppu-dot ppu) start-dot
+              (ppu-mask ppu) #x18
+              (cl-nes::ppu-oam-address ppu) start-address
+              (cl-nes::ppu-primary-oam-bus-address ppu) start-address
+              (aref (ppu-oam ppu) #x81) #x7E
+              (aref (ppu-oam ppu) #x82) #x7D
+              (cl-nes::ppu-sprite-evaluation-n ppu) 32
+              (cl-nes::ppu-sprite-evaluation-m ppu) evaluation-m
+              (cl-nes::ppu-sprite-evaluation-latch ppu) #x7E
+              (cl-nes::ppu-sprite-evaluation-done-p ppu) nil
+              (cl-nes::ppu-secondary-oam-count ppu) 1
+              (cl-nes::ppu-secondary-oam-data-latch ppu) #x7E
+              (cl-nes::ppu-oam2-address ppu) 2
+              (cl-nes::bus-cpu-access-active-p bus) t
+              (cl-nes::bus-cpu-access-nes bus) nes)
+        (expect (bus-read bus #x2004) :to-be expected)
+        (expect (cl-nes::ppu-dot ppu) :to-be (+ start-dot 3))
+        (expect (cl-nes::bus-cpu-access-count bus) :to-be 1))))
+  (it "masks populated sprite attribute bytes at read end"
+    (let* ((nes (make-nes))
+           (bus (nes-bus nes))
+           (ppu (nes-ppu nes)))
+      (setf (cl-nes::ppu-scanline ppu) 128
+            (cl-nes::ppu-dot ppu) 257
+            (ppu-mask ppu) #x18
+            (cl-nes::ppu-oam-address ppu) 0
+            (cl-nes::ppu-primary-oam-bus-address ppu) 0
+            (aref (cl-nes::ppu-secondary-oam ppu) 2) #x7D
+            (cl-nes::ppu-secondary-oam-count ppu) 2
+            (cl-nes::ppu-secondary-oam-data-latch ppu) #x7D
+            (cl-nes::ppu-sprite-evaluation-done-p ppu) t
+            (cl-nes::bus-cpu-access-active-p bus) t
+            (cl-nes::bus-cpu-access-nes bus) nes)
+      (expect (bus-read bus #x2004) :to-be #x61)
+      (expect (cl-nes::ppu-dot ppu) :to-be 260)
+      (expect (cl-nes::bus-cpu-access-count bus) :to-be 1)))
 
   (it "queues a DMC load request during an NES-owned open-bus read"
     (let* ((nes (make-nes))

@@ -221,30 +221,44 @@
              (and (bus-cpu-access-active-p bus)
                   (<= #x2000 address #x3FFF)
                   (= register 2)))
+           (ppu-oam-data-read-p
+             (and (bus-cpu-access-active-p bus)
+                  (<= #x2000 address #x3FFF)
+                  (= register 4)))
            (read-start-ppu-ticks
-             (when ppu-status-read-p
+             (when (or ppu-status-read-p ppu-oam-data-read-p)
                (%nes-advance-master-ticks!
                 (bus-cpu-access-nes bus) 5)))
            (ppu-ticks 3))
-      ;; Keep the legacy pre-read alignment for OAMDATA and low-memory aliases.
+      ;; Keep the legacy pre-read alignment for unstaged reads and low-memory aliases.
       (when (and (bus-cpu-access-active-p bus)
                  (< address #x4000)
                  (not ppu-status-read-p)
+                 (not ppu-oam-data-read-p)
                  (or (= register 2) (= register 4)))
         (ppu-tick! (bus-ppu bus) 2)
         (setf ppu-ticks 1))
-      (let ((value (%bus-read-value bus address
-                                    (when ppu-status-read-p :start))))
+      (let ((value
+              (unless ppu-oam-data-read-p
+                (%bus-read-value bus address
+                                 (when ppu-status-read-p :start)))))
         (%bus-cpu-access-before-cycle! bus)
-        (let ((read-end-value
-                (if ppu-status-read-p
-                    (%bus-cpu-access!
-                     bus (- ppu-ticks read-start-ppu-ticks) 7 2)
-                    (%bus-cpu-access! bus ppu-ticks))))
+        (let* ((read-end-register
+                 (cond (ppu-status-read-p 2)
+                       (ppu-oam-data-read-p 4)))
+               (read-end-value
+                 (if read-end-register
+                     (%bus-cpu-access!
+                      bus (- ppu-ticks read-start-ppu-ticks) 7
+                      read-end-register)
+                     (%bus-cpu-access! bus ppu-ticks))))
           (when ppu-status-read-p
             (setf value (logior (logand value #x9F)
                                 (logand read-end-value #x60))
                   (bus-open-bus bus) value))
+          (when ppu-oam-data-read-p
+            (setf value
+                  (%bus-read-value-from-device bus address read-end-value)))
           (when update-internal-data-bus-p
             (setf (bus-internal-data-bus bus) value))
           value)))))

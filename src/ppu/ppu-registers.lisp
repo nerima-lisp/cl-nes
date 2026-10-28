@@ -54,7 +54,7 @@
                      (%nmi-delay-active-p ppu))
             (setf (ppu-nmi-delay-p ppu) 0))))))
 
-(defun %ppu-read-oam-data-register (ppu bus-access-p)
+(defun %ppu-read-oam-data-register (ppu bus-access-p &optional read-phase)
   (let* ((oam-address (ppu-primary-oam-bus-address ppu))
          (dot (ppu-dot ppu))
          (rendering-p
@@ -63,16 +63,21 @@
                 (let ((mask (%ppu-effective-mask ppu)))
                   (or (logbitp 3 mask) (logbitp 4 mask)))))
          (phase-p (and bus-access-p rendering-p))
+         (dot-zero-secondary-read-p
+           (and phase-p
+                (eq read-phase :end)
+                (zerop dot)))
          (secondary-count (ppu-secondary-oam-count ppu))
          (first-empty-sprite-p
            (and (< secondary-count 8)
                 (or (plusp secondary-count)
                     (= (aref (ppu-secondary-oam ppu) 0) #xFF))))
          (first-empty-dot (+ 257 (* 8 secondary-count)))
-         ;; CPU reads sample before the same cycle's PPU tick. Align the first
-         ;; empty-slot fetch with the preceding register-read callback dot.
+         ;; S+12 reads see the current dot after its PPU work has completed.
+         ;; Keep the legacy alignment only for reads without an explicit phase.
          (sprite-fetch-read-dot
            (if (and phase-p
+                    (not (eq read-phase :end))
                     first-empty-sprite-p
                     (<= (1- first-empty-dot) dot (+ first-empty-dot 6)))
                (1+ dot)
@@ -88,8 +93,16 @@
                 (= secondary-count 8)
                 (zerop (ppu-sprite-evaluation-m ppu))
                 (evenp dot)))
+         (post-evaluation-secondary-read-p
+           (and evaluation-bus-p
+                (eq read-phase :end)
+                (ppu-sprite-evaluation-done-p ppu)
+                (evenp dot)))
          (raw
            (cond
+             (dot-zero-secondary-read-p
+              ;; Dot 1 clears this value after the read-end sample at dot 0.
+              (ppu-secondary-oam-data-latch ppu))
              (clear-bus-p #xFF)
              (sprite-fetch-p
               (let* ((offset (mod (- sprite-fetch-read-dot 257) 8))
@@ -108,18 +121,35 @@
               (if secondary-bus-p
                   (aref (ppu-secondary-oam ppu) (ppu-oam2-address ppu))
                   (aref (ppu-secondary-oam ppu) 0)))
+             (post-evaluation-secondary-read-p
+              (ppu-secondary-oam-data-latch ppu))
              (evaluation-bus-p
-              ;; CPU reads precede this cycle's PPU ticks, so the latch
+              ;; CPU reads precede PPU ticks in this cycle, so the latch
               ;; holds the primary OAM byte read on the preceding odd dot.
               (ppu-sprite-evaluation-latch ppu))
              (t (aref (ppu-oam ppu) oam-address))))
          (masked-p
-           (and bus-access-p
-                (not clear-bus-p)
-                (not sprite-fetch-p)
-                (not secondary-bus-p)
-                (not secondary-full-read-p)
-                (= (logand oam-address 3) 2)))
+           (let* (;; Offset 2 reads the populated sprite attribute byte.
+                  (sprite-fetch-attribute-p
+                    (and sprite-fetch-p
+                         (eq read-phase :end)
+                         (< (floor (- sprite-fetch-read-dot 257) 8)
+                            secondary-count)
+                         (= (mod (- sprite-fetch-read-dot 257) 8) 2)))
+                  (mask-address
+                    (if (and evaluation-bus-p
+                             (not post-evaluation-secondary-read-p)
+                             (eq read-phase :end))
+                        ;; At :end, use the address that fetched the evaluation latch for the OAMDATA mask.
+                        (ppu-sprite-evaluation-address-latch ppu)
+                        oam-address)))
+             (and bus-access-p
+                  (not clear-bus-p)
+                  (or (not sprite-fetch-p) sprite-fetch-attribute-p)
+                  (not secondary-bus-p)
+                  (not secondary-full-read-p)
+                  (or sprite-fetch-attribute-p
+                      (= (logand mask-address 3) 2)))))
          (value (if masked-p (logand raw #xE3) raw)))
     (progn
       (%ppu-drive-decay! ppu value)
@@ -169,7 +199,7 @@
 (defun ppu-read-register (ppu register &optional bus-access-p read-phase)
   (case (logand register 7)
     (2 (%ppu-read-status-register ppu bus-access-p read-phase))
-    (4 (%ppu-read-oam-data-register ppu bus-access-p))
+    (4 (%ppu-read-oam-data-register ppu bus-access-p read-phase))
     (7 (%ppu-read-data-register ppu bus-access-p))
     (otherwise (if bus-access-p
                    (%ppu-current-decay ppu)
