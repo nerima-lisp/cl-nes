@@ -57,7 +57,7 @@
             (cl-nes::apu-dmc-output dmc) 1)
       (cl-nes::%apu-clock-dmc! dmc)
       (expect (cl-nes::apu-dmc-output dmc) :to-be 0)
-      (expect (cl-nes::apu-dmc-bits-remaining dmc) :to-be 0)
+      (expect (cl-nes::apu-dmc-bits-remaining dmc) :to-be 8)
       (setf (cl-nes::apu-dmc-timer dmc) 0
             (cl-nes::apu-dmc-sample-buffer-empty-p dmc) t
             (cl-nes::apu-dmc-bits-remaining dmc) 0)

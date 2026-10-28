@@ -5,7 +5,8 @@
         (pulse-2 (apu-pulse-2 apu))
         (triangle (apu-triangle apu))
         (noise (apu-noise apu))
-        (dmc (apu-dmc apu)))
+        (dmc (apu-dmc apu))
+        (enabled-p (logbitp 4 value)))
     (setf (apu-dmc-irq-pending-p dmc) nil)
     (setf (apu-pulse-enabled-p pulse-1) (logbitp 0 value)
           (apu-pulse-enabled-p pulse-2) (logbitp 1 value)
@@ -23,17 +24,13 @@
     (unless (apu-noise-enabled-p noise)
       (setf (apu-noise-length-counter noise) 0
             (apu-noise-length-reload-p noise) nil))
-    (setf (apu-dmc-enabled-p dmc) (logbitp 4 value))
-    (if (apu-dmc-enabled-p dmc)
-        (when (zerop (apu-dmc-bytes-remaining dmc))
-          (%apu-dmc-restart! dmc))
-        ;; Disabling the reader does not discard a prefetched byte or stop
-        ;; the output unit before its current byte has finished playing.
-        (setf (apu-dmc-bytes-remaining dmc) 0
-              (apu-dmc-load-pending-p dmc) nil))
+    (setf (apu-dmc-enabled-p dmc) enabled-p)
+    (when (and enabled-p
+               (zerop (apu-dmc-bytes-remaining dmc)))
+      (%apu-dmc-restart! dmc))
     (setf (apu-dmc-status-write-pending-p dmc) t
-          (apu-dmc-status-write-enabled-p dmc) (logbitp 4 value)
-          (apu-dmc-status-write-phase dmc) (apu-cycle-parity apu)
+          (apu-dmc-status-write-enabled-p dmc) enabled-p
+          (apu-dmc-status-write-phase dmc) (mod (apu-cycle-parity apu) 2)
           (apu-dmc-status-write-origin-cycle dmc)
           (1+ (apu-cpu-cycle-index apu)))))
 

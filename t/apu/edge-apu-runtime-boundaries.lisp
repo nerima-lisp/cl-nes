@@ -27,7 +27,12 @@
       (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 1)
       (expect (cl-nes::apu-dmc-irq-pending-p dmc) :to-be nil)
       (apu-write-register! apu #x4015 0)
-      (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 0)))
+      (progn
+  (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 1)
+  (expect (cl-nes::apu-dmc-status-write-pending-p dmc) :to-be t)
+  (apu-tick! apu 4)
+  (expect (cl-nes::apu-dmc-bytes-remaining dmc) :to-be 0)
+  (expect (cl-nes::apu-dmc-status-write-pending-p dmc) :to-be nil))))
 
   (it "delays frame mode changes and preserves console registers"
     (let ((apu (make-apu)))

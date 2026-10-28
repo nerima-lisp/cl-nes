@@ -29,8 +29,9 @@
                  nes-owned-p
                  dma-owned-p)
                (progn
-                 (when (and (not (apu-dmc-status-write-pending-p (apu-dmc apu)))
-                            (eq (bus-dmc-dma-stage bus) :idle))
+                 (when (and (or (not (apu-dmc-status-write-pending-p (apu-dmc apu)))
+                                    (not (apu-dmc-status-write-enabled-p (apu-dmc apu))))
+                               (eq (bus-dmc-dma-stage bus) :idle))
                    (setf (bus-dmc-dma-kind bus)
                          (if (apu-dmc-load-pending-p (apu-dmc apu))
                              :load
@@ -390,16 +391,20 @@
          (eligible-p
            (or (eq stage :retry)
                (and (eq stage :ready)
-                    (= phase start-phase)))))
-    (when (and eligible-p
+                    (= phase start-phase))))
+         (resume-p (or (eq stage :abort) (eq stage :abort-get))))
+    (when (and (or eligible-p resume-p)
                (bus-cpu-access-active-p bus)
                (not (bus-oam-dma-active-p bus)))
-      (setf (bus-dmc-dma-stage bus) :active-halt
-            (bus-dmc-dma-remaining bus) (if (zerop phase) 3 4))
+      (when eligible-p
+        (setf (bus-dmc-dma-stage bus) :active-halt
+              (bus-dmc-dma-remaining bus) (if (zerop phase) 3 4)))
       (loop while (member (bus-dmc-dma-stage bus)
-                          (quote (:active-halt :dummy :alignment :get :abort)))
+                          (quote (:active-halt :dummy :alignment :get
+                                  :abort :abort-get)))
             do (let ((ppu-ticks 3))
-                 (unless (eq (bus-dmc-dma-stage bus) :get)
+                 (unless (member (bus-dmc-dma-stage bus)
+                                 (quote (:get :abort-get)))
                    (when (and (< address #x4000)
                               (= (logand address 7) 2))
                      (ppu-tick! (bus-ppu bus) 2)

@@ -48,8 +48,7 @@
 
 (defun %apu-dmc-fetch-complete! (apu value)
   (let ((dmc (apu-dmc apu)))
-    (when (and (apu-dmc-enabled-p dmc)
-               (apu-dmc-sample-buffer-empty-p dmc)
+    (when (and (apu-dmc-sample-buffer-empty-p dmc)
                (plusp (apu-dmc-bytes-remaining dmc)))
       (setf (apu-dmc-sample-buffer dmc) (logand value #xFF)
             (apu-dmc-sample-buffer-empty-p dmc) nil
@@ -64,9 +63,12 @@
               (setf (apu-dmc-irq-pending-p dmc) t)))))
     value))
 
-(defun %apu-dmc-fetch! (apu)
+(defun %apu-dmc-fetch! (apu &optional buffer-consumed-p)
   (let ((dmc (apu-dmc apu)))
-    (when (and (apu-dmc-enabled-p dmc)
+    (when (and (or (apu-dmc-enabled-p dmc)
+                   (and buffer-consumed-p
+                        (apu-dmc-status-write-pending-p dmc)
+                        (not (apu-dmc-status-write-enabled-p dmc))))
                (apu-dmc-sample-buffer-empty-p dmc)
                (plusp (apu-dmc-bytes-remaining dmc)))
       (let* ((reader (apu-memory-reader apu))
@@ -80,18 +82,16 @@
 (defun %apu-clock-dmc! (dmc)
   (if (zerop (apu-dmc-timer dmc))
       (progn
-        ;; The reload cycle itself emits a bit.  Store period-1 so the
-        ;; countdown produces exactly the table's number of CPU clocks
-        ;; between output bits.
+        ;; Store period-1 so the countdown matches the interval between output bits.
         (setf (apu-dmc-timer dmc)
               (1- (apu-dmc-timer-period dmc)))
         (when (zerop (apu-dmc-bits-remaining dmc))
+          (setf (apu-dmc-bits-remaining dmc) 8)
           (if (apu-dmc-sample-buffer-empty-p dmc)
               (setf (apu-dmc-silence-p dmc) t)
               (setf (apu-dmc-shift-register dmc)
                     (apu-dmc-sample-buffer dmc)
                     (apu-dmc-sample-buffer-empty-p dmc) t
-                    (apu-dmc-bits-remaining dmc) 8
                     (apu-dmc-silence-p dmc) nil)))
         (unless (apu-dmc-silence-p dmc)
           (when (logbitp 0 (apu-dmc-shift-register dmc))
@@ -101,6 +101,14 @@
             (setf (apu-dmc-output dmc)
                   (max 0 (- (apu-dmc-output dmc) 2))))
           (setf (apu-dmc-shift-register dmc)
-                (ash (apu-dmc-shift-register dmc) -1))
-          (decf (apu-dmc-bits-remaining dmc))))
+                (ash (apu-dmc-shift-register dmc) -1)))
+        (decf (apu-dmc-bits-remaining dmc))
+        (when (zerop (apu-dmc-bits-remaining dmc))
+          (setf (apu-dmc-bits-remaining dmc) 8)
+          (if (apu-dmc-sample-buffer-empty-p dmc)
+              (setf (apu-dmc-silence-p dmc) t)
+              (setf (apu-dmc-shift-register dmc)
+                    (apu-dmc-sample-buffer dmc)
+                    (apu-dmc-sample-buffer-empty-p dmc) t
+                    (apu-dmc-silence-p dmc) nil))))
       (decf (apu-dmc-timer dmc))))

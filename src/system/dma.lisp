@@ -65,13 +65,10 @@
                    (bus-dmc-dma-start-apu-phase bus) nil)
              :cancelled-before-halt)
             ((member stage (list :active-halt :dummy))
-             (when (eq stage :dummy)
-               (setf (bus-dmc-dma-stage bus) :abort
-                     (bus-dmc-dma-remaining bus) 1))
              :abort-window)
             ((member stage (list :alignment :get))
              :after-abort-window)
-            ((eq stage :abort)
+            ((member stage (list :abort :abort-get))
              :abort-already-queued)
             (t :no-pending-request))))
     (%dma-trace-event! bus :dmc-explicit-disable master-clock
@@ -122,9 +119,11 @@
                 (eq dmc-stage-this-cycle :dummy)
                 (eq dmc-stage-this-cycle :alignment)
                 (eq dmc-stage-this-cycle :get)
+                (eq dmc-stage-this-cycle :abort-get)
                 (eq dmc-stage-this-cycle :abort))
             dmc-get-p
-            (and (eq dmc-stage-this-cycle :get)
+            (and (or (eq dmc-stage-this-cycle :get)
+                     (eq dmc-stage-this-cycle :abort-get))
                  (zerop (%dma-dmc-phase bus))))
       (when dmc-active-p
         (case dmc-stage-this-cycle
@@ -138,13 +137,14 @@
           (:alignment
            (when (= (%dma-dmc-phase bus) 1)
              (setf (bus-dmc-dma-stage bus) :get)))
-          (:get
+          ((:get :abort-get)
            (when dmc-get-p
              (let* ((apu (bus-apu bus))
                     (dmc (apu-dmc apu))
                     (address (apu-dmc-current-address dmc))
                     (value (%bus-read-dmc-sample bus address))
-                    (disabled-p (not (apu-dmc-enabled-p dmc))))
+                    (disabled-p (not (apu-dmc-enabled-p dmc)))
+                    (abort-p (eq dmc-stage-this-cycle :abort-get)))
                (%dma-trace-event! bus :dmc-get
                                   (* 12 *dma-trace-cycle-index*)
                                   :dmc-get-address address
@@ -154,16 +154,18 @@
                (%dma-trace-event! bus :dmc-stop
                                   (* 12 *dma-trace-cycle-index*)
                                   :dmc-stop-reason
-                                  (if disabled-p
-                                      :completed-after-disable
-                                      :sample-fetched)))))
+                                  (cond
+                                    (abort-p :abort-cycle-consumed)
+                                    (disabled-p :completed-after-disable)
+                                    (t :sample-fetched))))))
           (:abort
            (setf (bus-dmc-dma-stage bus) :idle)
            (%dma-trace-event! bus :dmc-stop
                               (* 12 *dma-trace-cycle-index*)
                               :dmc-stop-reason :abort-cycle-consumed))))
       (when (and dmc-active-p
-                 (or (not (eq dmc-stage-this-cycle :get))
+                 (or (not (or (eq dmc-stage-this-cycle :get)
+                              (eq dmc-stage-this-cycle :abort-get)))
                      dmc-get-p)
                  (plusp (bus-dmc-dma-remaining bus)))
         (decf (bus-dmc-dma-remaining bus)))

@@ -43,10 +43,23 @@
           (%dma-handle-dmc-disable! bus trace-clock disable-stage))
         (%dma-arbitrate-cycle! bus)
         (when (and disable-p
-                   (eq disable-stage :active-halt)
-                   (eq (bus-dmc-dma-stage bus) :dummy))
-          (setf (bus-dmc-dma-stage bus) :abort
-                (bus-dmc-dma-remaining bus) 1))
+                   (member disable-stage (list :active-halt :dummy)))
+          (case disable-stage
+            (:active-halt
+             (when (eq (bus-dmc-dma-stage bus) :dummy)
+               (setf (bus-dmc-dma-stage bus) :idle
+                     (bus-dmc-dma-remaining bus) 0
+                     (bus-dmc-dma-start-apu-phase bus) nil)
+               (%dma-trace-event! bus :dmc-stop trace-clock
+                                  :dmc-stop-reason :abort-cycle-consumed)))
+            (:dummy
+             (case (bus-dmc-dma-stage bus)
+               (:get
+                (setf (bus-dmc-dma-stage bus) :abort-get
+                      (bus-dmc-dma-remaining bus) 1))
+               (:alignment
+                (setf (bus-dmc-dma-stage bus) :abort
+                      (bus-dmc-dma-remaining bus) 1))))))
         (setf (apu-dmc-status-update-event dmc) nil)
         (when trace-clock
           (%dma-trace-cycle! bus trace-clock :after-arbiter)))
@@ -82,7 +95,8 @@
     (loop while (or (plusp remaining)
                     (bus-oam-dma-active-p bus)
                     (member (bus-dmc-dma-stage bus)
-                            '(:active-halt :dummy :alignment :get :abort)))
+                            (quote (:active-halt :dummy :alignment :get
+                                    :abort :abort-get))))
           do (%nes-clock-cpu-cycle! nes bus cycle-hook nil)
              (incf elapsed)
              (when (bus-dma-cycle-preempted-p bus)
