@@ -33,12 +33,15 @@
 - Improved sprite evaluation and timing, including rendering-disabled cases and
   sprite-zero detection (`69131ed`, `e74bbf6`, `baba7f4`, `eaf096b`,
   `ec66b08`, `361957e`, `0ceb9e0`).
+- Corrected sprite overflow completion and OAMADDR alignment during `$2004`
+  reads.
 - Calibrated the early PPU OAM corruption cutoff to dots 0–10, including
-  AccuracyCoin Test 2's hardware results for stops at dots 7, 9, and 10. Dots
-  11–63 remain unmodeled because hardware-tested blargg
-  `sprite_overflow_tests` Test 5 shows no observable corruption effect when it
-  stops at dot 16. PPU revision and CPU/PPU phase also affect corruption and
-  are not modeled, so this calibration is not a complete hardware model.
+  AccuracyCoin Test 2 results when rendering is disabled at dots 7, 9, and 10.
+  Dots 11–63 remain unmodeled because hardware-tested blargg
+  `sprite_overflow_tests` Test 5 shows no observable corruption effect when
+  rendering is disabled at dot 16. PPU revision and CPU/PPU phase also affect
+  corruption and are not modeled, so this calibration is not a complete
+  hardware model.
 - Corrected PPU register and rendering behavior, including the measured
   power-up palette, vblank and buffered reads, background fetch timing,
   ALE/PPUDATA overlap, and MMC3 scanline timing (`80e2486`, `64e7243`,

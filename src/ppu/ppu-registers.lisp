@@ -92,6 +92,8 @@
                 (not (ppu-sprite-evaluation-done-p ppu))
                 (= secondary-count 8)
                 (zerop (ppu-sprite-evaluation-m ppu))
+                ;; The last sprite byte still leaves the primary OAM latch on this dot.
+                (not (ppu-sprite-evaluation-secondary-oam-write-p ppu))
                 (evenp dot)))
          (post-evaluation-secondary-read-p
            (and evaluation-bus-p
@@ -278,7 +280,10 @@
   (if (and cpu-access-p (%ppu-rendering-scanline-p ppu))
       (setf (ppu-oam-address ppu)
             (mod (+ (ppu-oam-address ppu) 4) 256))
-      (setf (aref (ppu-oam ppu) (ppu-oam-address ppu)) value
+      (setf (aref (ppu-oam ppu) (ppu-oam-address ppu))
+            (if (= (logand (ppu-oam-address ppu) 3) 2)
+                (logand value #xE3)
+                value)
             (ppu-oam-address ppu)
             (mod (1+ (ppu-oam-address ppu)) 256)))
   (setf (ppu-primary-oam-bus-address ppu) (ppu-oam-address ppu)))

@@ -63,6 +63,7 @@ console reset for callers that want to preserve cartridge-backed state."
   (setf (ppu-sprite-evaluation-active-p ppu) nil
         (ppu-rendering-scanline-previous-p ppu) nil)
   (fill (ppu-status-history ppu) 0)
+  (setf (ppu-sprite-evaluation-overflow-counter ppu) 0)
   (fill (ppu-secondary-oam ppu) #xFF)
   (setf (ppu-oam2-address ppu) 0
         (ppu-oam2-increment-suppressed-p ppu) nil

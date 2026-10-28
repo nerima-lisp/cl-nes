@@ -340,7 +340,7 @@
             (cl-nes::ppu-sprite-evaluation-done-p ppu) t
             (cl-nes::ppu-sprite-evaluation-latch ppu) #xC3)
       (expect (ppu-read-register ppu 4 t) :to-be #xC3)))
-  (it "reads secondary OAM on even evaluation cycles once full"
+  (it "reads secondary OAM once full and keeps the filling-cycle latch"
     (let ((ppu (make-ppu)))
       (setf (cl-nes::ppu-mask ppu) #x18
             (cl-nes::ppu-scanline ppu) 0
@@ -360,8 +360,20 @@
             (cl-nes::ppu-sprite-evaluation-n ppu) 1
             (cl-nes::ppu-sprite-evaluation-done-p ppu) t
             (cl-nes::ppu-sprite-evaluation-latch ppu) #xC3)
-      (expect (ppu-read-register ppu 4 t) :to-be #xC3)))
-  (it "ignores OAMDATA writes during rendering and increments OAMADDR by four"
+      (expect (ppu-read-register ppu 4 t) :to-be #xC3))
+    (let ((ppu (make-ppu)))
+      (setf (cl-nes::ppu-mask ppu) #x18
+            (cl-nes::ppu-scanline ppu) 0
+            (cl-nes::ppu-dot ppu) 128
+            (cl-nes::ppu-sprite-evaluation-done-p ppu) nil
+            (cl-nes::ppu-secondary-oam-count ppu) 8
+            (cl-nes::ppu-sprite-evaluation-m ppu) 0
+            (cl-nes::ppu-sprite-evaluation-address-latch ppu) #x1F
+            (cl-nes::ppu-sprite-evaluation-latch ppu) #x88
+            (cl-nes::ppu-sprite-evaluation-secondary-oam-write-p ppu) t
+            (aref (cl-nes::ppu-secondary-oam ppu) 0) #x80)
+      (expect (ppu-read-register ppu 4 t :end) :to-be #x88)))
+  (it "ignores OAMDATA writes during rendering and masks stored attribute bits"
     (let ((ppu (make-ppu)))
       (setf (aref (cl-nes::ppu-oam ppu) 0) #xA5
             (aref (cl-nes::ppu-oam ppu) 4) #x8C
@@ -373,7 +385,17 @@
       (expect (aref (cl-nes::ppu-oam ppu) 0) :to-be #xA5)
       (expect (cl-nes::ppu-oam-address ppu) :to-be 4)
       (setf (cl-nes::ppu-mask ppu) 0)
-      (expect (ppu-read-register ppu 4 t) :to-be #x8C)))
+      (expect (ppu-read-register ppu 4 t) :to-be #x8C)
+      (setf (cl-nes::ppu-oam-address ppu) #x9A)
+      (ppu-write-register! ppu 4 #x7A)
+      (expect (aref (cl-nes::ppu-oam ppu) #x9A) :to-be #x62)
+      (expect (cl-nes::ppu-oam-address ppu) :to-be #x9B)
+      (setf (cl-nes::ppu-oam-address ppu) #x9B)
+      (ppu-write-register! ppu 4 #x7A)
+      (expect (aref (cl-nes::ppu-oam ppu) #x9B) :to-be #x7A)
+      (setf (cl-nes::ppu-oam-address ppu) #x9E)
+      (ppu-write-register! ppu 4 #x7A t)
+      (expect (aref (cl-nes::ppu-oam ppu) #x9E) :to-be #x62)))
   (it "continues OAM[n][0] reads and N increments after wrap"
     (let ((ppu (make-ppu)))
       (setf (cl-nes::ppu-mask ppu) #x18
@@ -423,4 +445,44 @@
       (expect (cl-nes::ppu-oam-address ppu) :to-be 4)
       (expect (aref (cl-nes::ppu-oam ppu) 0) :to-be #x5A)
       (setf (cl-nes::ppu-mask ppu) 0)
-      (expect (ppu-read-register ppu 4 t) :to-be #x8C))))
+      (expect (ppu-read-register ppu 4 t) :to-be #x8C)))
+  (it "finishes latched overflow and realigns OAMADDR"
+    (let ((ppu (make-ppu)))
+      (setf (cl-nes::ppu-scanline ppu) 128
+            (cl-nes::ppu-secondary-oam-count ppu) 8
+            (cl-nes::ppu-oam-address ppu) #x9A
+            (cl-nes::ppu-sprite-evaluation-n ppu) 38
+            (cl-nes::ppu-sprite-evaluation-m ppu) 0
+            (aref (cl-nes::ppu-oam ppu) #x9A) #x7A
+            (aref (cl-nes::ppu-oam ppu) #x9B) #x00
+            (aref (cl-nes::ppu-oam ppu) #x9C) #x00
+            (aref (cl-nes::ppu-oam ppu) #x9D) #x00
+            (aref (cl-nes::ppu-oam ppu) #xE0) #xC0)
+      (cl-nes::%ppu-evaluate-sprites! ppu 128 189)
+      (cl-nes::%ppu-evaluate-sprites! ppu 128 190)
+      (expect (cl-nes::ppu-sprite-evaluation-overflow-counter ppu) :to-be 3)
+      (expect (cl-nes::ppu-sprite-evaluation-overflow-p ppu) :to-be t)
+      (expect (logbitp 5 (cl-nes::ppu-status ppu)) :to-be t)
+      (expect (cl-nes::ppu-oam-address ppu) :to-be #x9B)
+      (expect (cl-nes::ppu-sprite-evaluation-done-p ppu) :to-be nil)
+      (cl-nes::%ppu-evaluate-sprites! ppu 128 191)
+      (cl-nes::%ppu-evaluate-sprites! ppu 128 192)
+      (expect (cl-nes::ppu-sprite-evaluation-overflow-counter ppu) :to-be 2)
+      (expect (cl-nes::ppu-oam-address ppu) :to-be #x9C)
+      (cl-nes::%ppu-evaluate-sprites! ppu 128 193)
+      (cl-nes::%ppu-evaluate-sprites! ppu 128 194)
+      (expect (cl-nes::ppu-sprite-evaluation-overflow-counter ppu) :to-be 1)
+      (expect (cl-nes::ppu-oam-address ppu) :to-be #x9D)
+      (cl-nes::%ppu-evaluate-sprites! ppu 128 195)
+      (cl-nes::%ppu-evaluate-sprites! ppu 128 196)
+      (expect (cl-nes::ppu-sprite-evaluation-overflow-counter ppu) :to-be 0)
+      (expect (cl-nes::ppu-sprite-evaluation-done-p ppu) :to-be t)
+      (expect (cl-nes::ppu-sprite-evaluation-m ppu) :to-be 0)
+      (expect (cl-nes::ppu-sprite-evaluation-n ppu) :to-be 39)
+      (expect (cl-nes::ppu-oam-address ppu) :to-be #x9C)
+      (loop for dot from 198 to 230 by 2
+            do (cl-nes::%ppu-evaluate-sprites! ppu 128 dot))
+      (expect (cl-nes::ppu-oam-address ppu) :to-be #xE0)
+      (expect (cl-nes::ppu-sprite-evaluation-n ppu) :to-be 56)
+      (cl-nes::%ppu-evaluate-sprites! ppu 128 231)
+      (expect (cl-nes::ppu-sprite-evaluation-latch ppu) :to-be #xC0))))

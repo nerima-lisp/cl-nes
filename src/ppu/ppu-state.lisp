@@ -108,6 +108,7 @@
    (sprite-evaluation-address-latch 0 (unsigned-byte 8))
    (secondary-oam-data-latch #xFF (unsigned-byte 8))
    (sprite-evaluation-overflow-p nil nil)
+   (sprite-evaluation-overflow-counter 0 fixnum)
    (oam-corruption-pending-rows 0 (unsigned-byte 32))
    (sprite-evaluation-secondary-oam-write-p nil nil))
   :constructor %make-ppu

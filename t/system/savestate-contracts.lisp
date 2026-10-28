@@ -93,6 +93,7 @@
             (cl-nes::ppu-sprite-evaluation-index source-ppu) 4
             (cl-nes::ppu-sprite-evaluation-n source-ppu) 8
             (cl-nes::ppu-sprite-evaluation-m source-ppu) 2
+            (cl-nes::ppu-sprite-evaluation-overflow-counter source-ppu) 2
             (cl-nes::ppu-sprite-evaluation-latch source-ppu) #xFD
             (cl-nes::ppu-sprite-evaluation-done-p source-ppu) t
             (cl-nes::ppu-sprite-render-count source-ppu) 2
@@ -106,6 +107,7 @@
       (expect (cl-nes::ppu-sprite-evaluation-index target-ppu) :to-be 4)
       (expect (cl-nes::ppu-sprite-evaluation-n target-ppu) :to-be 8)
       (expect (cl-nes::ppu-sprite-evaluation-m target-ppu) :to-be 2)
+      (expect (cl-nes::ppu-sprite-evaluation-overflow-counter target-ppu) :to-be 2)
       (expect (cl-nes::ppu-sprite-evaluation-latch target-ppu) :to-be #xFD)
       (expect (cl-nes::ppu-sprite-evaluation-done-p target-ppu) :to-be t)
       (expect (cl-nes::ppu-sprite-evaluation-active-p target-ppu) :to-be t)

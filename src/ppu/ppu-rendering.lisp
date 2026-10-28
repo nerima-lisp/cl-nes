@@ -272,6 +272,7 @@
           (ppu-primary-oam-bus-address ppu) (ppu-oam-address ppu)
           (ppu-sprite-evaluation-address-latch ppu) (ppu-oam-address ppu)
           (ppu-sprite-evaluation-overflow-p ppu) nil
+          (ppu-sprite-evaluation-overflow-counter ppu) 0
           (ppu-sprite-evaluation-done-p ppu) nil
           (ppu-sprite-evaluation-index ppu)
           (if (zerop (ppu-oam-address ppu)) 0 2)))
@@ -327,16 +328,30 @@
                        (set-oam-address (1+ address)))
                    (set-oam-address (logand #xFF #xFC (+ address 4))))))
               (t
-               (let ((in-range-p (in-range-p value)))
-                 (when in-range-p
-                   (setf (ppu-status ppu)
-                         (logior (ppu-status ppu) #x20)
-                         (ppu-sprite-evaluation-overflow-p ppu) t))
-                 (set-oam-address
-                  (+ address
-                     (if (or in-range-p (= (logand address 3) 3))
-                         1
-                         5)))))))))
+               (let ((overflow-p
+                       (or (ppu-sprite-evaluation-overflow-p ppu)
+                           (in-range-p value))))
+                 (if overflow-p
+                     (progn
+                       (setf (ppu-status ppu)
+                             (logior (ppu-status ppu) #x20)
+                             (ppu-sprite-evaluation-overflow-p ppu) t)
+                       (if (zerop (ppu-sprite-evaluation-overflow-counter ppu))
+                           (setf (ppu-sprite-evaluation-overflow-counter ppu) 3)
+                           (progn
+                             (decf (ppu-sprite-evaluation-overflow-counter ppu))
+                             (when (zerop
+                                    (ppu-sprite-evaluation-overflow-counter ppu))
+                               (setf (ppu-sprite-evaluation-done-p ppu) t
+                                     (ppu-sprite-evaluation-m ppu) 0)
+                               (set-oam-address (logand address #xFC)))))
+                       (unless (ppu-sprite-evaluation-done-p ppu)
+                         (set-oam-address (1+ address))))
+                     (set-oam-address
+                      (+ address
+                         (if (= (logand address 3) 3)
+                             1
+                             5))))))))))
   (ppu-secondary-oam-count ppu)))
 
 (defun %ppu-sprite-pixel-at-shifts (ppu x background-solid)
