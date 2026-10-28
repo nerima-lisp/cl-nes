@@ -226,13 +226,16 @@
                    (setf (aref (ppu-sprite-counter-counting ppu) slot) nil)))
                (progn
                  (setf (aref (ppu-sprite-counter-counting ppu) slot) nil)
-                 (when shift-p
-                   (setf (aref (ppu-sprite-shift-low ppu) slot)
-                         (logand #xFF
-                                 (ash (aref (ppu-sprite-shift-low ppu) slot) 1))
-                         (aref (ppu-sprite-shift-high ppu) slot)
-                         (logand #xFF
-                                 (ash (aref (ppu-sprite-shift-high ppu) slot) 1)))))))
+                 ;; Forced blank clocks X while the pattern shifters hold.
+                 (if shift-p
+                     (setf (aref (ppu-sprite-shift-low ppu) slot)
+                           (logand #xFF
+                                   (ash (aref (ppu-sprite-shift-low ppu) slot) 1))
+                           (aref (ppu-sprite-shift-high ppu) slot)
+                           (logand #xFF
+                                   (ash (aref (ppu-sprite-shift-high ppu) slot) 1)))
+                     (when (plusp (aref (ppu-sprite-x-counter ppu) slot))
+                       (decf (aref (ppu-sprite-x-counter ppu) slot)))))))
   ppu)
 
 (defun %ppu-palette-pixel (ppu color)

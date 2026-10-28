@@ -116,13 +116,13 @@
             (aref secondary 3) 2)
       (cl-nes::%ppu-sprite-fetch! ppu 264 0)
       (expect (aref (cl-nes::ppu-sprite-x-counter ppu) 0) :to-be 2)
-      (expect (aref (cl-nes::ppu-sprite-counter-counting ppu) 0) :to-be t)
+      (expect (aref (cl-nes::ppu-sprite-counter-counting ppu) 0) :to-be nil)
       (setf (ppu-mask ppu) 0
             (cl-nes::ppu-dot ppu) 339
             (aref (cl-nes::ppu-sprite-shift-low ppu) 0) #xA5
             (aref (cl-nes::ppu-sprite-shift-high ppu) 0) #x5A)
       (cl-nes::%ppu-clock-pipeline! ppu nil)
-      (expect (aref (cl-nes::ppu-sprite-counter-counting ppu) 0) :to-be t)
+      (expect (aref (cl-nes::ppu-sprite-counter-counting ppu) 0) :to-be nil)
       (setf (cl-nes::ppu-dot ppu) 0)
       (ppu-tick! ppu 3)
       (expect (aref (cl-nes::ppu-sprite-x-counter ppu) 0) :to-be 0)
