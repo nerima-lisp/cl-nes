@@ -365,7 +365,7 @@
                   (:name "PPU Palette RAM" :category :power-on-state
                    :address #x03ff :expected :pass))
     :items nil
-    :ratchet-pass-count 136
+    :ratchet-pass-count 141
     :ratchet-fail-items nil
     :ratchet-pass-items
     ("ROM is not writable" "Delta Modulation Channel" "RAM Mirroring" "PC Wraparound"
